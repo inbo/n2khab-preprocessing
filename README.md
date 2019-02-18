@@ -11,6 +11,11 @@ The repo is meant to fit the draft principles and setup in [this gsheet](https:/
 
 Regarding binary or text-format data: see [this list (under construction)](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI) for metadata on dataset versions and for their source location.
 
+The data are as much as possible internationalized:
+
+- English names for types, environmental pressures, ...;
+- English names for table headings (dataframe variables).
+
 All functions in this repo read data from local folders:
 
 - binary data sources are present in `../n2khab-binarydata` (this means that a folder `n2khab-binarydata` exists _next to this repository_).
@@ -23,6 +28,10 @@ The sources are supposed to be divided as:
 - data sources in text-format (not too large) are _versioned_ within this repository, in two folders:
     - `10_inputdata_textformat`: local copies of text-format inputdata versions are to be put here. Most of them come over from another repository;
     - `20_generateddata_textformat`: generated text-format data are put here by the code.
+    
+Each dataset is to be put in its *own subfolder* of the above folders.
+The name of the subfolder is a fixed code (ID) according to the aforementioned [list](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI).
+As far as possible, the corresponding file(s) get the same name.
 
     
     
