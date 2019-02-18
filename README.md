@@ -29,7 +29,7 @@ The sources are supposed to be divided as:
     - `10_inputdata_textformat`: local copies of text-format inputdata versions are to be put here. Most of them come over from another repository;
     - `20_generateddata_textformat`: generated text-format data are put here by the code.
     
-Each dataset is to be put in its *own subfolder* of the above folders.
+Each dataset is to be put in its *own subfolder* within one of the above folders.
 The name of the subfolder is a fixed code (ID) according to the aforementioned [list](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI).
 As far as possible, the corresponding file(s) get the same name.
 
