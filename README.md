@@ -11,7 +11,7 @@ The repo is meant to fit the draft principles and setup in [this gsheet](https:/
 
 Regarding binary or text-format data: see [this list (under construction)](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI) for metadata on dataset versions and for their source location.
 
-The data are as much as possible internationalized:
+The data, or the results of dataset-specific reading functions, are as much as possible internationalized:
 
 - English names for types, environmental pressures, ...;
 - English names for table headings (dataframe variables).
