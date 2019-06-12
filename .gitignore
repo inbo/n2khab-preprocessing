@@ -13,5 +13,4 @@ hashes.csv
 src/**/*.md
 !src/miscellaneous/README.md
 _book*
-inst/doc
 src/private_code.R
