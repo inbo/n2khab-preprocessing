@@ -13,4 +13,5 @@ hashes.csv
 src/**/*.md
 !src/miscellaneous/README.md
 _book*
+!_bookdown.yml
 src/private_code.R
