@@ -46,7 +46,7 @@ library(stars)
 library(stringr)
 library(tmap)
 library(knitr)
-library(n2khabutils)
+library(n2khab)
 opts_chunk$set(
   echo = TRUE,
   dpi = 300,

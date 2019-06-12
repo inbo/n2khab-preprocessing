@@ -44,7 +44,7 @@ library(raster)
 library(tidyverse)
 library(stringr)
 library(knitr)
-library(n2khabutils)
+library(n2khab)
 opts_chunk$set(
   echo = TRUE,
   dpi = 300
