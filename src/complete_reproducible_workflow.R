@@ -17,20 +17,8 @@
 # Generating the data folder inside this repository
 # -------------------------------------------------
 
-n2khabutils::filemanag_folders(root = "git")
+n2khab::filemanag_folders(root = "git")
 
-
-# Generating textdata files for the n2khabutils package
-# -----------------------------------------------------
-
-# Normally you will not require this step if you just need the latest versions
-# of these data and already have the n2khabutils package installed (see
-# README.md). These data are included in the package. Hence, this step is
-# normally only required to update the package because of updates in these data.
-
-setwd("src/generate_textdata")
-rmarkdown::render_site(output_format = 'bookdown::html_document2',
-                       encoding = 'UTF-8')
 
 # Generating GeoTIFF and GPKG files, derived from the GRTSmaster_habitats data source
 # --------------------------------------------------------------------------
