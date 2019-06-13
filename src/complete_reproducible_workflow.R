@@ -4,8 +4,8 @@
 ## 'data/10_raw' subfolder in the specified way (see datamanagement.md).
 
 ## Note on the relative paths: this script is supposed to be run from
-## the root of the n2khab-inputs repository. Advice: simply run it from the
-## n2khab-inputs.Rproj RStudio project.
+## the root of the n2khab-preprocessing repository. Advice: simply run it from the
+## n2khab-preprocessing.Rproj RStudio project.
 
 ## !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! #
 ## WARNING ! This script may take a very LONG time to run. You are advised
