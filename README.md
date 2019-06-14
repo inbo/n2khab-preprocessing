@@ -101,7 +101,7 @@ At this stage, you need to resolve any merge conflicts that may arise in your ow
 
 
 
-### Repository history {#history}
+### Repository history
 
 Previous to commit `8990c23`, the code was part of the [n2khab-monitoring](https://github.com/inbo/n2khab-monitoring) repo (formerly 'n2khab-inputs'), where the original version history remains stored (and complete reproducibility is guaranteed).
 As a convenience, the **n2khab-preprocessing** repo still holds the rewritten (shrinked) version history from before commit `8990c23`, as defined by the related files and folders.
