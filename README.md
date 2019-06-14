@@ -5,7 +5,7 @@ It will also provide datachecks for these workflows (explicit checking of file i
 
 The repo is a companion to the R package **[n2khab](https://github.com/inbo/n2khab)**, which provides functions that return several datasets as standardized R-objects.
 So, if you're just looking for a standardized way of reading existing (raw or processed) data sources into R, look no further than the package!
-That is, unless the data source is not yet covered there -> [contribute](#contribute) to this repo!
+That is, unless the data source is not yet covered there -> [contribute](#you-are-welcome-to-contribute) to this repo!
 
 This repo is set up with a special interest in the design, review and analysis of Natura 2000 habitat monitoring programmes at the Flemish scale (each is a combination of multiple monitoring schemes).
 But as defined in the beginning, the repo's scope is wider!
@@ -32,7 +32,7 @@ This is the structure of the repo:
 └── README.md
 ```
 
-### You are welcome to contribute! {#contribute}
+### You are welcome to contribute!
 
 #### Managing data
 
