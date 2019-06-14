@@ -1,9 +1,11 @@
 ## Welcome
 
 To support _reproducible_ and _transparent_ analyses on Flemish Natura 2000 habitats and regionally important biotopes (RIBs), this repo provides **data-generating (preprocessing) workflows** as _scripts_ or _R markdown_.
-It will also provide datachecks for these workflows (explicit checking of file integrity and version).
+More specifically, it generates _those_ processed data sources that are worth saving, consolidating and distributing as such -- these data sources are then defined with an ID for further use.
+Providing readily processed datasets makes sense in the case of time-consuming calculations, despite the reproducibility given the availability of a preprocessing workflow.
+Finally, the repo will also provide datachecks for the workflows (explicit checking of file integrity and version).
 
-The repo is a companion to the R package **[n2khab](https://github.com/inbo/n2khab)**, which provides functions that return several datasets as standardized R-objects.
+The repo is a companion to the R package **[n2khab](https://github.com/inbo/n2khab)**, which provides functions that return several datasets as standardized R-objects, as well as functions to do certain preprocessing steps.
 So, if you're just looking for a standardized way of reading existing (raw or processed) data sources into R, look no further than the package!
 That is, unless the data source is not yet covered there -> [contribute](#you-are-welcome-to-contribute) to this repo!
 
