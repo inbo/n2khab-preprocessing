@@ -1,16 +1,14 @@
 ## Welcome
 
-To support _reproducible_ and _transparent_ analyses on Flemish Natura 2000 habitats and regionally important biotopes (RIBs), this repo provides **data-generating workflows** as _scripts_ or _R markdown_, such as:
-
-- the creation of some of important (processed) binary or large data;
-- datachecks for these workflows.
+To support _reproducible_ and _transparent_ analyses on Flemish Natura 2000 habitats and regionally important biotopes (RIBs), this repo provides **data-generating (preprocessing) workflows** as _scripts_ or _R markdown_.
+It will also provide datachecks for these workflows (explicit checking of file integrity and version).
 
 The repo is a companion to the R package **[n2khab](https://github.com/inbo/n2khab)**, which provides functions that return several datasets as standardized R-objects.
 So, if you're just looking for a standardized way of reading existing (raw or processed) data sources into R, look no further than the package!
 That is, unless the data source is not yet covered there -> [contribute](#contribute) to this repo!
 
-The repo is set up with a special interest in the design, review and analysis of Natura 2000 habitat monitoring programmes at the Flemish scale (each is a combination of multiple monitoring schemes).
-But as stressed already, the repo's scope is not limited to these!
+This repo is set up with a special interest in the design, review and analysis of Natura 2000 habitat monitoring programmes at the Flemish scale (each is a combination of multiple monitoring schemes).
+But as defined in the beginning, the repo's scope is wider!
 For more information, see the [n2khab-monitoring](https://github.com/inbo/n2khab-monitoring) repo (which centralizes planning and workflow documentation in N2KHAB monitoring).
 
 The ultimate aim is to achieve open and reproducible data workflows. That is a prerequisite for qualifiable science, for sharing and for broad cooperation.
@@ -22,14 +20,14 @@ The ultimate aim is to achieve open and reproducible data workflows. That is a p
 This is the structure of the repo:
 
 ```
-├── data                    <- Binary or large data! Copy needed data here. IGNORED by git.
+├── data                        <- Binary or large data! Copy needed data here. IGNORED by git.
     ├── 10_raw
-    └── 20_processed        <- Either copy from a source location, or generate with code in src.
-├── src                     <- Put scripts / R markdown files here.
-    ├── generate_XXX        <- Organize files around the same generated data source in folders.
+    └── 20_processed            <- Either copy from a source location, or generate with code in src.
+├── src                         <- Put scripts / R markdown files here.
+    ├── generate_XXX            <- Put files together that focus on a common result.
     ├── generate_YYY
-    └── miscellaneous       <- For your own preparatory scripts and notebooks.
-├── n2khab-preprocessing.Rproj     <- RStudio project file
+    └── miscellaneous           <- For your own preparatory scripts and notebooks.
+├── n2khab-preprocessing.Rproj  <- RStudio project file
 ├── LICENSE
 └── README.md
 ```
@@ -50,18 +48,19 @@ Summarizing, this means:
 This name is version-agnostic!
 Versions can however be defined and checked for in a specific way.
 - depending on the data source, its own folder is to be stored either under `data/10_raw` or under `data/20_processed`.
-- the location of the `data` folder is specific to your setup and always needs to be specified as a function argument.
+- the location of the `data` folder is specific to your setup and always needs to be specified in workflows.
 
 In a collaborative workflow (inside or outside of this repository, e.g. another N2KHAB project) it is recommended to **define a variable `datapath`** in a separate, user-specific script, 
 e.g.:
 
-    ```
-    datapath <- "my/absolute-or-relative/path/to/data"
-    ```
+```
+datapath <- "my/absolute-or-relative/path/to/data"
+```
+
 and feed the `datapath` variable to functions in the actual collaborative workflow.
 
 Note that the [n2khab](https://github.com/inbo/n2khab) package holds some textual reference data files itself.
-The code to reproduce those, is part of the [n2khab](https://github.com/inbo/n2khab) repository.
+The code to reproduce those is part of the [n2khab](https://github.com/inbo/n2khab) repository.
 
 
 #### Coding tools: it's never too late for learning!
@@ -74,9 +73,6 @@ Organise data in R in a [tidy](https://r4ds.had.co.nz/tidy-data.html#tidy-data-1
 Recommended resources to get started are:
     - [R for Data Science](https://r4ds.had.co.nz/)
     - [Geocomputation with R](https://geocompr.robinlovelace.net)
-    - interesting resources when contributing to the package:
-        - [R packages](http://r-pkgs.had.co.nz/) (by Hadley Wickham 2015; an extended/updated [version](https://r-pkgs.org/) is still under development)
-        - `vignette("formatting", package = "roxygen2")` for documentation syntax
 - have a quick look at the [tidyverse style guide](https://style.tidyverse.org/).
 There you see how to style object, variable and function names, as well as the documentation.
 At least keep in mind: **use lower case and 'snake_case'** for object, variable and function names.
