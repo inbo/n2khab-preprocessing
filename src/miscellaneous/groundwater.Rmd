@@ -28,6 +28,11 @@ library(DBI)
 source("../private_code.R") # just loads connection string for Watina DB
 library(dbplyr)
 library(dbplot)
+library(knitr)
+opts_chunk$set(
+  echo = TRUE,
+  dpi = 300
+)
 ```
 
 # Querying the Watina groundwater database and exploring tables
@@ -36,8 +41,17 @@ The below explorations are based on code of Ivy Jansen, but use the `DBI` librar
 
 
 ```{r}
-con <- dbConnect(odbc::odbc(), .connection_string = connectionstring_watina)
-dbListTables(con) %>% View("tables")
+con <- inborutils::connect_inbo_dbase("W0002_00_Watina")
+```
+
+
+```{r}
+dbListTables(con) %>% sort %>%  View("tables")
+```
+
+
+```{r}
+dbGetQuery(con, "SELECT * FROM ext.vwDocumentatie") %>% View("docu")
 ```
 
 ## Locations and filters
@@ -45,11 +59,12 @@ dbListTables(con) %>% View("tables")
 Listing relevant tables and showing first records:
 
 ```{r}
-locations <-  tbl(con, "DimMeetpunt")
+locations <-  tbl(con, "vwDimMeetpunt")
 locations %>% glimpse
 ```
 
 Variables of interest: `MeetpuntWID`, `MeetpuntCode`, `MeetpuntStatusCode`, `MeetpuntTypeCode`, `MeetpuntXCoordinaat`, `MeetpuntYCoordinaat`.
+
 
 ```{r}
 # dbplot library provides a few basic graph functions for which the 
@@ -62,33 +77,90 @@ locations %>%
 
 
 ```{r}
-# does not work:
 dbGetQuery(con, 'SELECT TOP(6) * FROM DimMeetpunt')
 ```
 
-
 ```{r}
-# does not work:
-tbl(con, "DimPeilpunt") %>% 
-    head
+locations %>% 
+  count(MeetpuntTypeCode, MeetpuntType)
 ```
 
 ```{r}
-dbListFields(con, "DimPeilpunt")
+locations %>% 
+  distinct(MeetpuntTypeCode) %>% 
+  pull(MeetpuntTypeCode) %>% 
+  dput
 ```
 
 ```{r}
-# DOES work:
-gwfilters <- 
-    dbGetQuery(con, "SELECT MeetpuntWID, PeilpuntCode, ReferentieNiveauMaaiveld, PeilbuisLengte, FilterLengte,
-                    PeilpuntOpenbaarheidTypeCode, PeilpuntOpenbaarheidTypeNaam, PeilpuntTypeNaam
-                 FROM DimPeilpunt")
+locations %>% 
+  count(MeetpuntStatusCode, MeetpuntStatus)
+```
+
+```{r}
+locations %>% 
+  distinct(MeetpuntStatusCode) %>% 
+  pull(MeetpuntStatusCode) %>% 
+  dput
+```
+
+```{r}
+areas <- tbl(con, "vwDimGebied")
+areas %>% glimpse()
+```
+
+```{r}
+locations %>% 
+  inner_join(areas) %>% 
+  mutate(area_name2 = str_sub(MeetpuntCode, end = 3)) %>% 
+  count(area_name2, GebiedCode) %>% 
+  filter(area_name2 != GebiedCode) %>% 
+  collect %>% 
+  nrow
+```
+
+
+
+```{r}
+gwfilters <- tbl(con, "vwDimPeilpunt")
+```
+
+
+```{r}
 gwfilters %>% glimpse
 ```
 
-The table `DimPeilpunt` will be needed to select the shallow groundwater filters (i.e. with filter base < 3 m below soil surface), and to select the shallowest filter from (remaining) filters duplets.
+Variables of interest: `MeetpuntWID`, `PeilpuntWID`, `PeilpuntCode`, `PeilpuntStatusCode`, `PeilbuisLengte`, `ReferentieNiveauMaaiveld`.
+
+```{r}
+gwfilters %>% 
+  count(PeilpuntStatusCode, PeilpuntStatusNaam)
+```
+
+
+The table `vwDimPeilpunt` will be needed to select the shallow groundwater filters (i.e. with filter base < 3 m below soil surface), and to select the shallowest filter from (remaining) filters duplets.
 
 Let's explore that a little more:
+
+```{r}
+gwfilters %>% 
+  dbplot_histogram(ReferentieNiveauMaaiveld)
+```
+
+```{r}
+gwfilters %>% 
+  filter(is.na(ReferentieNiveauMaaiveld)) %>% 
+  collect %>% 
+  nrow
+```
+
+```{r}
+gwfilters %>% 
+  select(1) %>% 
+  collect %>% 
+  nrow
+```
+
 
 ```{r}
 gwfilters %>% 
@@ -114,6 +186,8 @@ gwfilters %>%
 gwfilters %>% 
     mutate(filterbase = -(PeilbuisLengte - ReferentieNiveauMaaiveld)) %>% 
     filter(filterbase == -3) %>% 
+    select(PeilpuntWID) %>% 
+    collect %>% 
     nrow
 ```
 
@@ -129,6 +203,16 @@ gwfilters %>%
     # scale_y_log10() +
     xlab("filterbase (m below soil surface)")
 ```
+
+```{r}
+gwfilters %>% 
+    mutate(filterbase = -(PeilbuisLengte - ReferentieNiveauMaaiveld)) %>% 
+    filter(filterbase >= -3) %>% 
+    select(PeilpuntWID) %>% 
+    collect %>% 
+    nrow
+```
+
 
 ## Groundwater levels: XG3
 
@@ -159,7 +243,7 @@ XG3 %>%
 ```
 
 
-```{r}
+```{r echo=TRUE}
 tbl(con, "DimMetingType")
 ```
 
@@ -189,7 +273,26 @@ chem_measurements %>% glimpse
 This table provides the chemical measurements.
 Essential variables are: `MeetpuntWID`, `DatumWID`, `ChemVarWID`, `Meetwaarde`, `MeetwaardeMEQ`, `IsBelowLOQ`, `MetingStatusCode`, `MetingStatus`.
 
-Missing here: electroneutrality (but see Cécile's [remark](https://docs.google.com/a/inbo.be/document/d/1isa_9HYQcxo8OYi0fKYmLY42GGTNxpev6RgW05WNxE4/edit?disco=AAAACuSS6FU)).
+What about this one?
+
+```{r}
+chem_measurements <- tbl(con, "vwFactChemischeMeting")
+chem_measurements %>% glimpse
+```
+
+
+Missing in both cases: electroneutrality (but see Cécile's [remark](https://docs.google.com/a/inbo.be/document/d/1isa_9HYQcxo8OYi0fKYmLY42GGTNxpev6RgW05WNxE4/edit?disco=AAAACuSS6FU)).
+
+Electroneutrality is in the following table however:
+
+```{r}
+tbl(con, "ssrs_StaalEN") %>% 
+  glimpse
+```
+
+Here we will need `StaalID` and `StaalEN`.
+
+
 
 ```{r}
 dbDisconnect(con)
