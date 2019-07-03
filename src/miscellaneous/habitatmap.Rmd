@@ -1,0 +1,75 @@
+---
+title: "Handling the habitatmap"
+date: '`r paste("Version",lubridate::now())`'
+output:
+  html_notebook:
+    number_sections: yes
+    code_folding: show
+    includes:
+      in_header: ../header.html
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: no
+---
+
+```{r setup, message=FALSE, echo=FALSE}
+options(stringsAsFactors = FALSE)
+# library(sp)
+library(sf)
+library(raster)
+library(tidyverse)
+library(n2khab)
+# # library(plotly)
+# library(rasterVis)
+# library(stars)
+# library(units)
+# library(tmap)
+library(knitr)
+opts_chunk$set(
+  echo = TRUE,
+  dpi = 300
+)
+```
+
+
+# A few checks of the habitatmap_stdized data source
+
+```{r}
+result <- read_habitatmap_stdized("../../data")
+```
+
+
+Do all polygons from the sf object have a unique ID? (Beware, this calculation takes approx. 2-3 minutes; it has been disabled)
+
+```{r eval=FALSE}
+result$habitatmap_polygons %>% 
+  count(polygon_id) %>% 
+  filter(n > 1) %>% 
+  nrow == 0
+```
+
+Is the number of unique IDs in the dataframe the same as the number of polygons in the sf object?
+
+```{r}
+result$habitatmap_patches %>% 
+  distinct(polygon_id) %>% 
+  nrow == nrow(result$habitatmap_polygons)
+```
+
+Do all polygon IDs from the dataframe coincide with those of the sf object?
+
+```{r message=FALSE}
+result$habitatmap_patches %>% 
+  inner_join(result$habitatmap_polygons) %>% 
+  nrow == nrow(result$habitatmap_patches)
+```
+
+Number of polygons with phab = 0:
+
+```{r}
+result$habitatmap_patches %>% 
+  filter(phab == 0) %>% 
+  nrow()
+```
+
