@@ -54,6 +54,15 @@ dbListTables(con) %>% sort %>%  View("tables")
 dbGetQuery(con, "SELECT * FROM ext.vwDocumentatie") %>% View("docu")
 ```
 
+The above was the DWH (datawarehouse).
+What is in the database itself?
+
+```{r}
+con2 <- inborutils::connect_inbo_dbase("D0025_00_Watina")
+```
+
+Aha.
+
 ## Locations and filters
 
 Listing relevant tables and showing first records:
