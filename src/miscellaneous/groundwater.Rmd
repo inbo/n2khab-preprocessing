@@ -49,9 +49,18 @@ con <- inborutils::connect_inbo_dbase("W0002_00_Watina")
 dbListTables(con) %>% sort %>%  View("tables")
 ```
 
+```{r}
+dbListTables(con) %>% 
+  sort %>% 
+  enframe() %>% 
+  
+```
+
 
 ```{r}
-dbGetQuery(con, "SELECT * FROM ext.vwDocumentatie") %>% View("docu")
+dbGetQuery(con, "SELECT * FROM ext.vwDocumentatie") %>% 
+  arrange(tablename) %>% 
+  View("docu")
 ```
 
 The above was the DWH (datawarehouse).
@@ -139,17 +148,110 @@ gwfilters <- tbl(con, "vwDimPeilpunt")
 gwfilters %>% glimpse
 ```
 
-Variables of interest: `MeetpuntWID`, `PeilpuntWID`, `PeilpuntCode`, `PeilpuntStatusCode`, `PeilbuisLengte`, `ReferentieNiveauMaaiveld`.
+Variables of interest: `MeetpuntWID`, `PeilpuntCode`, `PeilpuntStatusCode`, `PeilbuisLengte`, `ReferentieNiveauMaaiveld`.
+
+Note the difference between:
+
+```{r}
+gwfilters %>% 
+  count
+```
+
+and:
+
+```{r}
+gwfilters %>% 
+  distinct(PeilpuntCode) %>%
+  count
+```
+
+```{r}
+gwfilters %>% 
+  distinct(PeilpuntCode,
+           MeetpuntWID,
+           PeilpuntStatusCode,
+           PeilbuisLengte,
+           ReferentieNiveauMaaiveld) %>%
+  count
+```
+
+So the needed information is duplicated in the table.
+
+Example:
+
+```{r}
+gwfilters %>% 
+  filter(PeilpuntCode == "AABP001X") %>% 
+  collect
+```
+
+Another way of obtaining this seems to be:
+
+```{r}
+gwfilters %>% 
+  filter(PeilpuntOpenbaarheidTypeCode == "PLME", PeilpuntOpenbaarheidCode == "UNKWN") %>%
+  count
+```
+
+
+Info on an odd record (this seems a mistake):
+
+```{r paged.print = FALSE, message=FALSE}
+gwfilters %>% 
+  distinct(PeilpuntCode,
+           MeetpuntWID,
+           PeilpuntStatusCode,
+           PeilbuisLengte,
+           ReferentieNiveauMaaiveld) %>%
+  count(PeilpuntCode) %>% 
+  filter(n > 1) %>% 
+  inner_join(gwfilters)
+```
+
+Different available combinations:
+
+```{r}
+gwfilters %>% 
+  count(PeilpuntOpenbaarheidTypeCode,
+        PeilpuntOpenbaarheidCode,
+        PeilpuntOpenbaarheidNaam) %>% 
+  collect %>% 
+  arrange(PeilpuntOpenbaarheidTypeCode)
+```
+
+Occurring combinations within the same PeilpuntOpenbaarheidTypeCode x PeilpuntCode:
+
+```{r paged.print = FALSE}
+gwfilters %>% 
+  group_by(PeilpuntOpenbaarheidTypeCode, PeilpuntCode) %>% 
+  arrange(PeilpuntOpenbaarheidCode) %>% 
+  collect %>%
+  summarise(comb = str_flatten(PeilpuntOpenbaarheidCode, collapse = "-")) %>% 
+  count(comb)
+```
+
+We should filter PeilpuntStatusCode for values in `c("VLD", "ENT", "CLD")`.
 
 ```{r}
 gwfilters %>% 
   count(PeilpuntStatusCode, PeilpuntStatusNaam)
 ```
 
-
 The table `vwDimPeilpunt` will be needed to select the shallow groundwater filters (i.e. with filter base < 3 m below soil surface), and to select the shallowest filter from (remaining) filters duplets.
 
 Let's explore that a little more:
+
+```{r}
+gwfilters <- 
+  gwfilters %>% 
+  filter(PeilpuntStatusCode %in% c("VLD","ENT","CLD")) %>% 
+  distinct(PeilpuntCode,
+           MeetpuntWID,
+           PeilpuntStatusCode,
+           PeilbuisLengte,
+           ReferentieNiveauMaaiveld)
+```
+
 
 ```{r}
 gwfilters %>% 
@@ -182,6 +284,7 @@ gwfilters %>%
 
 ```{r}
 gwfilters %>% 
+    collect %>%
     mutate(filterbase = -(PeilbuisLengte - ReferentieNiveauMaaiveld),
            shallow = filterbase > -3) %>% 
     filter(filterbase > -10) %>% 
@@ -195,15 +298,16 @@ gwfilters %>%
 gwfilters %>% 
     mutate(filterbase = -(PeilbuisLengte - ReferentieNiveauMaaiveld)) %>% 
     filter(filterbase == -3) %>% 
-    select(PeilpuntWID) %>% 
+    select(PeilpuntCode) %>% 
     collect %>% 
     nrow
 ```
 
-Just including the filterdepths of exactly 3 meters deep would however add 433  filters, so let's include that one as well (it probably has to do with rounding effects):
+Just including the filterdepths of exactly 3 meters deep would however add 129 filters, so let's include that one as well (it probably has to do with rounding effects):
 
 ```{r}
 gwfilters %>% 
+    collect %>%
     mutate(filterbase = -(PeilbuisLengte - ReferentieNiveauMaaiveld),
            shallow = filterbase >= -3) %>% 
     filter(filterbase > -10) %>% 
@@ -217,7 +321,7 @@ gwfilters %>%
 gwfilters %>% 
     mutate(filterbase = -(PeilbuisLengte - ReferentieNiveauMaaiveld)) %>% 
     filter(filterbase >= -3) %>% 
-    select(PeilpuntWID) %>% 
+    select(PeilpuntCode) %>% 
     collect %>% 
     nrow
 ```
