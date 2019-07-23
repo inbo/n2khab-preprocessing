@@ -1,0 +1,125 @@
+---
+title: "Handling scheme_types in relation to the habitatmap"
+date: '`r paste("Version",lubridate::now())`'
+output:
+  html_notebook:
+    number_sections: yes
+    code_folding: show
+    includes:
+      in_header: ../header.html
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: no
+---
+
+```{r setup, message=FALSE, echo=FALSE}
+options(stringsAsFactors = FALSE)
+# library(sp)
+library(sf)
+library(raster)
+library(tidyverse)
+library(n2khab)
+# # library(plotly)
+# library(rasterVis)
+# library(stars)
+# library(units)
+# library(tmap)
+library(knitr)
+opts_chunk$set(
+  echo = TRUE,
+  dpi = 300
+)
+```
+
+
+# Intro
+
+Some inspiration is [here](https://github.com/inbo/n2khab-mne-design/blob/master/310_design_atmosphere/110_vlops_datapreparation/20_verkenning.Rmd#L33) already.
+
+```{r}
+habitatmap_patches <- 
+  read_habitatmap_stdized("../../data") %>% 
+  .$habitatmap_patches
+```
+
+```{r}
+habitatmap_polygons <- 
+  read_habitatmap_stdized("../../data") %>% 
+  .$habitatmap_polygons
+```
+
+```{r}
+scheme_types <- read_scheme_types()
+```
+
+Let's prepare for a function that expands the types in a dataframe in some appropriate way, in order to better join with the habitatmap.
+
+```{r}
+types <- read_types()
+types
+```
+
+# Main type - subtype equivalence?
+
+Which subtypes are so rare within the main type that they may be ignored when abstracting from subtypes to main types?
+
+```{r fig.height=10, fig.width=7, warning=FALSE}
+types_sub <-
+  types %>% 
+  filter(typelevel == "subtype") %>% 
+  distinct(main_type) %>% 
+  semi_join(types, .) %>% 
+  pull(type)
+patches_sub <- 
+  habitatmap_patches %>% 
+  filter(type %in% types_sub) %>% 
+  select(polygon_id, phab, type)
+types_sub_areas <- 
+  habitatmap_polygons %>% 
+  semi_join(patches_sub) %>% 
+  mutate(area = st_area(.)) %>% 
+  select(polygon_id, area) %>% 
+  st_drop_geometry %>% 
+  inner_join(patches_sub, .) %>% 
+  inner_join(types %>% select(1:3)) %>% 
+  mutate(area = area * phab / 100) %>% 
+  group_by(main_type, type) %>% 
+  summarise(area = sum(area))
+types_sub_areas %>% 
+  mutate(rel_area = area / sum(area)) %>% 
+  ggplot(aes(x = type, y = rel_area)) +
+    geom_bar(stat = "identity") +
+    facet_wrap(~main_type, scales = "free_x") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Several things are to be noted:
+
+- several codes of `types_sub` (i.e. the list of main type & subtype codes that correspond to the main types that do have subtypes) are not present in the habitatmap. Some are main type codes, some are subtype codes. Only in case of 2190 this poses an interpretation challenge.
+
+```{r}
+types_sub[!(types_sub %in% types_sub_areas$type)] %>% 
+  as.character %>% 
+  as.matrix
+```
+
+- 9120, rbbkam, rbbvos and rbbzil currently have an inconsistent meaning. These codes either refer to a main type, or to an implicit subtype, i.e. to the main type minus the single explicit subtype they possess. This confusion is a real problem and should be solved in later versions of the habitatmap.
+  - For these, `scheme_types` _currently_ only holds main type codes. Therefore no problem is _currently_ to be expected.
+
+```{r}
+scheme_types %>% 
+  distinct(type) %>% 
+  filter(str_detect(type, "9120|rbbvos|rbbzil|rbbkam"))
+```
+
+Which of `types_sub` are present in `scheme_types`?
+
+```{r}
+scheme_types %>% 
+  inner_join(types %>% select(1:3)) %>% 
+  distinct(main_type, type) %>% 
+  filter(type %in% types_sub) %>% 
+  arrange(main_type, type)
+```
+
