@@ -177,8 +177,8 @@ st_transform(orig_points, 31370) %>%
   st_coordinates
 ```
 
-This means that there is a difference, but it is at the sub-millimeter level.
-Therefore, and especially for rasters (but also polygons) created in `orig_crs`, such transformations will do more bad than good.
+This means that there is a large difference with 31300, and a very tiny one (at the sub-millimeter level) with 31370.
+Therefore, and especially for rasters (but also polygons) created in `orig_crs`, transformations to 31370 would do more bad than good.
 
 # Solution
 
