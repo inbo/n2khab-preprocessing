@@ -1,0 +1,227 @@
+---
+title: "Comparing CRSes of data sources"
+date: '`r paste("Version",lubridate::now())`'
+output:
+  html_notebook:
+    number_sections: yes
+    code_folding: show
+    includes:
+      in_header: ../header.html
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: no
+---
+
+```{r setup, message=FALSE, echo=FALSE}
+options(stringsAsFactors = FALSE)
+# library(sp)
+library(sf)
+library(raster)
+library(tidyverse)
+library(n2khab)
+# # library(plotly)
+# library(rasterVis)
+# library(stars)
+# library(units)
+# library(tmap)
+library(knitr)
+opts_chunk$set(
+  echo = TRUE,
+  dpi = 300
+)
+# library(rgdal)
+library(gdalUtils)
+```
+
+
+# Inspecting the CRS of several data sources
+
+```{r}
+datapath <- "../../data"
+data_crs <- tribble(
+  ~name, ~path,
+  "GRTSmh", file.path(datapath, "10_raw/GRTSmaster_habitats/GRTSmaster_habitats.tif"),
+  "habitatmap", file.path(datapath, "10_raw/habitatmap/habitatmap.shp"),
+  "flanders", file.path(datapath, "10_raw/flanders/flanders.shp"),
+  # "soilmap", file.path(datapath, "10_raw/soilmap/soilmap.sqlite"),
+  # ERROR - failed to load SRS definition from ../../data/10_raw/soilmap/soilmap.sqlite
+  "habmap_stdized", file.path(datapath, "20_processed/habitatmap_stdized/habitatmap_stdized.gpkg"),
+  "GRTSmh_brick", file.path(datapath, "20_processed/GRTSmh_brick/GRTSmh_brick.tif"),
+  "GRTSmh_base4frac", file.path(datapath, "20_processed/GRTSmh_base4frac/GRTSmh_base4frac.tif"),
+  "GRTSmh_diffres7", file.path(datapath, "20_processed/GRTSmh_diffres/GRTSmh_diffres.7.tif"),
+  "GRTSmh_diffres_pol", file.path(datapath, "20_processed/GRTSmh_diffres/GRTSmh_diffres.gpkg")
+)
+data_crs <- 
+  data_crs %>% 
+  mutate(crs = map(path, function(x) gdalsrsinfo(x, as.CRS = TRUE)))
+```
+
+
+```{r eval=FALSE, echo=FALSE}
+datalist <- list(
+# raw data sources
+  GRTSmh = raster(file.path(datapath, "10_raw/GRTSmaster_habitats/GRTSmaster_habitats.tif")),
+  habitatmap = st_read(file.path(datapath, "10_raw/habitatmap/habitatmap.shp"),
+                                     quiet = TRUE),
+  flanders = st_read(file.path(datapath, "10_raw/flanders/flanders.shp"),
+                                     quiet = TRUE),
+  soilmap = st_read(file.path(datapath, "10_raw/soilmap/soilmap.sqlite"),
+                                     quiet = TRUE),
+  # processed data sources
+  GRTSmh_brick = read_GRTSmh(datapath, brick = TRUE),
+  GRTSmh_base4 = read_GRTSmh_base4frac(datapath),
+  GRTSmh_diffres7 = read_GRTSmh_diffres(datapath, level = 7),
+  GRTSmh_diffres7_pol = read_GRTSmh_diffres(datapath, level = 7, polygon = TRUE),
+  habmap_polygons = st_read(file.path(datapath, "20_processed/habitatmap_stdized/habitatmap_stdized.gpkg"),
+                                     "habitatmap_polygons",
+                                     quiet = TRUE)
+)
+```
+
+It appears that all these data sources have exactly the same CRS:
+
+```{r}
+data_crs$crs
+```
+
+We save it in the object `orig_crs`:
+
+```{r}
+orig_crs <- data_crs$crs[[1]]
+orig_crs
+```
+
+# Belge 1972
+
+What are the existing EPSG CRSes of 'Belge 1972'?
+
+```{r}
+system("grep 'Lambert 72' /usr/share/proj/epsg -A 1")
+```
+
+The proj.4 strings of the first two can also be requested as:
+
+```{r}
+epsg_31300 <- gdalsrsinfo("+init=epsg:31300", as.CRS = TRUE)
+epsg_31300
+```
+
+```{r}
+epsg_31370 <- gdalsrsinfo("+init=epsg:31370", as.CRS = TRUE)
+epsg_31370
+```
+
+EPSG recommends 31370, and that's what we always want.
+
+Importantly, we see a high resemblance between `orig_crs` and EPSG-code 31300, however not exact.
+
+So it appears that the Flemish data sources are not distributed exactly according to EPSG.
+
+Also the ESRI versions of both Lambert 72 CRSes comply with the EPSG proj.4 strings, the only difference being that the EPSG strings also contain parameters for conversion to WGS84.
+So it's not clear where `orig_crs` comes from.
+
+```{r}
+system("grep 'Lambert 72' /usr/share/proj/esri -A 1")
+```
+
+
+# Consequences?
+
+Now, let's check what are the consequences of this difference by transforming some point coordinates.
+
+```{r}
+gdalinfo(file.path(datapath, "10_raw/GRTSmaster_habitats/GRTSmaster_habitats.tif")) %>% 
+  .[27:32]
+```
+
+```{r}
+corners <- 
+  gdalinfo(file.path(datapath, "10_raw/GRTSmaster_habitats/GRTSmaster_habitats.tif"),
+         raw_output = FALSE) %>% 
+  .$bbox
+corners
+```
+
+
+Making an sf object with these 5 points:
+
+```{r}
+orig_crs_sf <- st_crs(orig_crs)
+orig_points <- 
+  st_sfc(
+    st_point(c(corners["s1", "min"], corners["s2", "max"])), # Upper Left
+    st_point(c(corners["s1", "min"], corners["s2", "min"])), # Lower Left
+    st_point(c(corners["s1", "max"], corners["s2", "max"])), # Upper Right
+    st_point(c(corners["s1", "max"], corners["s2", "min"])), # Lower Right
+    st_point(c(140445.592, 198542.114)),                     # Center
+    crs = orig_crs_sf
+  ) %>% 
+  st_sf
+old <- options(digits = 15)
+orig_points %>% 
+  st_coordinates
+```
+
+Transform to epsg:31300 :
+
+```{r}
+st_transform(orig_points, 31300) %>% 
+  st_coordinates
+```
+
+Transform to epsg:31370 :
+
+```{r}
+st_transform(orig_points, 31370) %>% 
+  st_coordinates
+```
+
+This means that there is a large difference with 31300, and a very tiny one (at the sub-millimeter level) with 31370.
+Therefore, and especially for rasters (but also polygons) created in `orig_crs`, transformations to 31370 would do more bad than good.
+
+# Solution
+
+We better _set_ the CRS to 31370 without changing the coordinates of these geospatial objects, rather than transform (reproject) the data.
+
+This will be done as follows by the data-preprocessing functions:
+
+- for sf objects:
+
+```{r}
+orig_points_31370 <- orig_points
+st_crs(orig_points_31370) <- 31370
+orig_points_31370
+```
+
+- for raster objects:
+
+In the original CRS:
+
+```{r}
+GRTSmh  <- raster(file.path(datapath, "10_raw/GRTSmaster_habitats/GRTSmaster_habitats.tif"))
+GRTSmh
+```
+
+```{r}
+GRTSmh %>% 
+  xyFromCell(1:10)
+```
+
+With the CRS set to 31370:
+
+```{r}
+GRTSmh_31370 <- GRTSmh
+crs(GRTSmh_31370) <- epsg_31370
+GRTSmh_31370
+```
+
+```{r}
+GRTSmh_31370 %>% 
+  xyFromCell(1:10)
+```
+
+So the coordinates were not altered.
+
+
+
