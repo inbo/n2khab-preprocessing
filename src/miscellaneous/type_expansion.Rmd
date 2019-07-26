@@ -73,7 +73,9 @@ types_sub <-
   pull(type)
 patches_sub <- 
   habitatmap_patches %>% 
-  filter(type %in% types_sub) %>% 
+  filter(type %in% types_sub,
+         certain) %>% ## only a tiny fraction of certain = FALSE 
+                      ## is expected to be habitat type
   select(polygon_id, phab, type)
 types_sub_areas <- 
   habitatmap_polygons %>% 
@@ -122,4 +124,36 @@ scheme_types %>%
   filter(type %in% types_sub) %>% 
   arrange(main_type, type)
 ```
+
+## Conclusion based on discussion with Steven De Saeger
+
+Regarding **interpretation** of the habitatmap, which best goes into `terr_habitatmap` (the interpreted and augmented form of `habitatmap_stdized`) and `watersurfaces_interpr`:
+
+- when we only consider records of `habitatmap_patches` with `certain == TRUE`: for some main types, the main type code _mostly_ refers to a specific subtype -- so _that_ code can be used instead when interpreting the `habitatmap_stdized` data source:
+  - 3130 -> 3130_aom
+  - 6410 -> 6410_mo
+  - 6430 -> 6430_hf
+  - 6510 -> 6510_hu
+  - 7140 -> 7140_meso
+  - 9130 -> 9130_end
+- considering code **2190** in the habitatmap, this code refers to the sum of 2190_a and 2190_mp.
+It is necessary to use **BWK** fields from the raw `habitatmap` data source in order to distinguish 2190_a.
+Even better, use the `watersurfaces` data source for this, within the dunes ecoregion (data source `ecoregions`).
+So it will probably be better to apply this at once in the `terr_habitatmap` and in an interpreted form of `watersurfaces`, which should be spatially exclusive (and together will be part of `integrated_habitatmap`).
+- not having to do with subtypes, but with the previous point: also rbbhfl is a code which needs interpretation from BWK + habitatmap, in order to make it 'appear' (these polygons currently appear as rbbhf).
+
+So this means that a **function** that works on a type column ^[e.g. the output of `read_scheme_types()`, filtered for a specific scheme], 
+expanding main types into subtypes and adding the main type for complete sets of subtypes, would be reasonable, 
+considering that `terr_habitatmap` will effectively present those cases where this approach is indeed reasonable.
+
+So `terr_habitatmap` should:
+
+- exclude aquatic types and all areas covered by `watersurfaces`.
+- only contain 'certain' types
+- provide the interpreted values (see above), and a column that makes it apparent what the source of a value is:
+  - habitatmap_stdized
+  - habitatmap_stdized + interpretation
+  - habitatdune
+
+
 
