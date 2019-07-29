@@ -62,7 +62,9 @@ types
 
 # Main type - subtype equivalence?
 
-Which subtypes are so rare within the main type that they may be ignored when abstracting from subtypes to main types?
+Which subtypes are so rare within the main type that they may be ignored when abstracting from subtypes to main types (i.e. taking a group of subtypes and adding the main type code)? ^[
+However, the further conclusion shows that we will actually only need to abstract from subtypes to main types for those main types where the reverse abstraction from main types to _one specific subtype_ was not possible.
+The latter will already be made available in a derived data source `terr_habitatmap`, which is to be used as the data source for the envisaged function.]
 
 ```{r fig.height=10, fig.width=7, warning=FALSE}
 types_sub <-
@@ -127,6 +129,8 @@ scheme_types %>%
 
 ## Conclusion based on discussion with Steven De Saeger
 
+### Habitatmap interpretation
+
 Regarding **interpretation** of the habitatmap, which best goes into `terr_habitatmap` (the interpreted and augmented form of `habitatmap_stdized`) and `watersurfaces_interpr`:
 
 - when we only consider records of `habitatmap_patches` with `certain == TRUE`: for some main types, the main type code _mostly_ refers to a specific subtype -- so _that_ code can be used instead when interpreting the `habitatmap_stdized` data source:
@@ -142,10 +146,6 @@ Even better, use the `watersurfaces` data source for this, within the dunes ecor
 So it will probably be better to apply this at once in the `terr_habitatmap` and in an interpreted form of `watersurfaces`, which should be spatially exclusive (and together will be part of `integrated_habitatmap`).
 - not having to do with subtypes, but with the previous point: also rbbhfl is a code which needs interpretation from BWK + habitatmap, in order to make it 'appear' (these polygons currently appear as rbbhf).
 
-So this means that a **function** that works on a type column ^[e.g. the output of `read_scheme_types()`, filtered for a specific scheme], 
-expanding main types into subtypes and adding the main type for complete sets of subtypes, would be reasonable, 
-considering that `terr_habitatmap` will effectively present those cases where this approach is indeed reasonable.
-
 So `terr_habitatmap` should:
 
 - exclude aquatic types and all areas covered by `watersurfaces`.
@@ -154,6 +154,33 @@ So `terr_habitatmap` should:
   - habitatmap_stdized
   - habitatmap_stdized + interpretation
   - habitatdune
+  
+### Function to expand a type column
+
+So this means that a **function** that works on a type column ^[e.g. the output of `read_scheme_types()`, filtered for a specific scheme], 
+expanding main types into subtypes and adding the main type for sets of subtypes, would be reasonable, 
+considering that `terr_habitatmap` will effectively present those cases where this approach is indeed reasonable.
+The function, then, is intended to make its result useful only for further work with `terr_habitatmap` (and further derived data sources).
+
+The aspect of 'adding the main type for sets of subtypes' would in general require the 'complete set of subtypes' to be available, but:
+
+- we will relax this for:
+  - 6230: only needs 6230_ha, 6230_hmo and 6230_hnk in the type column, not the rare 6230_hnk
+  - 91E0: only needs 91E0_va, 91E0_vm, 91E0_vn, not the rarer sf, vc and vo subtypes.
+- we simply won't do it for 1310, 1330, 2130, 2190, 3130, 6210, 6410, 6430, 6510, 7140, 9130.
+That is because `terr_habitatmap` will not have those codes.
+That means it _will_ be done just for 2330, 6230, rbbkam, rbbvos, rbbzil, 9120, 91E0.
+
+The addition of the main type code based on subtype codes could _optionally_ als be relaxed by the function (e.g. by an argument `strict = FALSE`, with default `TRUE`):
+it could allow the addition of a main type code when just _one_ subtype code is present.
+That would introduce more errors, but it would allow a 'maximal' definition of the target population.
+That a selected location effectively belongs to the target population would then have to be checked on-site!
+By the way, the latter always has to be done as there are intrinsic uncertainties in the habitatmap.
+When checking on-site, always the strict list of target population defining types has to be used, not the expanded one.
+
+
+
+
 
 
 
