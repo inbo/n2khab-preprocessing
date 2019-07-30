@@ -178,8 +178,16 @@ That a selected location effectively belongs to the target population would then
 By the way, the latter always has to be done as there are intrinsic uncertainties in the habitatmap.
 When checking on-site, always the strict list of target population defining types has to be used, not the expanded one.
 
+# Exploring habitatmap_stdized
 
+Is the column `certain` correctly set?
 
+```{r}
+habitatmap_patches %>% 
+  filter(!certain) %>% 
+  count(code_orig) %>% 
+  kable()
+```
 
 
 
