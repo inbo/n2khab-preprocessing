@@ -167,6 +167,7 @@ So `terr_habitatmap` should:
   - habitatmap_stdized
   - habitatmap_stdized + interpretation
   - habitatdune
+  - [mhq_terrestrial_locs](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI) (if some of those locations are to be added)
   
 ### Function to expand a type column
 
