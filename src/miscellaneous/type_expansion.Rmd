@@ -192,17 +192,27 @@ That a selected location effectively belongs to the target population would then
 By the way, the latter always has to be done as there are intrinsic uncertainties in the habitatmap.
 When checking on-site, always the strict list of target population defining types has to be used, not the expanded one.
 
-# Exploring habitatmap_stdized
+# Some further queries on habitatmap_stdized
 
-Is the column `certain` correctly set?
+Which values of `code_orig` exist for uncertain records (i.e., containing a 'comma')?
 
 ```{r}
 habitatmap_patches %>% 
-  filter(!certain) %>% 
+  filter(!certain) %>%
   count(code_orig) %>% 
   kable()
 ```
 
+Which records have phab == 0?
 
+```{r}
+habitatmap_patches %>% 
+  filter(phab == 0) %>% 
+  count(type, certain) %>% 
+  arrange(-n) %>% 
+  kable
+```
 
+Note that these generally are real occurrences of the type, as 'line'- or 'point'-shaped polygons in the field (KLE).
+For some types this is even an important aspect (e.g. rbbsp), despite the non-registered surface area.
 
