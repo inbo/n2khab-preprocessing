@@ -76,9 +76,12 @@ types_sub <-
 patches_sub <- 
   habitatmap_patches %>% 
   filter(type %in% types_sub,
-         certain) %>% ## only a tiny fraction of certain = FALSE 
-                      ## is expected to be habitat type
-  select(polygon_id, phab, type)
+         !str_detect(code_orig, "bos"),
+         !(code_orig %in% c("6510,gh",
+                            "9120,gh"))) %>% 
+                      ## only a tiny fraction of xxx,gh or xxx,bos 
+                      ## is expected to be habitat type or rbb
+  select(polygon_id, phab, type, certain)
 types_sub_areas <- 
   habitatmap_polygons %>% 
   semi_join(patches_sub) %>% 
@@ -88,11 +91,12 @@ types_sub_areas <-
   inner_join(patches_sub, .) %>% 
   inner_join(types %>% select(1:3)) %>% 
   mutate(area = area * phab / 100) %>% 
-  group_by(main_type, type) %>% 
+  group_by(main_type, type, certain) %>% 
   summarise(area = sum(area))
 types_sub_areas %>% 
+  group_by(main_type) %>% 
   mutate(rel_area = area / sum(area)) %>% 
-  ggplot(aes(x = type, y = rel_area)) +
+  ggplot(aes(x = type, y = rel_area, fill = certain)) +
     geom_bar(stat = "identity") +
     facet_wrap(~main_type, scales = "free_x") +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
