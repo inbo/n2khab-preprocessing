@@ -63,7 +63,7 @@ for (i in 1:9) {
     
     GRTSmh_brick[[i + 1]] <-
         GRTSmh_base4frac %>% 
-        calc(function(x) base4frac_to_dec(x, level = i))
+        calc(function(x) convert_base4frac_to_dec(x, level = i))
     GRTSmh_brick %>%
     writeRaster(filename = "../../data/20_processed/GRTSmh_brick/GRTSmh_brick.tif",
                 format = "GTiff",
