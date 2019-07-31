@@ -825,7 +825,7 @@ Remind that the cell with the maximum base 4 fraction at level 0 is _not_ necess
 Here, this is the case for level 9 (i.e. the 10th value in below vector):
 
 ```{r}
-sapply(0:9, function(i) base4frac_to_dec(0.3333333333321, level = i))
+sapply(0:9, function(i) convert_base4frac_to_dec(0.3333333333321, level = i))
 ```
 
 ```{r warning=FALSE}
