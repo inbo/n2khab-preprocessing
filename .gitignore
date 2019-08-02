@@ -4,7 +4,7 @@
 !header.html
 *.tex
 !header.tex
-data/
+n2khab_data/
 hashes.csv
 .~lock*
 *.Rcheck/

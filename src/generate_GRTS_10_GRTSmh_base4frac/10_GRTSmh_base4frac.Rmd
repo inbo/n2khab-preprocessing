@@ -1,7 +1,7 @@
 # Settings
 
 ```{r}
-datapath <- "../../data"
+datapath <- "../../n2khab_data"
 ```
 
 
@@ -25,7 +25,7 @@ system.time(
 GRTSmh_base4frac <-
     GRTSmaster_habitats %>% 
     calc(convert_dec_to_base4frac,
-        filename = "../../data/20_processed/GRTSmh_base4frac/GRTSmh_base4frac.tif",
+        filename = "../../n2khab_data/20_processed/GRTSmh_base4frac/GRTSmh_base4frac.tif",
         datatype = "FLT8S",
         overwrite = TRUE)
 )
