@@ -1,7 +1,8 @@
 ## This R script lists the steps in order, required to generate original text
 ## data and derived (binary) data in the 'textdata' and 'n2khab_data/20_processed'
 ## subfolders respectively. It requires the RAW binary data to be present in the
-## 'n2khab_data/10_raw' subfolder in the specified way (see datamanagement.md).
+## 'n2khab_data/10_raw' subfolder in the specified way (for further information,
+## run: vignette("v020_datastorage", package = "n2khab")).
 
 ## Note on the relative paths: this script is supposed to be run from
 ## the root of the n2khab-preprocessing repository. Advice: simply run it from the
