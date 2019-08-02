@@ -49,8 +49,8 @@ Summarizing, this means:
 - use the data source's default ID to name both the data source specific subfolder and the data source file(s) (before the extension).
 This name is version-agnostic!
 Versions can however be defined and checked for in a specific way.
-- depending on the data source, its own folder is to be stored either under `data/10_raw` or under `data/20_processed`.
-- the location of the `data` folder is specific to your setup and always needs to be specified in workflows.
+- depending on the data source, its own folder is to be stored either under `n2khab_data/10_raw` or under `n2khab_data/20_processed`.
+- the location of the `n2khab_data` folder is specific to your setup and always needs to be specified in workflows.
 
 In a collaborative workflow (inside or outside of this repository, e.g. another N2KHAB project) it is recommended to **define a variable `datapath`** in a separate, user-specific script, 
 e.g.:
