@@ -22,7 +22,7 @@ The ultimate aim is to achieve open and reproducible data workflows. That is a p
 This is the structure of the repo:
 
 ```
-├── data                        <- Binary or large data! Copy needed data here. IGNORED by git.
+├── n2khab_data                 <- Binary or large data! Copy needed data here. IGNORED by git.
     ├── 10_raw
     └── 20_processed            <- Either copy from a source location, or generate with code in src.
 ├── src                         <- Put scripts / R markdown files here.
