@@ -1,7 +1,7 @@
 # Settings
 
 ```{r}
-datapath <- "../../data"
+datapath <- "../../n2khab_data"
 ```
 
 
@@ -34,7 +34,7 @@ GRTSmh_brick <-
           nl = 10, 
           crs = crs(GRTSmh_base4frac)
           ) %>% 
-    writeRaster(filename = "../../data/20_processed/GRTSmh_brick/GRTSmh_brick.tif",
+    writeRaster(filename = "../../n2khab_data/20_processed/GRTSmh_brick/GRTSmh_brick.tif",
                 format = "GTiff", 
                 datatype = "INT4S",
                 overwrite = TRUE)
@@ -49,7 +49,7 @@ GRTSmh_brick
 GRTSmh_brick[[1]] <-
         GRTSmaster_habitats
 GRTSmh_brick %>%
-    writeRaster(filename = "../../data/20_processed/GRTSmh_brick/GRTSmh_brick.tif",
+    writeRaster(filename = "../../n2khab_data/20_processed/GRTSmh_brick/GRTSmh_brick.tif",
                 format = "GTiff",
                 datatype = "INT4S",
                 overwrite = TRUE)
@@ -65,7 +65,7 @@ for (i in 1:9) {
         GRTSmh_base4frac %>% 
         calc(function(x) convert_base4frac_to_dec(x, level = i))
     GRTSmh_brick %>%
-    writeRaster(filename = "../../data/20_processed/GRTSmh_brick/GRTSmh_brick.tif",
+    writeRaster(filename = "../../n2khab_data/20_processed/GRTSmh_brick/GRTSmh_brick.tif",
                 format = "GTiff",
                 datatype = "INT4S",
                 overwrite = TRUE)

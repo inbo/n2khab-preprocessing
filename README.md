@@ -56,7 +56,7 @@ In a collaborative workflow (inside or outside of this repository, e.g. another 
 e.g.:
 
 ```
-datapath <- "my/absolute-or-relative/path/to/data"
+datapath <- "my/absolute-or-relative/path/to/n2khab_data"
 ```
 
 and feed the `datapath` variable to functions in the actual collaborative workflow.
