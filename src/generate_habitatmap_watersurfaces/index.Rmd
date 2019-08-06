@@ -37,9 +37,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-options(stringsAsFactors = FALSE,
-        scipen = 999, 
-        digits = 15)
+options(stringsAsFactors = FALSE)
 library(sf)
 library(rgdal)
 library(tidyverse)
