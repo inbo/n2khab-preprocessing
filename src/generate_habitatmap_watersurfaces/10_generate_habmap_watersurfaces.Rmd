@@ -9,13 +9,13 @@
 
 ```{r read processed habmap}
 
-habmap <- read_habitatmap_stdized(path = "../../data") 
+habmap <- read_habitatmap_stdized() 
 
 ```
 
 ```{r read watersurfaces map}
 
-watersurfaces <- st_read(dsn = "../../data/10_raw/watersurfaces",
+watersurfaces <- st_read(dsn = "../../n2khab_data/10_raw/watersurfaces",
                   layer = "watersurfaces",
                   crs = 31370)
 
