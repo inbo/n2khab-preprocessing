@@ -55,7 +55,7 @@ opts_chunk$set(
 )
 ```
 
-**Note: this is a bookdown project, supposed to be run from within the `src/generate_habitatmap_shallowwaters` subfolder. You can use the `generate_habitatmap_hallowwaters.Rproj` RStudio project file in this subfolder to run it.**
+**Note: this is a bookdown project, supposed to be run from within the `src/generate_habitatmap_watersurfaces` subfolder. You can use the `generate_habitatmap_watersurfaces.Rproj` RStudio project file in this subfolder to run it.**
 
 
 
