@@ -22,7 +22,7 @@ The ultimate aim is to achieve open and reproducible data workflows. That is a p
 This is the structure of the repo:
 
 ```
-├── data                        <- Binary or large data! Copy needed data here. IGNORED by git.
+├── n2khab_data                 <- Binary or large data! Copy needed data here. IGNORED by git.
     ├── 10_raw
     └── 20_processed            <- Either copy from a source location, or generate with code in src.
 ├── src                         <- Put scripts / R markdown files here.
@@ -36,30 +36,19 @@ This is the structure of the repo:
 
 ### You are welcome to contribute!
 
-#### Managing data
+#### Managing data and generating processed data
 
-Data sources evolve, and hence, data source versions succeed one another.
-To ease reproducibility, the workflows in this and in associated repositories therefore work with _locally stored_ data sources.
+You should definitely have a look at the distribution and setup of standard data sources for N2KHAB projects, given that the `n2khab-preprocessing` repo conforms to this as well:
 
-For this repository, strictly follow the separate [document](https://github.com/inbo/n2khab-monitoring/blob/master/datamanagement.md) on data management, which also serves as an advice to N2KHAB project repositories.
-A graphical scheme of data storage and versioning workflows is found [here](https://drive.google.com/open?id=1xZz9f9n8zSUxBJvW6WEFLyDK7Ya0u4iN).
-
-Summarizing, this means:
-
-- use the data source's default ID to name both the data source specific subfolder and the data source file(s) (before the extension).
-This name is version-agnostic!
-Versions can however be defined and checked for in a specific way.
-- depending on the data source, its own folder is to be stored either under `data/10_raw` or under `data/20_processed`.
-- the location of the `data` folder is specific to your setup and always needs to be specified in workflows.
-
-In a collaborative workflow (inside or outside of this repository, e.g. another N2KHAB project) it is recommended to **define a variable `datapath`** in a separate, user-specific script, 
-e.g.:
-
-```
-datapath <- "my/absolute-or-relative/path/to/data"
+```r
+vignette("v020_datastorage", package = "n2khab")
 ```
 
-and feed the `datapath` variable to functions in the actual collaborative workflow.
+Processed data, or the results of dataset-specific reading functions (see [n2khab](https://github.com/inbo/n2khab) package), are to be [tidied](https://r4ds.had.co.nz/tidy-data.html#tidy-data-1) and as much as possible internationalized:
+
+- availability of English names for types, environmental pressures, ...
+Other languages can be accomodated as well;
+- English names for table headings (dataframe variables).
 
 Note that the [n2khab](https://github.com/inbo/n2khab) package holds some textual reference data files itself.
 The code to reproduce those is part of the [n2khab](https://github.com/inbo/n2khab) repository.

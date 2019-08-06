@@ -1,7 +1,7 @@
 library(openssl)
 library(tidyverse)
 
-mypath <- "data"
+mypath <- "n2khab_data"
 
 hashes <-
     tibble(filepath = str_c(mypath, "/",

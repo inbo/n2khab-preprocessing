@@ -38,14 +38,14 @@ library(gdalUtils)
 # Inspecting the CRS of several data sources
 
 ```{r}
-datapath <- "../../data"
+datapath <- "../../n2khab_data"
 data_crs <- tribble(
   ~name, ~path,
   "GRTSmh", file.path(datapath, "10_raw/GRTSmaster_habitats/GRTSmaster_habitats.tif"),
   "habitatmap", file.path(datapath, "10_raw/habitatmap/habitatmap.shp"),
   "flanders", file.path(datapath, "10_raw/flanders/flanders.shp"),
   # "soilmap", file.path(datapath, "10_raw/soilmap/soilmap.sqlite"),
-  # ERROR - failed to load SRS definition from ../../data/10_raw/soilmap/soilmap.sqlite
+  # ERROR - failed to load SRS definition from ../../n2khab_data/10_raw/soilmap/soilmap.sqlite
   "habmap_stdized", file.path(datapath, "20_processed/habitatmap_stdized/habitatmap_stdized.gpkg"),
   "GRTSmh_brick", file.path(datapath, "20_processed/GRTSmh_brick/GRTSmh_brick.tif"),
   "GRTSmh_base4frac", file.path(datapath, "20_processed/GRTSmh_base4frac/GRTSmh_base4frac.tif"),

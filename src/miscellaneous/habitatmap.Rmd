@@ -36,7 +36,7 @@ opts_chunk$set(
 # A few checks of the habitatmap_stdized data source
 
 ```{r}
-result <- read_habitatmap_stdized("../../data")
+result <- read_habitatmap_stdized("../../n2khab_data")
 ```
 
 
