@@ -1,7 +1,7 @@
 # Settings
 
 ```{r}
-datapath <- "../../data"
+datapath <- "../../n2khab_data"
 ```
 
 
@@ -19,7 +19,7 @@ dir.create(str_c(datapath, "/20_processed/GRTSmh_diffres"), recursive = TRUE)
 ```
 
 ```{r}
-datasetpath <- "../../data/20_processed/GRTSmh_diffres"
+datasetpath <- "../../n2khab_data/20_processed/GRTSmh_diffres"
 ```
 
 

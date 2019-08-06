@@ -5,7 +5,7 @@ The shapefile of the BWK and Natura 2000 habitat map of Flanders can be download
 
 ```{r read_raw_data}
 
-habmap_sf <- st_read("../../data/10_raw/habitatmap", "habitatmap")
+habmap_sf <- st_read("../../n2khab_data/10_raw/habitatmap", "habitatmap")
 
 ```
 
@@ -170,10 +170,10 @@ habmap_types_sf <- habmap_sf %>%
 
 ```{r}
 
-st_write(habmap_types_sf, "../../data/20_processed/habitatmap_stdized/habitatmap_stdized.gpkg", layer = "habitatmap_polygons", driver = "GPKG")
+st_write(habmap_types_sf, "../../n2khab_data/20_processed/habitatmap_stdized/habitatmap_stdized.gpkg", layer = "habitatmap_polygons", driver = "GPKG")
 
 con = dbConnect(SQLite(),
-                dbname = "../../data/20_processed/habitatmap_stdized/habitatmap_stdized.gpkg")
+                dbname = "../../n2khab_data/20_processed/habitatmap_stdized/habitatmap_stdized.gpkg")
 
 dbWriteTable(con, "habitatmap_patches", habmap_types)
 
