@@ -195,6 +195,8 @@ When checking on-site, always the strict list of target population defining type
 
 # Some further queries on habitatmap_stdized
 
+## Uncertain records
+
 Which values of `code_orig` exist for uncertain records (i.e., containing a 'comma')?
 
 ```{r}
@@ -203,6 +205,8 @@ habitatmap_patches %>%
   count(code_orig) %>% 
   kable()
 ```
+
+## Records with phab==0
 
 Which records have phab == 0?
 
