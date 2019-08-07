@@ -39,13 +39,13 @@ Some inspiration is [here](https://github.com/inbo/n2khab-mne-design/blob/master
 
 ```{r}
 habitatmap_patches <- 
-  read_habitatmap_stdized("../../n2khab_data") %>% 
+  read_habitatmap_stdized() %>% 
   .$habitatmap_patches
 ```
 
 ```{r}
 habitatmap_polygons <- 
-  read_habitatmap_stdized("../../n2khab_data") %>% 
+  read_habitatmap_stdized() %>% 
   .$habitatmap_polygons
 ```
 
