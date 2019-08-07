@@ -221,3 +221,16 @@ habitatmap_patches %>%
 Note that these generally are real occurrences of the type, as 'line'- or 'point'-shaped polygons in the field (KLE).
 For some types this is even an important aspect (e.g. rbbsp), despite the non-registered surface area.
 
+## Which types do not occur in habitatmap_stdized?
+
+```{r}
+types %>% 
+  anti_join(habitatmap_patches, 
+            by = "type")
+```
+
+
+
+
+
+
