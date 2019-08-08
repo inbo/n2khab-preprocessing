@@ -20,6 +20,7 @@ library(tidyverse)
 library(stringr)
 library(sf)
 library(sp)
+library(rgrass7)
 library(knitr)
 library(tmap)
 library(n2khab)
@@ -78,21 +79,23 @@ glimpse(watsurf_patch)
 
 **The aim here is to remove all areas from `habitatmap_stdized` which are covered by watersurfaces!**
 
-# Trials to do the 'difference' operation with the sf package
+# Preliminary experiments with sf, sp, rgeos, RQGIS
+
+## Trials to do the 'difference' operation with the sf package
 
 Did't work out due to topological faults in the data sources!
 
 See commit 0f881bb for the details.
 
 
-# Trials to use sp and rgeos
+## Trials to use sp and rgeos
 
 Same topological errors - not surprising as GEOS is used in all cases.
 
 See commit d6029af for the details.
 
 
-# Experimenting with the QGIS bridge
+## Experimenting with the QGIS bridge
 
 On a system with GDAL and GRASS installed, QGIS offers at least:
 
@@ -136,9 +139,125 @@ habmap_overlap_diff <-
 ```
 
 
+# Using GRASS directly from R
+
+[GRASS](https://grass.osgeo.org) is a powerful open source GIS specialized in geospatial processing, originally developed by the USA-CERL (1982-1995), and with development currently led by the GRASS Development Team.
+It is now at version 7.6 (stable release).
+The `rgrass7` R-package allows to directly send GRASS commands to the GRASS GIS environment.
+See paragraph 9.4 from the [book](https://geocompr.robinlovelace.net/gis.html#rgrass) 'Geocomputation with R'.
+
+The process goes smooth and quick:
+
+```{r}
+# Set up a temporary GRASS project:
+link2GI::linkGRASS7(habmap_std_pol, 
+                    search_path = if (.Platform$OS.type == "unix") {
+                      "/usr/bin"} else NULL)
+# Add layers to the GRASS database:
+writeVECT(SDF = as(habmap_std_pol, "Spatial"), 
+          vname = "habmap_std_pol")
+writeVECT(SDF = as(watsurf_pol, "Spatial"), 
+          vname = "watsurf_pol")
+```
+
+It appears that mistakes are taken care of!
+Looks good.
+
+Contents of the GRASS database:
+
+```{r}
+execGRASS("g.list", type = "vector,raster", flags = "p")
+```
+
+So now let's do the job.
+The manual of `v.overlay` in the current stable release 7.6 is [here](https://grass.osgeo.org/grass76/manuals/v.overlay.html).
+
+```{r}
+system.time(
+execGRASS("v.overlay",
+          ainput = "habmap_std_pol", 
+          binput = "watsurf_pol", 
+          operator = "not",
+          output = "habmap_diff")
+)
+```
+
+Vector layers in the GRASS database:
+
+```{r}
+execGRASS("g.list", type = "vector", flags = "p")
+```
+
+Reading result back into R as an sf object:
+
+```{r}
+system.time(
+habmap_diff <- 
+    readVECT("habmap_diff") %>% 
+    st_as_sf
+)
+```
+
+Note that we follow the standard advice of readVECT not to use the c-flag (`with_c=FALSE`).
+
+Result:
+
+```{r}
+habmap_diff
+```
+
+Housekeeping:
+
+```{r}
+habmap_diff <- 
+    habmap_diff %>% 
+    select(polygon_id = a_polygon_id,
+           description_orig = a_description_orig)
+```
+
+Duplicate ID's:
+
+```{r}
+habmap_diff %>% 
+    st_drop_geometry() %>% 
+    count(polygon_id) %>% 
+    count(n)
+```
+
+Duplicate polygon IDs probably have to do with clipping along semi-matching borders...
+
+There are no empty ID's
+
+```{r}
+habmap_diff %>% 
+    st_drop_geometry() %>% 
+    filter(is.na(polygon_id))
+```
+
+Identifying the completely removed polygons, by their ID:
+
+```{r}
+habmap_std_patch %>% 
+    anti_join(habmap_diff %>% 
+                st_drop_geometry(),
+              by = "polygon_id") %>% 
+    group_by(type) %>% 
+    summarise(count = n(),
+              avg_phab = mean(phab)) %>% 
+    (function(x){
+    p <- ggplot(x, aes(x = type, y = count)) + 
+        geom_bar(stat = "identity") + 
+        theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    q <- ggplot(x, aes(x = type, y = avg_phab)) + 
+        geom_bar(stat = "identity") + 
+        theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    print(p)
+    print(q)
+    })
+```
 
 
-
+We see that it is mainly about 'wet' locations, so that seems OK.
 
 
 
