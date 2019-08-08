@@ -41,40 +41,30 @@ habmap_std_pol <- habmap_std$habitatmap_polygons
 habmap_std_patch <- habmap_std$habitatmap_patches
 ```
 
-Components of `watersurfaces_hab` (preliminary version at the time of writing):
+Components of `watersurfaces`:
+
+```{r warning=FALSE}
+watsurf_pol <- 
+    st_read("../../n2khab_data/10_raw/watersurfaces/",
+            crs = 31370,
+            quiet = TRUE)
+```
+
+
+```{r}
+glimpse(watsurf_pol)
+```
+
+Let's just keep geometries:
 
 ```{r}
 watsurf_pol <- 
-    st_read("../../../n2khab_data/20_processed/watersurfaces_hab/watersurfaces_hab.gpkg",
-        layer = "watersurfaces_hab_polygons",
-        quiet = TRUE)
-
-watsurf_patch <- 
-    st_read("../../../n2khab_data/20_processed/watersurfaces_hab/watersurfaces_hab.gpkg",
-        layer = "watersurfaces_hab_patches",
-        as_tibble = TRUE,
-        quiet = TRUE)
+  watsurf_pol %>% 
+  st_geometry
 ```
-
-A little quality control of the layer `watersurfaces_hab`:
-
-```{r eval=FALSE}
-tmap_mode('view')
-# tmap_mode('plot')
-ss <- watsurf_pol %>% 
-    count(polygon_id) %>% 
-    filter(n > 1)
-p <- tm_shape(ss) + 
-    tm_borders() +
-    tm_fill(col = "n", style = "cat", breaks = 2:5) +
-    # tm_polygons(alpha = 0, border.col = "grey") +
-    tm_text("polygon_id", size = 0.5)
-p
-```
-
 
 ```{r}
-glimpse(watsurf_patch)
+watsurf_pol
 ```
 
 **The aim here is to remove all areas from `habitatmap_stdized` which are covered by watersurfaces!**
@@ -146,22 +136,36 @@ It is now at version 7.6 (stable release).
 The `rgrass7` R-package allows to directly send GRASS commands to the GRASS GIS environment.
 See paragraph 9.4 from the [book](https://geocompr.robinlovelace.net/gis.html#rgrass) 'Geocomputation with R'.
 
-The process goes smooth and quick:
+The process goes smooth:
 
 ```{r}
 # Set up a temporary GRASS project:
-link2GI::linkGRASS7(habmap_std_pol, 
+link2GI::linkGRASS7(habmap_std_pol, # sets the CRS etc.
                     search_path = if (.Platform$OS.type == "unix") {
                       "/usr/bin"} else NULL)
-# Add layers to the GRASS database:
+```
+
+```{r}
 writeVECT(SDF = as(habmap_std_pol, "Spatial"), 
           vname = "habmap_std_pol")
-writeVECT(SDF = as(watsurf_pol, "Spatial"), 
-          vname = "watsurf_pol")
 ```
 
 It appears that mistakes are taken care of!
 Looks good.
+
+Note, a few marginally overlapping polygons exist.
+
+While importing data sources can be done directly from the R objects, using the `writeVECT()` function (as above), it is in fact more efficient for larger datasets (such as `watersurfaces`) to let GRASS import the shapefiles directly if those already exist.
+`writeVECT()` first writes an sp object as a temporary shapefile but that is not needed if you have a file already.
+Furthermore, `writeVECT()` led to an R error in the case of `watersurfaces`, so that's why we do it as follows:
+
+```{r}
+execGRASS("v.in.ogr", 
+          input = normalizePath("../../n2khab_data/10_raw/watersurfaces/watersurfaces.shp"),
+          output = "watsurf_pol",
+          flags = "o" # assume CRS is same as from GRASS, i.e. set CRS as epsg:31370
+          )
+```
 
 Contents of the GRASS database:
 
@@ -198,7 +202,7 @@ habmap_diff <-
 )
 ```
 
-Note that we follow the standard advice of readVECT not to use the c-flag (`with_c=FALSE`).
+Note that we follow the standard advice of `readVECT()` not to use the c-flag (`with_c=FALSE`).
 
 Result:
 
@@ -214,6 +218,12 @@ habmap_diff <-
     select(polygon_id = a_polygon_id,
            description_orig = a_description_orig)
 ```
+
+```{r}
+habmap_diff
+```
+
+## Inspecting the result
 
 Duplicate ID's:
 
@@ -237,6 +247,15 @@ habmap_diff %>%
 Identifying the completely removed polygons, by their ID:
 
 ```{r}
+habmap_std_pol %>% 
+    anti_join(habmap_diff %>% 
+                st_drop_geometry(),
+              by = "polygon_id") %>% 
+  nrow
+```
+
+
+```{r warning=FALSE}
 habmap_std_patch %>% 
     anti_join(habmap_diff %>% 
                 st_drop_geometry(),
@@ -244,20 +263,38 @@ habmap_std_patch %>%
     group_by(type) %>% 
     summarise(count = n(),
               avg_phab = mean(phab)) %>% 
-    (function(x){
-    p <- ggplot(x, aes(x = type, y = count)) + 
+    ggplot(aes(x = type, y = count)) + 
         geom_bar(stat = "identity") + 
         theme(axis.text.x = element_text(angle = 90, hjust = 1))
-    q <- ggplot(x, aes(x = type, y = avg_phab)) + 
-        geom_bar(stat = "identity") + 
-        theme(axis.text.x = element_text(angle = 90, hjust = 1))
-    print(p)
-    print(q)
-    })
 ```
 
 
 We see that it is mainly about 'wet' locations, so that seems OK.
 
+Calculating the actual surface areas of the above:
 
+```{r warning=FALSE}
+whiped_areas <- 
+  habmap_std_pol %>% 
+    anti_join(habmap_diff %>% 
+                st_drop_geometry(),
+              by = "polygon_id") %>% 
+  mutate(area = st_area(geom)) %>% 
+  st_drop_geometry %>% 
+  inner_join(habmap_std_patch, by = "polygon_id") %>% 
+  mutate(area = phab * area / 100) %>% 
+  select(polygon_id, type, area) %>% 
+  group_by(type) %>% 
+  summarise(area_ha = (sum(area) / 1e+4) %>% units::drop_units())
+whiped_areas %>% 
+  ggplot(aes(x = type, y = area_ha)) + 
+        geom_bar(stat = "identity") + 
+        theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+Total area (ha) of omitted polygons from `habitatmap_stdized`:
+
+```{r}
+whiped_areas$area_ha %>% sum
+```
 
