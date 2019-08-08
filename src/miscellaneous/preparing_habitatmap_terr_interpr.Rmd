@@ -1,0 +1,82 @@
+---
+title: "Code for clipping watersurfaces out of habitatmap_stdized, as part of generating 'habitatmap_terr_interpr'"
+date: '`r paste("Version",lubridate::now())`'
+output:
+  html_notebook:
+    number_sections: yes
+    code_folding: show
+    includes:
+      in_header: ../header.html
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: no
+---
+
+```{r setup, message=FALSE, echo=FALSE}
+options(stringsAsFactors = FALSE)
+library(raster)
+library(tidyverse)
+library(stringr)
+library(sf)
+library(sp)
+library(knitr)
+library(tmap)
+library(n2khab)
+opts_chunk$set(
+  echo = TRUE,
+  dpi = 300
+)
+```
+
+
+# Reading basic datasets
+
+Components of `habitatmap_stdized`:
+
+```{r}
+habmap_std <- read_habitatmap_stdized()
+habmap_std_pol <- habmap_std$habitatmap_polygons
+habmap_std_patch <- habmap_std$habitatmap_patches
+```
+
+Components of `watersurfaces_hab` (preliminary version at the time of writing):
+
+```{r}
+watsurf_pol <- 
+    st_read("../../../n2khab_data/20_processed/watersurfaces_hab/watersurfaces_hab.gpkg",
+        layer = "watersurfaces_hab_polygons",
+        quiet = TRUE)
+
+watsurf_patch <- 
+    st_read("../../../n2khab_data/20_processed/watersurfaces_hab/watersurfaces_hab.gpkg",
+        layer = "watersurfaces_hab_patches",
+        as_tibble = TRUE,
+        quiet = TRUE)
+```
+
+A little quality control of the layer `watersurfaces_hab`:
+
+```{r eval=FALSE}
+tmap_mode('view')
+# tmap_mode('plot')
+ss <- watsurf_pol %>% 
+    count(polygon_id) %>% 
+    filter(n > 1)
+p <- tm_shape(ss) + 
+    tm_borders() +
+    tm_fill(col = "n", style = "cat", breaks = 2:5) +
+    # tm_polygons(alpha = 0, border.col = "grey") +
+    tm_text("polygon_id", size = 0.5)
+p
+```
+
+
+```{r}
+glimpse(watsurf_patch)
+```
+
+
+
+
+
