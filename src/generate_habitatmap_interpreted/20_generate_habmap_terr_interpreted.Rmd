@@ -1,0 +1,303 @@
+
+```{r setup, include=FALSE}
+options(stringsAsFactors = FALSE,
+        scipen = 999, 
+        digits = 15)
+library(sf)
+library(tidyverse)
+library(stringr)
+library(knitr)
+library(n2khab)
+library(git2rdata)
+library(googlesheets)
+library(kableExtra)
+library(RSQLite) 
+
+opts_chunk$set(
+  echo = TRUE,
+  dpi = 300,
+  message = TRUE
+)
+```
+# Introduction
+
+The standardized version of the habitat map has still some features that need interpretation or clarification. The combined use of code for the habitat main types and sub types can be a problem. Here we do some generally applicable specifications (from main type to sub type). In addition some mapping that are uncertain will be excluded. 
+
+Many analysis require a clear distinction between water and terrestrial biotopes. That's why we want to make a separate map of terrestrial habitat types or RIBs (RBBs) and of aquatic habitat types/RIBs.
+
+More details are being discussed in the proceeding chapters.
+
+
+# Read standardized habitatmap and source habitatmap
+
+## Data sources
+Startingpoint for the interpretation is the standardized version of the shapefile of the BWK and Natura 2000 habitat map of Flanders. For more details about the standardized version see ... .
+
+### Standardized version
+```{r read_processed_data}
+# getwd()
+habpath <- "../../../Droogtemeetnet/data/local/n2khab-binaire-databronnen"
+# habfile <- "20_processed/habitatmap_stdized/habitatmap_stdized.gpkg"
+
+
+habmap_stdized <- read_habitatmap_stdized(path = habpath)
+
+habmap_polygons <- habmap_stdized$habitatmap_polygons
+
+habmap_patches <- habmap_stdized$habitatmap_patches
+
+```
+
+### Source version
+In some cases we'll need to refer to the source-map (see [http://www.geopunt.be/download?container=bwk2%5C2018&title=Biologische%20waarderingskaart%20-%20Natura%202000%20Habitatkaart])
+```{r read_raw_data, message=FALSE}
+habmap_sf <- st_read("../../../Droogtemeetnet/data/local/n2khab-binaire-databronnen/10_raw/habitatmap", "habitatmap")
+```
+#Interpretations
+
+## Case rbbhfl
+Rrbbhfl is a code which needs interpretation from BWK + habitatmap, in order to make it ‘appear’ (these polygons currently appear as rbbhf).
+```{r detect rbbhfl}
+
+#filter hfl-patches from bwk units
+habmap_hfl <- habmap_sf  %>% 
+    inner_join(habmap_patches, by = c("TAG" = "polygon_id"))%>% 
+    mutate(rbbhfl = str_detect(BWKLABEL, "hfl")) %>% 
+    select(TAG, BWKLABEL, rbbhfl, type, code_orig, patch_id) %>% 
+    filter(rbbhfl == TRUE & type == "rbbhf") 
+
+#update habmap_polygons -> habmap_polygons_interpreted
+habmap_polygons_interpreted <- habmap_polygons %>% 
+    left_join(habmap_hfl %>% 
+                  select(TAG, rbbhfl) %>% 
+                   st_drop_geometry(), by = c("polygon_id" = "TAG")) %>% 
+    mutate(description = ifelse(is.na(rbbhfl), description_orig, str_replace_all(description_orig, "rbbhf", "rbbhfl")),
+           source = ifelse(is.na(rbbhfl), "habitatmap_stdized", "habitatmap_stdized + interpretation")) %>% 
+    select(-rbbhfl)
+
+#update habmap_patches -> habmap_patches_interpreted
+habmap_patches_interpreted <- habmap_patches %>% 
+    left_join(habmap_hfl %>% 
+                  select(TAG, patch_id, rbbhfl) %>% 
+                   st_drop_geometry(), by = c("polygon_id" = "TAG", "patch_id" = "patch_id")) %>% 
+    mutate(type = ifelse(is.na(rbbhfl) | !type == "rbbhf", as.character(type), str_replace_all(type, "rbbhf", "rbbhfl")),
+           source = ifelse(is.na(rbbhfl) | !type == "rbbhfl", "habitatmap_stdized", "habitatmap_stdized + interpretation")) %>% 
+    select(-rbbhfl) 
+
+#some checks
+# test <- habmap_polygons_interpreted %>% 
+#     filter(str_detect(.data$source, "interpret") == TRUE) %>% 
+#     semi_join(habmap_hfl %>% 
+#                   st_drop_geometry(), by = c("polygon_id" = "TAG"))
+# 
+# test %>% count(polygon_id) %>% filter (n>1)
+# 
+# test <- habmap_polygons_interpreted %>% 
+#     filter(str_detect(.data$source, "interpret") == TRUE) %>% 
+#     anti_join(habmap_hfl %>% 
+#                   st_drop_geometry(), by = c("polygon_id" = "TAG"))
+
+```
+## Case 2190
+Considering code 2190 in the habitatmap, this code refers to the sum of 2190_a and 2190_overig. It is necessary to use BWK fields from the raw habitatmap data source in order to distinguish 2190_a. Even better, use the watersurfaces data source for this, within the dunes ecoregion (data source ecoregions). So it will probably be better to apply this at once in the habitatmap_terr and in an interpreted form of watersurfaces (watersurfaces_interpr), which should be spatially exclusive (and together will be part of habitatmap_integrated).
+Here the first option (use of BWK-fields) is handled, because of some topological difficulties in matching the habitatmap and the watersurfaces-map.
+
+It's possible that a watersurface is being mapped together with other biotopes. The first unit of a complex is most probable predominant. Only if the first unit is a watersurface than 2190 will be interpreted as 2190_a, otherwise 2190_overig.
+
+```{r detect dune water}
+#filter dune water-patches
+habmap_sf_2190 <- habmap_sf %>% 
+    left_join(habmap_patches %>% 
+                  select(polygon_id, type), by = c("TAG" = "polygon_id")) %>%  
+    filter(type == "2190")
+
+#this can be skipped
+habmap_sf_2190_bwklabel <- unique(habmap_sf_2190$BWKLABEL)
+habmap_sf_2190_bwklabel
+
+# test <- habmap_sf_2190 %>% 
+#     filter(BWKLABEL == "kn + k(hf) + kbs")
+
+habmap_dunewater <- habmap_sf %>% 
+    inner_join(habmap_patches_interpreted, by = c("TAG" = "polygon_id")) %>% 
+    mutate(dunewater = str_detect(EENH1, c("ae", "kn"))) %>% 
+    select(TAG, BWKLABEL, dunewater, type, code_orig, patch_id) %>% 
+    filter(dunewater == TRUE & type == "2190") 
+
+#update habmap_polygons -> habmap_polygons_interpreted
+habmap_polygons_interpreted <- habmap_polygons_interpreted %>% 
+    left_join(habmap_dunewater %>% 
+                  select(TAG, dunewater) %>% 
+                   st_drop_geometry(), by = c("polygon_id" = "TAG")) %>% 
+    mutate(description = ifelse(is.na(dunewater),
+                                str_replace_all(description, "2190_","2191_"),
+                                description_orig)) %>% 
+    mutate(description = ifelse(is.na(dunewater), 
+                                str_replace_all(description, "2190", "2190_overig"),
+                                str_replace_all(description, "2190", "2190_a")),
+           source = ifelse(str_detect(description, "2190") | source == "habitatmap_stdized + interpretation",
+                           "habitatmap_stdized + interpretation", 
+                           "habitatmap_stdized")) %>% 
+    mutate(description = str_replace_all(description, "2191", "2190")) %>% 
+    select(-dunewater)
+
+#update habmap_patches -> habmap_patches_interpreted
+habmap_patches_interpreted <- habmap_patches_interpreted %>% 
+    left_join(habmap_dunewater %>% 
+                  select(TAG, patch_id, dunewater) %>% 
+                   st_drop_geometry(), by = c("polygon_id" = "TAG", "patch_id" = "patch_id")) %>% 
+    mutate(type = str_replace_all(type, "2190_", "2191_")) %>% # mark mappings on subtype-level
+    mutate(type = case_when(
+                    is.na(dunewater) & str_detect(type, "2190") ~ "2190_overig", 
+                    is.na(dunewater) ~ as.character(type),                    
+                    TRUE ~ "2190_a"
+                    ),
+           source = case_when(
+                    is.na(dunewater) & str_detect(type, "2190") ~ "habitatmap_stdized + interpretation", 
+                    is.na(dunewater) ~ source,                    
+                    TRUE ~ "habitatmap_stdized + interpretation"
+                    ) 
+           ) %>% 
+    mutate(type = str_replace_all(type, "2191_", "2190_")) %>% 
+    select(-dunewater) 
+
+
+```
+## Exclude uncertain mapping that is most likely not a habitat or rbb
+For some main types, the main type code mostly refers to a specific subtype – so that code can be used instead when interpreting the habitatmap_stdized data source.
+Some mapping units are uncertain, but will only very rarely be habitat type or rbb.
+This applies to the following cases:
+* code_orig containing 'bos'
+* code_orig is 6510,gh or 9120,gh
+
+```{r exclude some uncertain mapping units}
+#filter the patches that meet the criteria
+habmap_uncertain <- habmap_patches_interpreted %>% 
+    filter( str_detect(.data$code_orig, "bos") |
+            code_orig == "6510,gh" |
+            code_orig == "9120,gh") %>% 
+    distinct(polygon_id)
+#because a complex can contain a certain habitat/rbb only the polygons that are fully met are excluded
+habmap_uncertain <- habmap_uncertain %>% 
+    anti_join(habmap_patches_interpreted %>% 
+                  filter(certain == TRUE) %>% 
+                  distinct(polygon_id))
+habmap_polygons_interpreted <- habmap_polygons_interpreted %>% 
+    anti_join(habmap_uncertain)
+
+habmap_patches_interpreted <- habmap_patches_interpreted %>% 
+    anti_join(habmap_uncertain)    
+```
+## Exclude water surfaces
+This interpreted version of the habitat map contains only terrestrial biotopes. The interpreted water surfaces are stored in watersurfaces_interpr.
+The standardized habitatmap contains also watersurfaces (streaming water are much less mapped). They have therefor to be excluded from the interpreted terrestrial version.
+
+```{r exclude water surfaces}
+patchcodes <- habmap_patches_interpreted %>% 
+    distinct(code_orig) %>% 
+    arrange(code_orig)
+patchtypes <- habmap_patches_interpreted %>% 
+    distinct(type) %>% 
+    arrange(type)
+
+watertypes <- data.frame( "watertype" = c("1130", "2190_a", "3110", "3130", "3130_aom", "3130_na", "3140", "3150", "3160", "3260", "7220", "rbbah"))
+
+#only patches that are fully covered by a water type are excluded
+habmap_patches_opp <- habmap_patches_interpreted %>% 
+    group_by(polygon_id) %>% 
+    summarise(oppsum = sum(phab))
+
+habmap_patches_water <- habmap_patches_interpreted %>% 
+    inner_join(habmap_patches_opp) %>% 
+    semi_join(watertypes, by = c("type" = "watertype")) %>% 
+    filter(certain == TRUE) %>% 
+    group_by(polygon_id, oppsum) %>% 
+    summarise(opp = sum(phab)) %>% 
+    ungroup() %>% 
+    filter(opp == oppsum)
+
+habmap_polygons_interpreted <- habmap_polygons_interpreted %>% 
+    anti_join(habmap_patches_water)
+
+habmap_patches_interpreted <- habmap_patches_interpreted %>% 
+    anti_join(habmap_patches_water)    
+
+
+```
+## Cases with common subtypes
+For some main types, the main type code mostly refers to a specific subtype – so that code can be used instead when interpreting the habitatmap_stdized data source.
+
+For the terrestrial types it's about the following types
+|Main type|Most probable subtype|
+|:---------:|:---------------------:|
+|6410|6410_mo|
+|6430|6430_hf|
+|6510|6510_hu|
+|7140|7140_meso|
+|9130|9130_end|
+
+```{r common subtypes}
+habmap_polygons_interpreted <- habmap_polygons_interpreted %>% 
+    mutate( description = str_replace_all(description, c("6410_" = "641µ_",
+                                                        "6430_" = "643µ_",
+                                                        "6510_" = "651µ_",
+                                                        "7140_" = "714µ_",
+                                                        "9130_" = "913µ_"))) %>% 
+    mutate(
+        description = str_replace_all(description, c("6410" = "6410_mo",
+                                                        "6430" = "6430_hf",
+                                                        "6510" = "6510_hu",
+                                                        "7140" = "7140_meso",
+                                                        "9130" = "9130_end")),
+        source = case_when(
+            str_detect(description, "6410") ~ "habitatmap_stdized + interpretation",
+            str_detect(description, "6430") ~ "habitatmap_stdized + interpretation",
+            str_detect(description, "6510") ~ "habitatmap_stdized + interpretation",
+            str_detect(description, "7140") ~ "habitatmap_stdized + interpretation",
+            str_detect(description, "9130") ~ "habitatmap_stdized + interpretation",
+            TRUE ~ source
+            )
+        ) %>% 
+    mutate( description = str_replace_all(description, "µ_", "0_")) %>% 
+    mutate( source =  as.factor(source))
+
+habmap_patches_interpreted <- habmap_patches_interpreted %>% 
+    mutate(type = str_replace_all(type, c("6410_" = "641µ_",
+                                                        "6430_" = "643µ_",
+                                                        "6510_" = "651µ_",
+                                                        "7140_" = "714µ_",
+                                                        "9130_" = "913µ_"))) %>% 
+    mutate(
+        type = str_replace_all(type, c("6410" = "6410_mo",
+                                                        "6430" = "6430_hf",
+                                                        "6510" = "6510_hu",
+                                                        "7140" = "7140_meso",
+                                                        "9130" = "9130_end")),
+        source = case_when(
+            str_detect(type, "6410") ~ "habitatmap_stdized + interpretation",
+            str_detect(type, "6430") ~ "habitatmap_stdized + interpretation",
+            str_detect(type, "6510") ~ "habitatmap_stdized + interpretation",
+            str_detect(type, "7140") ~ "habitatmap_stdized + interpretation",
+            str_detect(type, "9130") ~ "habitatmap_stdized + interpretation",
+            TRUE ~ source
+            )
+        ) %>% 
+    mutate( type = str_replace_all(type, "µ_", "0_")) %>% 
+    mutate( type = as.factor(type),
+            source =  as.factor(source))
+```
+
+## Write results into a geopackage
+
+```{r}
+
+st_write(habmap_polygons_interpreted, "../../../Droogtemeetnet/data/local/n2khab-binaire-databronnen/20_processed/habitatmap_terr/habitatmap_terr.gpkg", layer = "habitatmap_polygons", driver = "GPKG")
+
+con = dbConnect(SQLite(),
+                dbname = "../../../Droogtemeetnet/data/local/n2khab-binaire-databronnen/20_processed/habitatmap_terr/habitatmap_terr.gpkg")
+
+dbWriteTable(con, "habitatmap_patches", habmap_patches_interpreted)
+
+dbDisconnect(con)
+
+```
