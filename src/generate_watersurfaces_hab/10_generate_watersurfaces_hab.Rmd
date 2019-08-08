@@ -35,7 +35,7 @@ watersurfaces <- watersurfaces %>%
            ) %>%
     ungroup()
 
-unique_id <- nrow(watersurfaces) == n_distinct(watersurfaces$polygon_ws_id)
+unique_id <- nrow(watersurfaces) == n_distinct(watersurfaces$polygon_id_ws)
 
 ```
 
