@@ -92,5 +92,53 @@ Same topological errors - not surprising as GEOS is used in all cases.
 See commit d6029af for the details.
 
 
+# Experimenting with the QGIS bridge
+
+On a system with GDAL and GRASS installed, QGIS offers at least:
+
+- access to an OGR algorithm `clipvectorsbypolygon`, which however resulted in an error.
+
+```{r eval=FALSE}
+library(RQGIS)
+find_algorithms()
+find_algorithms("clip", name_only = TRUE)
+open_help("gdalogr:clipvectorsbypolygon")
+get_usage("gdalogr:clipvectorsbypolygon")
+# get_options("gdalogr:clipvectorsbypolygon")
+```
+
+```{r eval=FALSE}
+habmap_integr_pol <-
+    run_qgis("gdalogr:clipvectorsbypolygon",
+             INPUT = habmap_std_pol,
+             INPUT2 = watsurf_pol,
+                 OUTPUT = file.path(tempdir(), "habmap_integr_pol.shp"),
+                 load_output = TRUE)
+```
+
+- the GRASS algorithm `v.overlay`; however for some reason the transportation of the data is not well done, so error again:
+
+```{r eval=FALSE}
+find_algorithms("overlay", name_only = TRUE)
+get_usage("grass:v.overlay")
+# get_options("grass:v.overlay")
+```
+
+```{r eval=FALSE}
+habmap_overlap_diff <- 
+    run_qgis("grass:v.overlay", 
+             ainput = habmap_overlap, 
+             binput = watsurf_pol_u, 
+             operator = "not",
+                 output = "habmap_overlap_diff", # file.path(tempdir(), "habmap_overlap_diff.shp"),
+                 load_output = TRUE)
+# Error in UseMethod("st_as_sf") : no applicable method for 'st_as_sf' applied to an object of class "c('sfc_MULTIPOLYGON', 'sfc')"
+```
+
+
+
+
+
+
 
 
