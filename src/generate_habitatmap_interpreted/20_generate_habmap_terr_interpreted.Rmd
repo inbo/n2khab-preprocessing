@@ -51,7 +51,7 @@ habmap_patches <- habmap_stdized$habitatmap_patches
 ### Source version
 In some cases we'll need to refer to the source-map (see [http://www.geopunt.be/download?container=bwk2%5C2018&title=Biologische%20waarderingskaart%20-%20Natura%202000%20Habitatkaart])
 ```{r read_raw_data, message=FALSE}
-habmap_sf <- st_read("../../../Droogtemeetnet/data/local/n2khab-binaire-databronnen/10_raw/habitatmap", "habitatmap")
+habmap_sf <- st_read("../../../Droogtemeetnet/data/local/n2khab-binaire-databronnen/10_raw/habitatmap", "habitatmap", crs = 31370, quiet =  TRUE)
 ```
 #Interpretations
 
