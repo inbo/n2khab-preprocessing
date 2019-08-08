@@ -89,19 +89,7 @@ See commit 0f881bb for the details.
 
 Same topological errors - not surprising as GEOS is used in all cases.
 
-```{r eval=FALSE}
-# help(package = "rgeos")
-library(sp)
-library(rgeos)
-system.time(
-    habmap_diff_pol <- 
-    as(habmap_std_pol, "Spatial") %>% 
-    gIntersection(as(habmap_diff_pol_u, "Spatial"))
-)
-# Error in RGEOSBinTopoFunc(spgeom1, spgeom2, byid, id, drop_lower_td, unaryUnion_if_byid_false,  : 
-#   TopologyException: Input geom 0 is invalid: Ring Self-intersection at or near point 48626.362999999998 168448.3861 at 48626.362999999998 168448.3861
-# Timing stopped at: 588.6 1.764 590
-```
+See commit d6029af for the details.
 
 
 
