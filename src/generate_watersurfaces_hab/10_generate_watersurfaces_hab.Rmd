@@ -104,6 +104,8 @@ watersurfaces_2190_a_polygons <- watersurfaces_21xx %>%
            polygon_id = polygon_id_ws) %>%
     select(polygon_id, polygon_id_ws, polygon_id_habitatmap, description_orig, polygon_type)
 
+check_unique_polygon <- nrow(watersurfaces_2190_a_polygons) == n_distinct(watersurfaces_2190_a_polygons$geometry)
+
 watersurfaces_2190_a_patches <- watersurfaces_2190_a_patches %>%
     select(-description_orig) %>%
     mutate(patch_id = 1,
@@ -168,9 +170,13 @@ watersurfaces_standw_polygons <- watersurfaces_standw %>%
     left_join(description, by = "polygon_id_ws") %>%
     mutate(polygon_type = "watersurface map") %>%
     select(polygon_id_ws, polygon_id_habitatmap, description_orig, polygon_type)
+
+check_unique_polygon <- nrow(watersurfaces_standw_polygons) == n_distinct(watersurfaces_standw_polygons$geometry)
+
     
 watersurfaces_standw_patches <- watersurfaces_standw_patches %>%
     select(-description_orig)
+
 
 ```
 
@@ -194,6 +200,8 @@ habitatmap_standw_patches_no_ws <- habitatmap_standw_patches %>%
     select(-phab)
 
 ```
+
+
 
 ```{r}
 library(leaflet)
@@ -240,7 +248,14 @@ watersurfaces_hab_patches <- habmap_standw_patches %>%
     bind_rows(watersurfaces_2190_a_patches) 
 
 watersurfaces_hab_polygons <- habmap_standw_polygons %>%
-    rbind(habitatmap_2190_a_polygons) 
+    rbind(watersurfaces_2190_a_polygons) %>%
+    group_by(polygon_id) %>%
+    summarise(polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
+              description_orig = str_c(description_orig, collapse = "+")) %>%
+    ungroup()
+
+check_unique_id <- nrow(watersurfaces_hab_polygons) == n_distinct(watersurfaces_hab_polygons$polygon_id)
+check_unique_polygon <- nrow(watersurfaces_hab_polygons) == n_distinct(watersurfaces_hab_polygons$geometry)
 ```
 
 
