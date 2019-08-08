@@ -76,7 +76,148 @@ p
 glimpse(watsurf_patch)
 ```
 
+**The aim here is to remove all areas from `habitatmap_stdized` which are covered by watersurfaces!**
+
+# Trials to do the 'difference' operation with the sf package
+
+This one gives RAM problems:
+
+```{r eval=FALSE}
+habmap_std_pol %>% 
+    mutate(polygon_id_ws = as.character(NA),
+           polygon_id_habitatmap = as.character(NA),
+           polygon_type = as.character(NA)) %>% 
+    select(1, 4, 5, 2, 6, 3) %>% 
+    st_difference(watsurf_pol)
+```
+
+However, it does work on unioned objects:
+
+```{r}
+watsurf_pol_u <- 
+    watsurf_pol %>% 
+    st_union
+system.time({
+habmap_std_pol_u <- 
+    habmap_std_pol %>% 
+    st_union
+})
+#    user  system elapsed 
+# 155.213   0.204 155.382 
+system.time({
+habmap_diff_pol_u <- 
+    habmap_std_pol_u %>% 
+    st_difference(watsurf_pol_u)
+})
+#    user  system elapsed 
+# 303.799   0.217 304.242 
+```
+
+But, subsequent work shows topological problems with the input layers:
+
+```{r eval=FALSE}
+system.time({
+habmap_diff_pols <-
+    habmap_std_pol %>%
+    st_intersection(habmap_diff_pol_u)
+})
+# Error in CPL_geos_op2(op, st_geometry(x), st_geometry(y)) : Evaluation error: TopologyException: Input geom 1 is invalid: Ring Self-intersection at or near point 48626.362999998033 168448.38610000163 at 48626.362999998033 168448.38610000163.
+# Timing stopped at: 62.72 0.267 63.39
+```
 
 
+The same happens when trying to do an intersection:
+
+```{r eval=FALSE}
+system.time({
+habmap_wats_u_intsect <- 
+    habmap_std_pol %>% 
+    st_intersection(watsurf_pol_u)
+})
+# Error in CPL_geos_op2(op, st_geometry(x), st_geometry(y)) : 
+#   Evaluation error: TopologyException: Input geom 1 is invalid: Ring Self-intersection at or near point 232651.96149999648 194570.88159999996 at 232651.96149999648 194570.88159999996.
+# Timing stopped at: 1848 1.654 1850
+```
+
+
+Looking at some of the problems indeed shows 'bad' polygons:
+
+```{r}
+badtopol <- which(!st_is_valid(habmap_std_pol))
+badtopol
+plot(habmap_std_pol[1388,1])
+plot(habmap_std_pol[1650,1])
+plot(habmap_std_pol[2680,1])
+
+badtopol_wat <- which(!st_is_valid(watsurf_pol))
+badtopol_wat
+
+plot(watsurf_pol[591,1])
+plot(watsurf_pol[592,1])
+plot(watsurf_pol[1152,1])
+```
+
+
+The following workaround doesn't work for the intersection, even though the 'buffered' version is returned and it appears that all polygons are OK:
+
+```{r eval=FALSE}
+system.time({
+habmap_std_pol0 <- 
+    habmap_std_pol %>% 
+    st_buffer(0)
+})
+#  user  system elapsed 
+# 6.044   0.008   6.049 
+
+which(!st_is_valid(habmap_std_pol0))
+#integer(0)
+
+system.time({
+habmap_diff_pols <- 
+    habmap_std_pol0 %>% 
+    st_intersection(habmap_diff_pol_u)
+})
+```
+
+The following shows that actually those invalid polygons aren't the problem, it must be elsewhere:
+
+```{r eval=FALSE}
+habmap_std_pol[badtopol,] %>% 
+    st_difference(watsurf_pol_u)
+# gives no problems
+```
+
+Making a selection of touching polygons does work, but takes a lot of time:
+
+```{r eval=FALSE}
+system.time(
+habmap_overlap <- habmap_std_pol[watsurf_pol_u, ]
+)
+#     user   system  elapsed 
+# 2290.911    2.016 3462.724 
+```
+
+Working with those still returns topological problems:
+
+```{r eval=FALSE}
+system.time(
+habmap_overlap_diff <- 
+    habmap_overlap %>% 
+    st_difference(watsurf_pol_u)
+)
+# Error in CPL_geos_op2(op, st_geometry(x), st_geometry(y)) : Evaluation error: TopologyException: Input geom 1 is invalid: Ring Self-intersection at or near point 232651.96149999648 194570.88159999996 at 232651.96149999648 194570.88159999996.
+# Timing stopped at: 162.9 0.419 163.7
+```
+
+Or, not using the unioned watersurfaces: RAM gets full...
+
+```{r eval=FALSE}
+system.time(
+habmap_overlap_diff <- 
+    habmap_overlap %>% 
+    st_difference(watsurf_pol)
+)
+# RAM gets full...
+```
 
 
