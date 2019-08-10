@@ -105,6 +105,7 @@ watersurfaces_2190_a_polygons <- watersurfaces_21xx %>%
     select(polygon_id, polygon_id_ws, polygon_id_habitatmap, description_orig, polygon_type)
 
 check_unique_polygon <- nrow(watersurfaces_2190_a_polygons) == n_distinct(watersurfaces_2190_a_polygons$geometry)
+check_unique_polygon
 
 watersurfaces_2190_a_patches <- watersurfaces_2190_a_patches %>%
     select(-description_orig) %>%
@@ -134,7 +135,7 @@ habitatmap_standw_polygons <- habmap$habitatmap_polygons %>%
 watersurfaces_standw <- watersurfaces[habitatmap_standw_polygons,] 
 
 check_id <- n_distinct(watersurfaces_standw$polygon_id_ws) == nrow(watersurfaces_standw)
-
+check_id
 ```
 
 
@@ -173,6 +174,7 @@ watersurfaces_standw_polygons <- watersurfaces_standw %>%
 
 check_unique_polygon <- nrow(watersurfaces_standw_polygons) == n_distinct(watersurfaces_standw_polygons$geometry)
 
+check_unique_polygon
     
 watersurfaces_standw_patches <- watersurfaces_standw_patches %>%
     select(-description_orig)
@@ -255,7 +257,10 @@ watersurfaces_hab_polygons <- habmap_standw_polygons %>%
     ungroup()
 
 check_unique_id <- nrow(watersurfaces_hab_polygons) == n_distinct(watersurfaces_hab_polygons$polygon_id)
+check_unique_id
+
 check_unique_polygon <- nrow(watersurfaces_hab_polygons) == n_distinct(watersurfaces_hab_polygons$geometry)
+check_unique_polygon
 ```
 
 
