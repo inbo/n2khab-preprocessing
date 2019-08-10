@@ -275,6 +275,8 @@ habmap_patches_interpreted <- habmap_patches_interpreted %>%
 ## Write results into a geopackage
 
 ```{r}
+dir.create(file.path(datapath, "20_processed/habitatmap_terr"), recursive = TRUE)
+```
 
 ```{r}
 st_write(habmap_polygons_interpreted,
