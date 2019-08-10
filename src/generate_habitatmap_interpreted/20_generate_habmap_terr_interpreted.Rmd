@@ -1,24 +1,3 @@
-
-```{r setup, include=FALSE}
-options(stringsAsFactors = FALSE,
-        scipen = 999, 
-        digits = 15)
-library(sf)
-library(tidyverse)
-library(stringr)
-library(knitr)
-library(n2khab)
-library(git2rdata)
-library(googlesheets)
-library(kableExtra)
-library(RSQLite) 
-
-opts_chunk$set(
-  echo = TRUE,
-  dpi = 300,
-  message = TRUE
-)
-```
 # Introduction
 
 The standardized version of the habitat map has still some features that need interpretation or clarification. The combined use of code for the habitat main types and sub types can be a problem. Here we do some generally applicable specifications (from main type to sub type). In addition some mapping that are uncertain will be excluded. 
