@@ -15,11 +15,12 @@ Startingpoint for the interpretation is the standardized version of the shapefil
 ### Standardized version
 ```{r read_processed_data}
 # getwd()
-habpath <- "../../../Droogtemeetnet/data/local/n2khab-binaire-databronnen"
+# habpath <- "../../../Droogtemeetnet/data/local/n2khab-binaire-databronnen"
+datapath <- fileman_up("n2khab_data")
 # habfile <- "20_processed/habitatmap_stdized/habitatmap_stdized.gpkg"
 
 
-habmap_stdized <- read_habitatmap_stdized(path = habpath)
+habmap_stdized <- read_habitatmap_stdized()
 
 habmap_polygons <- habmap_stdized$habitatmap_polygons
 
@@ -29,13 +30,18 @@ habmap_patches <- habmap_stdized$habitatmap_patches
 
 ### Source version
 In some cases we'll need to refer to the source-map (see [http://www.geopunt.be/download?container=bwk2%5C2018&title=Biologische%20waarderingskaart%20-%20Natura%202000%20Habitatkaart])
+
 ```{r read_raw_data, message=FALSE}
-habmap_sf <- st_read("../../../Droogtemeetnet/data/local/n2khab-binaire-databronnen/10_raw/habitatmap", "habitatmap", crs = 31370, quiet =  TRUE)
+habmap_sf <- st_read(file.path(datapath, "10_raw/habitatmap"), 
+                     "habitatmap", crs = 31370, quiet =  TRUE)
 ```
+
 #Interpretations
 
 ## Case rbbhfl
+
 Rrbbhfl is a code which needs interpretation from BWK + habitatmap, in order to make it ‘appear’ (these polygons currently appear as rbbhf).
+
 ```{r detect rbbhfl}
 
 #filter hfl-patches from bwk units
@@ -270,13 +276,20 @@ habmap_patches_interpreted <- habmap_patches_interpreted %>%
 
 ```{r}
 
-st_write(habmap_polygons_interpreted, "../../../Droogtemeetnet/data/local/n2khab-binaire-databronnen/20_processed/habitatmap_terr/habitatmap_terr.gpkg", layer = "habitatmap_polygons", driver = "GPKG")
+```{r}
+st_write(habmap_polygons_interpreted,
+         file.path(datapath, 
+                   "20_processed/habitatmap_terr/habitatmap_terr.gpkg"), 
+         layer = "habitatmap_polygons", 
+         driver = "GPKG")
 
 con = dbConnect(SQLite(),
-                dbname = "../../../Droogtemeetnet/data/local/n2khab-binaire-databronnen/20_processed/habitatmap_terr/habitatmap_terr.gpkg")
+                dbname = file.path(
+                  datapath, 
+                  "20_processed/habitatmap_terr/habitatmap_terr.gpkg")
+                )
 
 dbWriteTable(con, "habitatmap_patches", habmap_patches_interpreted)
 
 dbDisconnect(con)
-
 ```
