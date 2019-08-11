@@ -267,6 +267,11 @@ check_unique_polygon
 ## Write results into a geopackage
 
 ```{r}
+dir.create("../../n2khab_data/20_processed/watersurfaces_hab", recursive = TRUE)
+```
+
+
+```{r}
 
 st_write(watersurfaces_hab_polygons, "../../n2khab_data/20_processed/watersurfaces_hab/watersurfaces_hab.gpkg", layer = "watersurfaces_hab_polygons", driver = "GPKG")
 
