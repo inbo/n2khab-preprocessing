@@ -11,7 +11,7 @@ More details are being discussed in the proceeding chapters.
 
 ## Data sources
 
-Startingpoint for the interpretation is the standardized version of the shapefile of the BWK and Natura 2000 habitat map of Flanders. For more details about the standardized version see ... .
+Startingpoint for the interpretation is the standardized version of the shapefile of the BWK and Natura 2000 habitat map of Flanders. For more details about the standardized version see [its source location at Zenodo](https://doi.org/10.5281/zenodo.3355192).
 
 ### Standardized version
 
