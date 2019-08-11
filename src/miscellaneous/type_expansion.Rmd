@@ -152,14 +152,13 @@ for some main types, the main type code _mostly_ refers to a specific subtype --
   - 7140 -> 7140_meso
   - 9130 -> 9130_end
 - considering code **2190** in the habitatmap, this code refers to the sum of 2190_a and 2190_overig.
-It is necessary to use BWK fields from the raw `habitatmap` data source in order to distinguish 2190_a.
-Even better, use the `watersurfaces` data source for this, within the dunes ecoregion (data source `ecoregions`).
-So it will probably be better to apply this at once in the `habitatmap_terr` and in an interpreted form of `watersurfaces` (`watersurfaces_interpr`), which should be spatially exclusive (and together will be part of `habitatmap_integrated`).
+It is necessary to use BWK fields from the raw `habitatmap` data source in order to distinguish 2190_a and also remove other aquatic types, where we are quite confident about their occurrence.
+So it will probably be better to apply this at once in the `habitatmap_terr` and in an interpreted form of `watersurfaces` (`watersurfaces_interpr`).
 - not having to do with subtypes, but with the previous point: also rbbhfl is a code which needs interpretation from BWK + habitatmap, in order to make it 'appear' (these polygons currently appear as rbbhf).
 
 So `habitatmap_terr` should:
 
-- exclude aquatic types and all areas covered by `watersurfaces`.
+- exclude areas which are most probably aquatic types.
 - _not_ include the following 'uncertain' values of `code_orig` (has been discussed; these only very rarely will be habitat type or rbb):
   - containing "bos"
   - equal to "6510,gh" or to "9120,gh"
@@ -168,6 +167,8 @@ So `habitatmap_terr` should:
   - habitatmap_stdized + interpretation
   - habitatdune
   - [mhq_terrestrial_locs](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI) (if some of those locations are to be added)
+  
+Hence, both `watersurfaces_hab` and `habitatmap_terr` follow a conservative approach, see the conclusions of the notebook on the clipping operation.
   
 ### Function to expand a type column
 
