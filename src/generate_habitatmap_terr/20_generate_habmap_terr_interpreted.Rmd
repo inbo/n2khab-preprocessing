@@ -10,9 +10,11 @@ More details are being discussed in the proceeding chapters.
 # Read standardized habitatmap and source habitatmap
 
 ## Data sources
+
 Startingpoint for the interpretation is the standardized version of the shapefile of the BWK and Natura 2000 habitat map of Flanders. For more details about the standardized version see ... .
 
 ### Standardized version
+
 ```{r read_processed_data}
 # getwd()
 # habpath <- "../../../Droogtemeetnet/data/local/n2khab-binaire-databronnen"
@@ -29,6 +31,7 @@ habmap_patches <- habmap_stdized$habitatmap_patches
 ```
 
 ### Source version
+
 In some cases we'll need to refer to the source-map (see [http://www.geopunt.be/download?container=bwk2%5C2018&title=Biologische%20waarderingskaart%20-%20Natura%202000%20Habitatkaart])
 
 ```{r read_raw_data, message=FALSE}
@@ -36,7 +39,7 @@ habmap_sf <- st_read(file.path(datapath, "10_raw/habitatmap"),
                      "habitatmap", crs = 31370, quiet =  TRUE)
 ```
 
-#Interpretations
+# Interpretations
 
 ## Case rbbhfl
 
