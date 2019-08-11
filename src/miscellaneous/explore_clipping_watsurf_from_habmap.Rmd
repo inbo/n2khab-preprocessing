@@ -1,0 +1,319 @@
+---
+title: "Is clipping `watersurfaces` out of `habitatmap_stdized` a sensible step in generating a derived data source `habitatmap_terr`?"
+date: '`r paste("Version",lubridate::now())`'
+output:
+  html_notebook:
+    number_sections: yes
+    code_folding: show
+    includes:
+      in_header: ../header.html
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: no
+---
+
+```{r setup, message=FALSE, echo=FALSE}
+options(stringsAsFactors = FALSE)
+library(raster)
+library(tidyverse)
+library(stringr)
+library(sf)
+library(sp)
+library(rgrass7)
+library(knitr)
+library(tmap)
+library(n2khab)
+opts_chunk$set(
+  echo = TRUE,
+  dpi = 300
+)
+```
+
+
+# Reading basic datasets
+
+Components of `habitatmap_stdized`:
+
+```{r}
+habmap_std <- read_habitatmap_stdized()
+habmap_std_pol <- habmap_std$habitatmap_polygons
+habmap_std_patch <- habmap_std$habitatmap_patches
+```
+
+Components of `watersurfaces`:
+
+```{r warning=FALSE}
+watsurf_pol <- 
+    st_read("../../n2khab_data/10_raw/watersurfaces/",
+            crs = 31370,
+            quiet = TRUE)
+```
+
+
+```{r}
+glimpse(watsurf_pol)
+```
+
+Let's just keep geometries:
+
+```{r}
+watsurf_pol <- 
+  watsurf_pol %>% 
+  st_geometry
+```
+
+```{r}
+watsurf_pol
+```
+
+**The aim here is to remove all areas from `habitatmap_stdized` which are covered by watersurfaces, and see if that actually makes sense (inspect what is being removed).**
+
+# Preliminary experiments with sf, sp, rgeos, RQGIS
+
+## Trials to do the 'difference' operation with the sf package
+
+Did't work out due to topological faults in the data sources!
+
+See commit 0f881bb for the details.
+
+
+## Trials to use sp and rgeos
+
+Same topological errors - not surprising as GEOS is used in all cases.
+
+See commit d6029af for the details.
+
+
+## Experimenting with the QGIS bridge
+
+On a system with GDAL and GRASS installed, QGIS offers at least:
+
+- access to an OGR algorithm `clipvectorsbypolygon`, which however resulted in an error.
+
+```{r eval=FALSE}
+library(RQGIS)
+find_algorithms()
+find_algorithms("clip", name_only = TRUE)
+open_help("gdalogr:clipvectorsbypolygon")
+get_usage("gdalogr:clipvectorsbypolygon")
+# get_options("gdalogr:clipvectorsbypolygon")
+```
+
+```{r eval=FALSE}
+habmap_integr_pol <-
+    run_qgis("gdalogr:clipvectorsbypolygon",
+             INPUT = habmap_std_pol,
+             INPUT2 = watsurf_pol,
+                 OUTPUT = file.path(tempdir(), "habmap_integr_pol.shp"),
+                 load_output = TRUE)
+```
+
+- the GRASS algorithm `v.overlay`; however for some reason the transportation of the data is not well done, so error again:
+
+```{r eval=FALSE}
+find_algorithms("overlay", name_only = TRUE)
+get_usage("grass:v.overlay")
+# get_options("grass:v.overlay")
+```
+
+```{r eval=FALSE}
+habmap_overlap_diff <- 
+    run_qgis("grass:v.overlay", 
+             ainput = habmap_overlap, 
+             binput = watsurf_pol_u, 
+             operator = "not",
+                 output = "habmap_overlap_diff", # file.path(tempdir(), "habmap_overlap_diff.shp"),
+                 load_output = TRUE)
+# Error in UseMethod("st_as_sf") : no applicable method for 'st_as_sf' applied to an object of class "c('sfc_MULTIPOLYGON', 'sfc')"
+```
+
+
+# Using GRASS directly from R
+
+[GRASS](https://grass.osgeo.org) is a powerful open source GIS specialized in geospatial processing, originally developed by the USA-CERL (1982-1995), and with development currently led by the GRASS Development Team.
+It is now at version 7.6 (stable release).
+The `rgrass7` R-package allows to directly send GRASS commands to the GRASS GIS environment.
+See paragraph 9.4 from the [book](https://geocompr.robinlovelace.net/gis.html#rgrass) 'Geocomputation with R'.
+
+The process goes smooth:
+
+```{r}
+# Set up a temporary GRASS project:
+link2GI::linkGRASS7(habmap_std_pol, # sets the CRS etc.
+                    search_path = if (.Platform$OS.type == "unix") {
+                      "/usr/bin"} else NULL)
+```
+
+```{r}
+writeVECT(SDF = as(habmap_std_pol, "Spatial"), 
+          vname = "habmap_std_pol")
+```
+
+It appears that mistakes are taken care of!
+Looks good.
+
+Note, a few marginally overlapping polygons exist.
+
+While importing data sources can be done directly from the R objects, using the `writeVECT()` function (as above), it is in fact more efficient for larger datasets (such as `watersurfaces`) to let GRASS import the shapefiles directly if those already exist.
+`writeVECT()` first writes an sp object as a temporary shapefile but that is not needed if you have a file already.
+Furthermore, `writeVECT()` led to an R error in the case of `watersurfaces`, so that's why we do it as follows:
+
+```{r}
+execGRASS("v.in.ogr", 
+          input = normalizePath("../../n2khab_data/10_raw/watersurfaces/watersurfaces.shp"),
+          output = "watsurf_pol",
+          flags = "o" # assume CRS is same as from GRASS, i.e. set CRS as epsg:31370
+          )
+```
+
+Contents of the GRASS database:
+
+```{r}
+execGRASS("g.list", type = "vector,raster", flags = "p")
+```
+
+So now let's do the job.
+The manual of `v.overlay` in the current stable release 7.6 is [here](https://grass.osgeo.org/grass76/manuals/v.overlay.html).
+
+```{r}
+system.time(
+execGRASS("v.overlay",
+          ainput = "habmap_std_pol", 
+          binput = "watsurf_pol", 
+          operator = "not",
+          output = "habmap_diff")
+)
+```
+
+Vector layers in the GRASS database:
+
+```{r}
+execGRASS("g.list", type = "vector", flags = "p")
+```
+
+Reading result back into R as an sf object:
+
+```{r}
+system.time(
+habmap_diff <- 
+    readVECT("habmap_diff") %>% 
+    st_as_sf
+)
+```
+
+Note that we follow the standard advice of `readVECT()` not to use the c-flag (`with_c=FALSE`).
+
+Result:
+
+```{r}
+habmap_diff
+```
+
+Housekeeping:
+
+```{r}
+habmap_diff <- 
+    habmap_diff %>% 
+    select(polygon_id = a_polygon_id,
+           description_orig = a_description_orig)
+```
+
+```{r}
+habmap_diff
+```
+
+## Inspecting the result
+
+Duplicate ID's:
+
+```{r}
+habmap_diff %>% 
+    st_drop_geometry() %>% 
+    count(polygon_id) %>% 
+    count(n)
+```
+
+Duplicate polygon IDs probably have to do with clipping along semi-matching borders...
+
+There are no empty ID's
+
+```{r}
+habmap_diff %>% 
+    st_drop_geometry() %>% 
+    filter(is.na(polygon_id))
+```
+
+Identifying the completely removed polygons, by their ID:
+
+```{r}
+habmap_std_pol %>% 
+    anti_join(habmap_diff %>% 
+                st_drop_geometry(),
+              by = "polygon_id") %>% 
+  nrow
+```
+
+
+```{r warning=FALSE}
+habmap_std_patch %>% 
+    anti_join(habmap_diff %>% 
+                st_drop_geometry(),
+              by = "polygon_id") %>% 
+    group_by(type) %>% 
+    summarise(count = n(),
+              avg_phab = mean(phab)) %>% 
+    ggplot(aes(x = type, y = count)) + 
+        geom_bar(stat = "identity") + 
+        theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+
+Calculating the actual surface areas of the above:
+
+```{r warning=FALSE}
+whiped_areas <- 
+  habmap_std_pol %>% 
+    anti_join(habmap_diff %>% 
+                st_drop_geometry(),
+              by = "polygon_id") %>% 
+  mutate(area = st_area(geom)) %>% 
+  st_drop_geometry %>% 
+  inner_join(habmap_std_patch, by = "polygon_id") %>% 
+  mutate(area = phab * area / 100) %>% 
+  select(polygon_id, type, area) %>% 
+  group_by(type) %>% 
+  summarise(area_ha = (sum(area) / 1e+4) %>% units::drop_units())
+whiped_areas %>% 
+  ggplot(aes(x = type, y = area_ha)) + 
+        geom_bar(stat = "identity") + 
+        theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+Total area (ha) of omitted polygons from `habitatmap_stdized`:
+
+```{r}
+whiped_areas$area_ha %>% sum
+```
+
+# Further conclusion for the workflow
+
+After some discussion, it appears that 'watersurfaces' also effectively includes semi-terrestrial types such as 'rbbmr', which is the type most often clipped by the above operation.
+This is not what we want --
+we do not want those to disappear from the data!
+
+So, it seems better to follow a conservative approach, both in `watersurfaces_hab` and in `habitatmap_terr`:
+
+- `watersurfaces_hab` combines the currently available information on the presence of watersurfaces and the presence of types 31xx / 2190_a / (7220?) / rbbah, in order to provide the areas where aquatic types will probably or potentially be present.
+This is a good basis for aquatic setups.
+To that aim, `watersurfaces_hab` takes a _conservative_ approach in defining the aquatic areas, meaning that in reality quite some (semi-)terrestrial areas are covered as well!
+A further interpreted form can be made, where code 3130 is interpreted as 3130_aom.
+Current intention is to provide the option of interpretation as an argument of `read_watersurfaces_hab()`.
+- `habitatmap_terr` delineates all other types (but still excluding 3260 and 1130), which is useful for terrestrial + semi-terrestrial setups.
+It contains the interpreted terrestrial + semi-terrestrial habitats.
+To this aim, when generating `habitatmap_terr`, we want to only omit polygons of which we are quite sure that they are aquatic!
+
+The consequence of this is that there will be a deliberate overlap between `watersurfaces_hab` and `habitatmap_terr`, which perfectly makes sense.
+
+
+
