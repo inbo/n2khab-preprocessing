@@ -1,5 +1,5 @@
 ---
-title: "Code for clipping watersurfaces out of habitatmap_stdized, as part of generating 'habitatmap_terr_interpr'"
+title: "Is clipping `watersurfaces` out of `habitatmap_stdized` a sensible step in generating a derived data source `habitatmap_terr`?"
 date: '`r paste("Version",lubridate::now())`'
 output:
   html_notebook:
@@ -67,7 +67,7 @@ watsurf_pol <-
 watsurf_pol
 ```
 
-**The aim here is to remove all areas from `habitatmap_stdized` which are covered by watersurfaces!**
+**The aim here is to remove all areas from `habitatmap_stdized` which are covered by watersurfaces, and see if that actually makes sense (inspect what is being removed).**
 
 # Preliminary experiments with sf, sp, rgeos, RQGIS
 
@@ -302,18 +302,18 @@ After some discussion, it appears that 'watersurfaces' also effectively includes
 This is not what we want --
 we do not want those to disappear from the data!
 
-So, it seems better to:
+So, it seems better to follow a conservative approach, both in `watersurfaces_hab` and in `habitatmap_terr`:
 
-- on the one hand, detect the watersurfaces containing aquatic habitats 31xx / 2190_a / (7220?) / rbbah, complemented by the habitatmap polygons with those types that aren't in `watersurfaces`.
+- `watersurfaces_hab` combines the currently available information on the presence of watersurfaces and the presence of types 31xx / 2190_a / (7220?) / rbbah, in order to provide the areas where aquatic types will probably or potentially be present.
 This is a good basis for aquatic setups.
-This is the aim of `watersurfaces_hab`.
-A further interpreted form can be made, `watersurfaces_hab_interpr`, where code 3130 is interpreted as 3130_aom.
-Or, no perhaps no distinction to make between both data sources and integrate that interpretation into `watersurfaces_hab`.
-- on the other hand, delineate all other types (but still excluding 3260 and 1130) in `habitatmap_terr_interpr` which is useful for terrestrial + semi-terrestrial setups.
+To that aim, `watersurfaces_hab` takes a _conservative_ approach in defining the aquatic areas, meaning that in reality quite some (semi-)terrestrial areas are covered as well!
+A further interpreted form can be made, where code 3130 is interpreted as 3130_aom.
+Current intention is to provide the option of interpretation as an argument of `read_watersurfaces_hab()`.
+- `habitatmap_terr` delineates all other types (but still excluding 3260 and 1130), which is useful for terrestrial + semi-terrestrial setups.
 It contains the interpreted terrestrial + semi-terrestrial habitats.
-To this aim, it has excluded aquatic types directly from `habitatmap_stdized`, and it further also excludes the _intersections_ between:
-- watersurfaces that are labelled as '2190_a' (in `watersurfaces_hab`)
-- polygons with label type '2190' (and nothing else) in the habitatmap.
+To this aim, when generating `habitatmap_terr`, we want to only omit polygons of which we are quite sure that they are aquatic!
+
+The consequence of this is that there will be a deliberate overlap between `watersurfaces_hab` and `habitatmap_terr`, which perfectly makes sense.
 
 
 
