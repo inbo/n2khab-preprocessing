@@ -159,6 +159,7 @@ habmap_patches_interpreted <- habmap_patches_interpreted %>%
 For some main types, the main type code mostly refers to a specific subtype – so that code can be used instead when interpreting the habitatmap_stdized data source.
 Some mapping units are uncertain, but will only very rarely be habitat type or rbb.
 This applies to the following cases:
+
 * code_orig containing 'bos'
 * code_orig is 6510,gh or 9120,gh
 
