@@ -43,7 +43,7 @@ habmap_sf <- st_read(file.path(datapath, "10_raw/habitatmap"),
 
 ## Case rbbhfl
 
-Rrbbhfl is a code which needs interpretation from BWK + habitatmap, in order to make it ‘appear’ (these polygons currently appear as rbbhf).
+Rbbhfl is a code which needs interpretation from BWK + habitatmap, in order to make it ‘appear’ (these polygons currently appear as rbbhf).
 
 ```{r detect rbbhfl}
 
@@ -184,7 +184,7 @@ habmap_patches_interpreted <- habmap_patches_interpreted %>%
 ## Exclude water surfaces
 
 This interpreted version of the habitat map contains only terrestrial biotopes. The interpreted water surfaces are stored in watersurfaces_interpr.
-The standardized habitatmap contains also watersurfaces (streaming water are much less mapped). They have therefor to be excluded from the interpreted terrestrial version.
+The standardized habitatmap contains also watersurfaces (streaming water are much less mapped). They have therefore to be excluded from the interpreted terrestrial version.
 
 ```{r exclude water surfaces}
 patchcodes <- habmap_patches_interpreted %>% 
