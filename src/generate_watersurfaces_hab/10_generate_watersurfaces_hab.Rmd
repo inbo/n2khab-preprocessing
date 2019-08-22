@@ -156,11 +156,14 @@ watersurfaces_standw_patches <- intersection_ws_standw %>%
     left_join(habitatmap_standw_patches, by = "polygon_id") %>%
     rename(polygon_id_habitatmap = polygon_id) %>%
     distinct(polygon_id_ws, polygon_id_habitatmap, description_orig, code_orig, certain, type) %>%
+    group_by(polygon_id_ws, code_orig, certain, type) %>%
+    summarise(polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
+           description_orig =  str_c(description_orig, collapse = "+")) %>%
+    ungroup() %>%
     group_by(polygon_id_ws) %>%
     mutate(patch_id = rank(code_orig),
            polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
-           description_orig =  str_c(description_orig, collapse = "+")
-           ) %>%
+           description_orig =  str_c(description_orig, collapse = "+")) %>%
     ungroup()
 
 description <- watersurfaces_standw_patches %>%
