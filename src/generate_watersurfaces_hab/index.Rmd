@@ -47,7 +47,9 @@ library(n2khab)
 library(git2rdata)
 library(googlesheets)
 library(kableExtra)
-library(RSQLite) 
+library(RSQLite)
+#devtools::install_github("inbo/inborutils", ref = "sessioninfo")
+library(inborutils)
 
 opts_chunk$set(
   echo = TRUE,
