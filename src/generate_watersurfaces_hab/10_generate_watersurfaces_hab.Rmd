@@ -123,7 +123,7 @@ watersurfaces_2190_a_patches <- watersurfaces_2190_a_patches %>%
 ```{r}
 
 standing_water <- read_types() %>%
-    filter(tag_1 == "SW") %>%
+    filter(tag_1 == "SW" | type == "7220") %>%
     filter(main_type != "2190")
 
 habitatmap_standw_patches <- habmap$habitatmap_patches %>%
@@ -243,7 +243,7 @@ habmap_standw_polygons <- watersurfaces_standw_polygons %>%
     
 ```
 
-## Combine 31xx and 2190_a map
+## Combine 31xx/7220 and 2190_a map
 
 ```{r}
 watersurfaces_hab_patches <- habmap_standw_patches %>%
@@ -267,7 +267,11 @@ check_unique_polygon
 ## Write results into a geopackage
 
 ```{r}
-dir.create("../../n2khab_data/20_processed/watersurfaces_hab", recursive = TRUE)
+if(!dir.exists("../../n2khab_data/20_processed/watersurfaces_hab")){
+    
+    dir.create("../../n2khab_data/20_processed/watersurfaces_hab", recursive = TRUE)
+}
+
 ```
 
 
