@@ -19,7 +19,10 @@ The watersurface map does not have attribute that contains a unique id. We creat
 
 ```{r read watersurfaces map}
 
-watersurfaces <- st_read(dsn = "../../n2khab_data/10_raw/watersurfaces",
+path <- fileman_up("n2khab_data")
+file <- "10_raw/watersurfaces"
+
+watersurfaces <- st_read(file.path(path, file),
                   layer = "watersurfaces",
                   crs = 31370)
 
@@ -113,7 +116,7 @@ watersurfaces_2190_a_patches <- watersurfaces_2190_a_patches %>%
            code_orig = NA,
            certain = TRUE,
            polygon_id = polygon_id_ws) %>%
-    select(polygon_id, polygon_id_ws, polygon_id_habitatmap, patch_id, code_orig, certain, type)
+    select(polygon_id, patch_id, code_orig, certain, type)
 
 
 ```
@@ -235,7 +238,7 @@ habmap_standw_patches <- watersurfaces_standw_patches %>%
     mutate(polygon_id = ifelse(is.na(polygon_id_ws),
                                as.character(polygon_id_habitatmap),
                                as.character(polygon_id_ws))) %>%
-    select(polygon_id, polygon_id_ws, polygon_id_habitatmap, patch_id, everything())
+    select(polygon_id,  patch_id, everything())
 
 habmap_standw_polygons <- watersurfaces_standw_polygons %>%
     rbind(habitatmap_standw_polygons_no_ws) %>%
@@ -250,14 +253,17 @@ habmap_standw_polygons <- watersurfaces_standw_polygons %>%
 
 ```{r}
 watersurfaces_hab_patches <- habmap_standw_patches %>%
-    bind_rows(watersurfaces_2190_a_patches) 
+    bind_rows(watersurfaces_2190_a_patches) %>%
+    select(polygon_id, patch_id, code_orig, certain, type)
 
 watersurfaces_hab_polygons <- habmap_standw_polygons %>%
     rbind(watersurfaces_2190_a_polygons) %>%
-    group_by(polygon_id) %>%
+    group_by(polygon_id, polygon_id_ws) %>%
     summarise(polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
-              description_orig = str_c(description_orig, collapse = "+")) %>%
-    ungroup()
+              description_orig = str_c(description_orig, collapse = "+")
+              ) %>%
+    ungroup() %>%
+    arrange(polygon_id_ws)
 
 check_unique_id <- nrow(watersurfaces_hab_polygons) == n_distinct(watersurfaces_hab_polygons$polygon_id)
 check_unique_id
@@ -270,9 +276,10 @@ check_unique_polygon
 ## Write results into a geopackage
 
 ```{r}
-if(!dir.exists("../../n2khab_data/20_processed/watersurfaces_hab")){
+
+if(!dir.exists(file.path(path, "20_processed/watersurfaces_hab"))){
     
-    dir.create("../../n2khab_data/20_processed/watersurfaces_hab", recursive = TRUE)
+    dir.create(file.path(path, "20_processed/watersurfaces_hab"), recursive = TRUE)
 }
 
 ```
@@ -280,10 +287,10 @@ if(!dir.exists("../../n2khab_data/20_processed/watersurfaces_hab")){
 
 ```{r}
 
-st_write(watersurfaces_hab_polygons, "../../n2khab_data/20_processed/watersurfaces_hab/watersurfaces_hab.gpkg", layer = "watersurfaces_hab_polygons", driver = "GPKG")
+st_write(watersurfaces_hab_polygons, file.path(path, "20_processed/watersurfaces_hab/watersurfaces_hab.gpkg"), layer = "watersurfaces_hab_polygons", driver = "GPKG")
 
 con = dbConnect(SQLite(),
-                dbname = "../../n2khab_data/20_processed/watersurfaces_hab/watersurfaces_hab.gpkg")
+                dbname = file.path(path, "20_processed/watersurfaces_hab/watersurfaces_hab.gpkg"))
 
 dbWriteTable(con, "watersurfaces_hab_patches", watersurfaces_hab_patches)
 
