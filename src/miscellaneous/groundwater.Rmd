@@ -474,6 +474,32 @@ The interpretation here is that:
 This concerns the `TRUE` & `FALSE` values.
 - The `NA` values after 2014 are from external sources.
 
+No `NA` values occur for `Meetwaarde` when `IsBelowLOQ == "TRUE"`:
+
+```{r}
+chem_measurements %>% 
+  filter(IsBelowLOQ == "TRUE") %>% 
+  select(Meetwaarde) %>% 
+  collect %>% 
+  summary
+```
+
+This is because LOQ values were used and divided by 2, in those cases:
+
+```{r}
+```{r}
+chem_measurements %>% 
+  filter(IsBelowLOQ == "TRUE") %>% 
+  inner_join(chemvars,
+             by = "ChemVarWID") %>% 
+  select(ChemVarCode, Meetwaarde) %>% 
+  collect %>% 
+  split(x = ., f = .$ChemVarCode) %>% 
+  purrr::map(.x = ., .f = table)
+```
+```
+
+
 Difference in the _presence_ of mass vs. meq data?
 
 ```{r}
