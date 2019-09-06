@@ -487,7 +487,6 @@ chem_measurements %>%
 This is because LOQ values were used and divided by 2, in those cases:
 
 ```{r}
-```{r}
 chem_measurements %>% 
   filter(IsBelowLOQ == "TRUE") %>% 
   inner_join(chemvars,
@@ -496,7 +495,6 @@ chem_measurements %>%
   collect %>% 
   split(x = ., f = .$ChemVarCode) %>% 
   purrr::map(.x = ., .f = table)
-```
 ```
 
 
