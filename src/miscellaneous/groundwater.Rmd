@@ -511,6 +511,7 @@ chem_measurements %>%
 ```
 
 So we should take into account that `NA` values do occur, when calculating summary statistics.
+Update: `NA` values are already removed by `watina::get_chem()`.
 
 Difference in the _presence_ of mass vs. meq data?
 
