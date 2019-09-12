@@ -497,6 +497,20 @@ chem_measurements %>%
   purrr::map(.x = ., .f = table)
 ```
 
+Furthermore,
+
+```{r}
+chem_measurements %>% 
+  filter(is.na(Meetwaarde)) %>% 
+  inner_join(chemvars %>% select(ChemVarWID, ChemVarNaam, ChemVarEenheid),
+             by = "ChemVarWID") %>% 
+  group_by(IsBelowLOQ, ChemVarNaam) %>% 
+  count %>% 
+  arrange(desc(n)) %>% 
+  kable
+```
+
+So we should take into account that `NA` values do occur, when calculating summary statistics.
 
 Difference in the _presence_ of mass vs. meq data?
 
