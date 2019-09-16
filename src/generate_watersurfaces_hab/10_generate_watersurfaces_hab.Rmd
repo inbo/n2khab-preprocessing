@@ -121,7 +121,7 @@ watersurfaces_2190_a_patches <- watersurfaces_2190_a_patches %>%
 
 ```
 
-## Create standing water (excl. 2190) map
+## Create standing water (excl. 2190) + 7220 map
 
 ```{r}
 
