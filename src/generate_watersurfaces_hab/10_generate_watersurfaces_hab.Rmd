@@ -67,7 +67,7 @@ watersurfaces_21xx <- watersurfaces[habitatmap_21xx_polygons,]
 ```
 
 
-## Create 2190_a map 
+### Create 2190_a map 
 
 For each watersurface (that is situated in coastal dune habitat) we create following attributes:
 
