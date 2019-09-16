@@ -58,7 +58,7 @@ habitatmap_21xx_polygons<- habmap$habitatmap_polygons %>%
 
 ```
 
-## Selection of water surfaces that overlap with dune habitat polygons in habitat map
+### Selection of water surfaces that overlap with dune habitat polygons in habitat map
 
 ```{r}
 
