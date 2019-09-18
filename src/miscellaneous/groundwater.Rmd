@@ -497,7 +497,7 @@ chem_measurements %>%
   purrr::map(.x = ., .f = table)
 ```
 
-Furthermore,
+Furthermore, quite a lot of `NA` values are present for `Meetwaarde`:
 
 ```{r}
 chem_measurements %>% 
@@ -563,6 +563,8 @@ chem_measurements %>%
   mutate(test = Meetwaarde / Coefficient) %>% 
   select(ChemVarNaam, Meetwaarde, MeetwaardeMEQ, test, Coefficient)
 ```
+
+Number of observations per chemical variable:
 
 ```{r}
 chem_measurements %>% 
