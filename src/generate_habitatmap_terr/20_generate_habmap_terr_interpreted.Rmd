@@ -162,7 +162,7 @@ habmap_polygons_interpreted <-
 
 ## Exclude water surfaces
 
-This interpreted version of the habitat map contains only terrestrial biotopes. The interpreted water surfaces are stored in watersurfaces_interpr.
+This interpreted version of the habitat map contains only terrestrial biotopes. The interpreted water surfaces are returned by `read_watersurfaces_hab(interpreted = TRUE)`.
 The standardized habitatmap contains also watersurfaces (streaming water are much less mapped). They have therefore to be excluded from the interpreted terrestrial version.
 
 ```{r exclude water surfaces}
