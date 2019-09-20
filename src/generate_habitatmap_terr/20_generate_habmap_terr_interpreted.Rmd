@@ -98,7 +98,7 @@ It's possible that a watersurface is being mapped together with other biotopes. 
 ```{r detect dune water}
 habmap_dunewater <- habmap_sf %>% 
     inner_join(habmap_patches_interpreted, by = c("TAG" = "polygon_id")) %>% 
-    mutate(dunewater = str_detect(EENH1, c("ae", "kn"))) %>% 
+    mutate(dunewater = str_detect(EENH1, c("ae|kn"))) %>% 
     select(TAG, BWKLABEL, dunewater, type, code_orig, patch_id) %>% 
     filter(dunewater == TRUE & type == "2190") 
 
