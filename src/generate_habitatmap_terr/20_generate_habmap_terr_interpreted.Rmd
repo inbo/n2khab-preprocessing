@@ -169,17 +169,12 @@ The standardized habitatmap contains also watersurfaces (streaming water are muc
 watertypes <- data.frame( "watertype" = c("1130", "2190_a", "3110", "3130", "3130_aom", "3130_na", "3140", "3150", "3160", "3260", "7220", "rbbah"))
 
 #polygons that are exclusively represented by water type(s) are excluded
-habmap_polygons_opp <- habmap_patches_interpreted %>% 
+habmap_polygons_water <- 
+    habmap_patches_interpreted %>% 
     group_by(polygon_id) %>% 
-    summarise(oppsum = sum(phab))
-
-habmap_polygons_water <- habmap_patches_interpreted %>% 
-    inner_join(habmap_polygons_opp) %>% 
-    semi_join(watertypes, by = c("type" = "watertype")) %>% 
-    group_by(polygon_id, oppsum) %>% 
-    summarise(opp = sum(phab)) %>% 
-    ungroup() %>% 
-    filter(opp == oppsum)
+    mutate(watertype_lgl = type %in% watertypes$watertype) %>% 
+    summarise(purewater = all(watertype_lgl)) %>% 
+    filter(purewater)
 
 habmap_polygons_interpreted <- habmap_polygons_interpreted %>% 
     anti_join(habmap_polygons_water)
