@@ -166,13 +166,6 @@ This interpreted version of the habitat map contains only terrestrial biotopes. 
 The standardized habitatmap contains also watersurfaces (streaming water are much less mapped). They have therefore to be excluded from the interpreted terrestrial version.
 
 ```{r exclude water surfaces}
-patchcodes <- habmap_patches_interpreted %>% 
-    distinct(code_orig) %>% 
-    arrange(code_orig)
-patchtypes <- habmap_patches_interpreted %>% 
-    distinct(type) %>% 
-    arrange(type)
-
 watertypes <- data.frame( "watertype" = c("1130", "2190_a", "3110", "3130", "3130_aom", "3130_na", "3140", "3150", "3160", "3260", "7220", "rbbah"))
 
 #polygons that are exclusively represented by water type(s) are excluded
