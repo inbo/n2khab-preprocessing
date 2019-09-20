@@ -152,13 +152,12 @@ This applies to the following cases:
 * code_orig is 6510,gh or 9120,gh
 
 ```{r exclude some uncertain mapping units}
-habmap_certain <- habmap_patches_interpreted %>%
+habmap_patches_interpreted <- 
+    habmap_patches_interpreted %>%
     filter(!str_detect(code_orig, "bos") & !(code_orig %in% c("6510,gh", "9120,gh")))
-habmap_polygons_interpreted <- habmap_polygons_interpreted %>%
-    semi_join(habmap_certain)
-
-habmap_patches_interpreted <- habmap_patches_interpreted %>% 
-    semi_join(habmap_certain)  
+habmap_polygons_interpreted <- 
+    habmap_polygons_interpreted %>%
+    semi_join(habmap_patches_interpreted, by = "polygon_id")
 ```
 
 ## Exclude water surfaces
