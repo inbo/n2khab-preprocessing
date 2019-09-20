@@ -273,7 +273,7 @@ dir.create(file.path(datapath, "20_processed/habitatmap_terr"), recursive = TRUE
 st_write(habmap_polygons_interpreted,
          file.path(datapath, 
                    "20_processed/habitatmap_terr/habitatmap_terr.gpkg"), 
-         layer = "habitatmap_polygons", 
+         layer = "habitatmap_terr_polygons", 
          driver = "GPKG",
          delete_dsn = TRUE)
 
@@ -283,7 +283,7 @@ con = dbConnect(SQLite(),
                   "20_processed/habitatmap_terr/habitatmap_terr.gpkg")
                 )
 
-dbWriteTable(con, "habitatmap_patches", habmap_patches_interpreted)
+dbWriteTable(con, "habitatmap_terr_patches", habmap_patches_interpreted)
 
 dbDisconnect(con)
 ```
