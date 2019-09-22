@@ -165,6 +165,12 @@ habmap_patches_interpreted <- habmap_patches_interpreted %>%
 
 This interpreted version of the habitat map contains only terrestrial biotopes. The interpreted water surfaces are stored in watersurfaces_interpr.
 The standardized habitatmap contains also watersurfaces (streaming water are much less mapped). They have therefore to be excluded from the interpreted terrestrial version.
+By using habitatmap_stdized we actually can never be sure about 'pure' water, because patches were already dropped from non-dropped polygons before:
+
+* in generating habitatmap_stdized, only patches containing a habitat or RIB code have been retained, others were dropped (such as gh, x and bos) ;
+* patches containing "bos", or being one of "6510,gh", "9120,gh" were already omitted.
+
+It means we will actually drop polygons which, besides water types, _contain no other habitat or rib_. And that still matches our aim, i.e. terrestrial habitats / rib
 
 ```{r exclude water surfaces}
 patchcodes <- habmap_patches_interpreted %>% 
@@ -176,7 +182,10 @@ patchtypes <- habmap_patches_interpreted %>%
 
 watertypes <- data.frame( "watertype" = c("1130", "2190_a", "3110", "3130", "3130_aom", "3130_na", "3140", "3150", "3160", "3260", "7220", "rbbah"))
 
-#polygons that are exclusively represented by water type(s) are excluded
+#polygons that are, regarding their habitat/rib content, exclusively represented by water type(s) are excluded.
+# polygons with a very small portion of watersurface (egg. 99% terrestrial non-habitat/rib and 1% habitat/rib water are excluded)
+# polygons with only a very small portion of habitat/rib terrestrial and almost entirely watersurface ars still included.
+
 habmap_polygons_opp <- habmap_patches_interpreted %>% 
     group_by(polygon_id) %>% 
     summarise(oppsum = sum(phab))
