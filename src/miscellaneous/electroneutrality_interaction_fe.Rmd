@@ -17,6 +17,7 @@ knitr::opts_chunk$set(
 options(stringsAsFactors = FALSE)
 
 library(watina)
+# voor het watina-package werd commit 5be909b gebruikt. Wil je deze code uitvoeren dan je deze versie herinladen via volgend commando remotes::install_github("inbo/watina", ref =  "5be909b")
 library(tidyverse)
 library(ggplot2)
 library(knitr)
@@ -69,22 +70,28 @@ chem_fe_cond_basis <- chem.all %>%
 ```
 
 ```{r chemdata breed, echo=TRUE}
-chem.fe_cond <- reshape::cast(chem_fe_cond_basis,
-                              formula = loc_code + lab_sample_id + date + elneutr~
-                                  chem_variable, value = "value", length)
+chem.fe_cond <- chem_fe_cond_basis %>% 
+    pivot_wider(id_cols = c(loc_code,lab_sample_id, date, elneutr), 
+                names_from = chem_variable, 
+                values_from = value, 
+                values_fn = list(value = length)
+                )
 ```
 
 Er zijn enkele stalen waar voor Fe en/of condL er twee meetwaarden bestaan. Omdat niet kan uitgemaakt worden welke van de twee meetwaarden juist is, worden deze stalen uitgesloten.
 
 ```{r dubbels weren, echo=TRUE}
 chem_weg <- chem.fe_cond %>%
-    filter(CondL > 1 | Fe >1) %>%
+    filter(CondL > 1 | Fe > 1) %>%
     select(lab_sample_id)
 
-chem.fe_cond <- reshape::cast(chem_fe_cond_basis %>%
-                              anti_join(chem_weg, by = "lab_sample_id"),
-                              formula = loc_code + lab_sample_id + date +elneutr~
-                                  chem_variable, value = "value", first)
+chem.fe_cond <- chem_fe_cond_basis %>%
+    anti_join(chem_weg, by = "lab_sample_id") %>% 
+    pivot_wider(id_cols = c(loc_code,lab_sample_id, date, elneutr), 
+                names_from = chem_variable, 
+                values_from = value, 
+                values_fn = list(value = first)
+                )
 
 ```
 
@@ -107,10 +114,9 @@ In een volgende grafiek wordt de verhouding van electroneutrale stalen tov het t
 ```{r plot goed tov fe-cond, echo=TRUE}
 chem.fec_en <- chem.fe_cond %>%
     mutate(fe.cond.round = signif(fe.cond,2)) %>%
-    filter(!is.na(elneutr) & fe.cond>0) %>%
+    filter(!is.na(elneutr) & fe.cond > 0) %>%
     group_by(fe.cond.round) %>%
-    mutate(aantal = n()) %>%
-    mutate(good = sum(ifelse(abs(elneutr) <= 0.1,1,0))/aantal) %>%
+    mutate(good = sum(abs(elneutr) <= 0.1)/n()) %>%
     ungroup()
 
 graf.good <- ggplot(chem.fec_en , aes(x = fe.cond, y = good)) +
@@ -130,10 +136,12 @@ Hier zie je toch wel twee opmerkelijke zaken:
 1. Er is een duidelijk negatief verband tussen het percentage en-stalen en de fe-cond-verhouding.
 1. Bij een lage fe-cond verhouding hebben de waterstalen meestal een goede en !
 
-Als drempelwaarde kan Fe/Cond = `r drempel <- 0.0023; drempel` voorgesteld worden. Deze drempelwaarde is wat door trial en error bepaald. Gezocht werd naar de waarde waarbij de gemiddelde waarde van en = 0.1
-Beperken we de grafiek tot de stalen die boven deze drempelwaarde zitten.
+Als drempelwaarde kan Fe/Cond = `r drempel <- 0.0023; drempel` voorgesteld worden. Deze drempelwaarde is wat door trial en error bepaald. Gezocht werd naar de waarde van Fe/Cond waarvoor de groep met een waarde groter of gelijk aan die drempelwaarde een gemiddelde en-waarde van 0.1 had.
+Beperken we de grafiek tot deze stalen (= stalen die op of boven deze drempelwaarde zitten).
 ```{r plot fe-cond boven drempel}
-graf.good <- ggplot(chem.fec_en %>% filter(fe.cond<0.05 & fe.cond >= drempel), aes(x= fe.cond, y = good)) +
+graf.good <- ggplot(chem.fec_en %>% 
+                        filter(fe.cond < 0.05 & fe.cond >= drempel), 
+                    aes(x = fe.cond, y = good)) +
     geom_point(aes(size = aantal)) + geom_smooth()
 graf.good
 ```
@@ -156,8 +164,7 @@ Onderstaande tabel onderschrijft deze stelling. Er zijn ook wel enkele mogelijke
 check.gebieden <- chem.fec_en %>%
     filter(fe.cond >= drempel) %>%
     mutate(gebied = substr(loc_code,1,3)) %>%
-    group_by(gebied) %>%
-    count() %>%
+    count(gebied) %>%
     arrange(desc(n)) %>% 
     rename(aantal_stalen_groter_of_gelijk_aan_drempel = n) %>% 
     kable(      caption = "Aantal stalen met fe/cond boven de drempelwaarde ", format = "html") %>% 
