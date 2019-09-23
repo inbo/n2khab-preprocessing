@@ -175,8 +175,8 @@ It means we will actually drop polygons which, besides water types, _contain no 
 watertypes <- data.frame( "watertype" = c("1130", "2190_a", "3110", "3130", "3130_aom", "3130_na", "3140", "3150", "3160", "3260", "7220", "rbbah"))
 
 #polygons that are, regarding their habitat/rib content, exclusively represented by water type(s) are excluded.
-# polygons with a very small portion of watersurface (egg. 99% terrestrial non-habitat/rib and 1% habitat/rib water are excluded)
 # polygons with only a very small portion of habitat/rib terrestrial and almost entirely watersurface ars still included.
+# fyi: polygons with a very small portion of watersurface that for the remaining part are terrestrial non(!)-habitat/rib are excluded
 
 habmap_polygons_water <- 
     habmap_patches_interpreted %>% 
