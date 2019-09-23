@@ -113,15 +113,15 @@ chem.fec_en <- chem.fe_cond %>%
     mutate(good = sum(ifelse(abs(elneutr) <= 0.1,1,0))/aantal) %>%
     ungroup()
 
-graf.good <- ggplot(chem.fec_en , aes(x = fe.cond, y = good, size = aantal)) +
-    geom_point()
+graf.good <- ggplot(chem.fec_en , aes(x = fe.cond, y = good)) +
+    geom_point(aes(size = aantal))
 graf.good
 
 ```
 In de volgende grafiek wordt wat ingezoomd, door de x-waarden op de grafiek te beperken tot 0.02.
 ```{r plot goed tov fe-cond zoom, echo=TRUE, message=FALSE, warning=FALSE}
 graf.good <- ggplot(chem.fec_en %>% 
-                        filter(fe.cond < 0.02), aes(x = fe.cond, y = good, size = aantal)) + geom_point() + geom_smooth()
+                        filter(fe.cond < 0.02), aes(x = fe.cond, y = good)) + geom_point(aes(size = aantal)) + geom_smooth()
 graf.good
 ```
 
@@ -133,8 +133,8 @@ Hier zie je toch wel twee opmerkelijke zaken:
 Als drempelwaarde kan Fe/Cond = `r drempel <- 0.0023; drempel` voorgesteld worden. Deze drempelwaarde is wat door trial en error bepaald. Gezocht werd naar de waarde waarbij de gemiddelde waarde van en = 0.1
 Beperken we de grafiek tot de stalen die boven deze drempelwaarde zitten.
 ```{r plot fe-cond boven drempel}
-graf.good <- ggplot(chem.fec_en %>% filter(fe.cond<0.05 & fe.cond >= drempel), aes(x= fe.cond, y = good, size = aantal)) +
-    geom_point() + geom_smooth()
+graf.good <- ggplot(chem.fec_en %>% filter(fe.cond<0.05 & fe.cond >= drempel), aes(x= fe.cond, y = good)) +
+    geom_point(aes(size = aantal)) + geom_smooth()
 graf.good
 ```
 Een tabel met een kleine basisstatistiek voor twee groepen: een groep met fe/cond < drempel en een groep met een fe/cond >= drempel
