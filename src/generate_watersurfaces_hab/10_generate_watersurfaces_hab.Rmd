@@ -1,6 +1,6 @@
 # Generate map of watersurfaces that contain aquatic habitat
 
-We will create a map with watersurfaces that contain aquatic habitat and rib. The structure of the map will be similar to processed habitatmap of Flanders: it will consist of spatial file that contains the polygons and a table with the different habitat 'patches' within the polygons.  
+We will create a map with watersurfaces that contain aquatic habitat and rib. The structure of the map will be similar to the processed habitatmap of Flanders: it will consist of spatial file that contains the polygons and a table with the different habitat 'patches' within the polygons.  
 
 ## Data sources
 
@@ -15,7 +15,7 @@ habmap <- read_habitatmap_stdized()
 
 ```
 
-The watersurface map does not have attribute that contains a unique id. We create one based on the WVLC attribute. Watersurfaces with an identical value WVLC get a suffix equal to the rank of the watersurface based on its area. 
+The watersurface map does not have an attribute that contains a unique id. We create one based on the WVLC attribute. Watersurfaces with an identical value for WVLC get a suffix equal to the rank of the watersurface based on its area. 
 
 ```{r read watersurfaces map}
 
@@ -189,9 +189,9 @@ watersurfaces_standw_patches <- watersurfaces_standw_patches %>%
 ```
 
 
-### Standing water habitat that does not intersect with water surface map
+### Standing water habitat that does not intersect with the water surface map
 
-We also select all habitat map polyons that do not intersect with the water surface map. 
+We also select all habitat map polyons that do not intersect with the water surface map (see map below). 
 
 ```{r}
 
@@ -285,7 +285,7 @@ if(!dir.exists(file.path(path, "20_processed/watersurfaces_hab"))){
 ```
 
 
-```{r}
+```{r, eval = FALSE}
 
 st_write(watersurfaces_hab_polygons, file.path(path, "20_processed/watersurfaces_hab/watersurfaces_hab.gpkg"), layer = "watersurfaces_hab_polygons", driver = "GPKG")
 
