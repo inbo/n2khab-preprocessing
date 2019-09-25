@@ -1,5 +1,5 @@
 ---
-title: "Processing of the aquatic habitat map"
+title: "Generating habitatmap_terr"
 # subtitle: "x"
 date: "`r lubridate::now()`"
 link-citations: true
@@ -37,9 +37,10 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-
+options(stringsAsFactors = FALSE,
+        scipen = 999, 
+        digits = 15)
 library(sf)
-library(rgdal)
 library(tidyverse)
 library(stringr)
 library(knitr)
@@ -47,9 +48,7 @@ library(n2khab)
 library(git2rdata)
 library(googlesheets)
 library(kableExtra)
-library(RSQLite)
-#devtools::install_github("inbo/inborutils", ref = "sessioninfo")
-library(inborutils)
+library(RSQLite) 
 
 opts_chunk$set(
   echo = TRUE,
@@ -57,7 +56,7 @@ opts_chunk$set(
 )
 ```
 
-**Note: this is a bookdown project, supposed to be run from within the `src/generate_watersurfaces_hab` subfolder. You can use the `generate_watersurfaces_hab.Rproj` RStudio project file in this subfolder to run it.**
+**Note: this is a bookdown project, supposed to be run from within the `src/generate_habitatmap_terr` subfolder. You can use the `generate_habitatmap_terr.Rproj` RStudio project file in this subfolder to run it.**
 
 
 
