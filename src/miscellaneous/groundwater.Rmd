@@ -384,27 +384,194 @@ chem_measurements %>% glimpse
 ```
 
 This table provides the chemical measurements.
-Essential variables are: `MeetpuntWID`, `DatumWID`, `ChemVarWID`, `Meetwaarde`, `MeetwaardeMEQ`, `IsBelowLOQ`, `MetingStatusCode`, `MetingStatus`.
+Essential variables are: `MeetpuntWID`, `DatumWID`, `ChemVarWID`, `Meetwaarde`, `MeetwaardeMEQ`, `IsBelowLOQ`.
+
+`DatumWID` refers to the `DimTijd` table:
+
+```{r}
+dates <- tbl(con, "DimTijd")
+dates %>% glimpse()
+```
+
 
 What about this one?
 
 ```{r}
-chem_measurements <- tbl(con, "vwFactChemischeMeting")
-chem_measurements %>% glimpse
+chem_measurements2 <- tbl(con, "vwFactChemischeMeting")
+chem_measurements2 %>% glimpse
 ```
 
 
 Missing in both cases: electroneutrality (but see Cécile's [remark](https://docs.google.com/a/inbo.be/document/d/1isa_9HYQcxo8OYi0fKYmLY42GGTNxpev6RgW05WNxE4/edit?disco=AAAACuSS6FU)).
+Conclusion on this remark is that electroneutrality is most reliable in the DWH, see below table.
 
-Electroneutrality is in the following table however:
+Electroneutrality is in the following table:
 
 ```{r}
-tbl(con, "ssrs_StaalEN") %>% 
+elneutr <- tbl(con, "ssrs_StaalEN")
+elneutr %>% 
   glimpse
 ```
 
 Here we will need `StaalID` and `StaalEN`.
 
+No `NA` values occur, this is because only samples with a value are present in this table:
+
+```{r}
+elneutr %>% 
+  collect %>% 
+  count(is.na(StaalEN))
+```
+
+Only part of the chemical samples has a value for `StaalEN`:
+
+```{r message=FALSE}
+chem_measurements %>% 
+  distinct(StaalID, DatumWID) %>% 
+  left_join(elneutr %>% select(StaalID, StaalEN)) %>% 
+  collect %>% 
+  group_by(is.na(StaalEN)) %>% 
+  summarise(n = n(),
+            mindate = min(DatumWID),
+            maxdate = max(DatumWID))
+```
+
+This should be because for the majority of chemical samples, `StaalEN` could not be calculated because of missing ion concentration data.
+
+Both tables with chemical measurements have the same number of records:
+
+```{r}
+chem_measurements %>% count
+chem_measurements2 %>% count
+```
+
+Which status codes do occur?
+
+```{r}
+chem_measurements %>% 
+  group_by(MetingStatusCode,
+           MetingStatus) %>% 
+  summarise(n = n(),
+            mindate = min(DatumWID),
+            maxdate = max(DatumWID))
+```
+
+After further enquiry, it appears that these codes originate from former workflows and should be neglected!
+
+Which values occur for `IsBelowLOQ`?
+
+```{r}
+chem_measurements %>% 
+  group_by(IsBelowLOQ) %>% 
+  summarise(n = n(),
+            mindate = min(DatumWID),
+            maxdate = max(DatumWID))
+```
+
+The interpretation here is that:
+
+- only for LIMS data this is (automatically) imported, i.e. for data since 2014.
+This concerns the `TRUE` & `FALSE` values.
+- The `NA` values after 2014 are from external sources.
+
+No `NA` values occur for `Meetwaarde` when `IsBelowLOQ == "TRUE"`:
+
+```{r}
+chem_measurements %>% 
+  filter(IsBelowLOQ == "TRUE") %>% 
+  select(Meetwaarde) %>% 
+  collect %>% 
+  summary
+```
+
+This is because LOQ values were used and divided by 2, in those cases:
+
+```{r}
+chem_measurements %>% 
+  filter(IsBelowLOQ == "TRUE") %>% 
+  inner_join(chemvars,
+             by = "ChemVarWID") %>% 
+  select(ChemVarCode, Meetwaarde) %>% 
+  collect %>% 
+  split(x = ., f = .$ChemVarCode) %>% 
+  purrr::map(.x = ., .f = table)
+```
+
+Furthermore, quite a lot of `NA` values are present for `Meetwaarde`:
+
+```{r}
+chem_measurements %>% 
+  filter(is.na(Meetwaarde)) %>% 
+  inner_join(chemvars %>% select(ChemVarWID, ChemVarNaam, ChemVarEenheid),
+             by = "ChemVarWID") %>% 
+  group_by(IsBelowLOQ, ChemVarNaam) %>% 
+  count %>% 
+  arrange(desc(n)) %>% 
+  kable
+```
+
+So we should take into account that `NA` values do occur, when calculating summary statistics.
+Update: `NA` values are already removed by `watina::get_chem()`.
+
+Difference in the _presence_ of mass vs. meq data?
+
+```{r}
+chem_measurements %>% 
+  mutate(isna = ifelse(is.na(Meetwaarde), 1, 0),
+         isna_meq = ifelse(is.na(MeetwaardeMEQ), 1, 0)) %>% 
+  summarise(na_count = sum(isna),
+            non_na_count = sum(1 - isna),
+            na_count_meq = sum(isna_meq),
+            non_na_count_meq = sum(1 - isna_meq)
+            )
+```
+
+No!
+
+For which variables are these values equal?
+
+```{r}
+chem_measurements %>% 
+  filter(Meetwaarde == MeetwaardeMEQ,
+         IsBelowLOQ == "FALSE") %>% 
+  count(ChemVarWID) %>% 
+  inner_join(chemvars %>% select(ChemVarWID, ChemVarNaam, ChemVarEenheid),
+             by = "ChemVarWID")
+```
+
+```{r}
+chem_measurements %>% 
+  filter(IsBelowLOQ == "FALSE") %>% 
+  inner_join(chemvars %>% select(ChemVarWID, ChemVarNaam, ChemVarEenheid),
+             by = "ChemVarWID") %>% 
+  filter(ChemVarNaam %in% c("Al", "Mn", "Si")) %>% 
+  count
+```
+
+So _all_ data of Al, Mn and Si show no difference between both columns.
+It appears they wrongly have a `Coefficient` = 1 in `chemvars`.
+
+Checking calculations where `Coefficient` > 1, this seems OK:
+
+```{r}
+chem_measurements %>% 
+  filter(IsBelowLOQ == "FALSE") %>% 
+  inner_join(chemvars %>% 
+               select(ChemVarWID, ChemVarNaam, ChemVarEenheid, Coefficient) %>% 
+               filter(Coefficient > 1),
+             by = "ChemVarWID") %>% 
+  mutate(test = Meetwaarde / Coefficient) %>% 
+  select(ChemVarNaam, Meetwaarde, MeetwaardeMEQ, test, Coefficient)
+```
+
+Number of observations per chemical variable:
+
+```{r}
+chem_measurements %>% 
+  inner_join(chemvars %>% select(ChemVarWID, ChemVarNaam, ChemVarEenheid),
+             by = "ChemVarWID") %>% 
+  count(ChemVarNaam)
+```
 
 
 ```{r}
