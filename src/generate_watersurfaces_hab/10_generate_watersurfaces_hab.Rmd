@@ -1,0 +1,299 @@
+# Generate map of watersurfaces that contain aquatic habitat
+
+We will create a map with watersurfaces that contain aquatic habitat and rib. The structure of the map will be similar to the processed habitatmap of Flanders: it will consist of spatial file that contains the polygons and a table with the different habitat 'patches' within the polygons.  
+
+## Data sources
+
+* The processed habitatmap of Flanders
+
+* The water surfaces map of Flanders
+
+
+```{r read processed habmap}
+
+habmap <- read_habitatmap_stdized() 
+
+```
+
+The watersurface map does not have an attribute that contains a unique id. We create one based on the WVLC attribute. Watersurfaces with an identical value for WVLC get a suffix equal to the rank of the watersurface based on its area. 
+
+```{r read watersurfaces map}
+
+path <- fileman_up("n2khab_data")
+file <- "10_raw/watersurfaces"
+
+watersurfaces <- st_read(file.path(path, file),
+                  layer = "watersurfaces",
+                  crs = 31370)
+
+unique_id <- nrow(watersurfaces) == n_distinct(watersurfaces$WVLC)
+#FALSE
+
+watersurfaces <- watersurfaces %>%
+    group_by(WVLC) %>%
+    mutate(n_id = n(),
+           polygon_id_ws = ifelse(n_id > 1,
+                                  str_c(as.character(WVLC), "_", rank(OPPWVL)),
+                                  as.character(WVLC))
+           ) %>%
+    ungroup()
+
+unique_id <- nrow(watersurfaces) == n_distinct(watersurfaces$polygon_id_ws)
+
+```
+
+## Habitatmap 2190_a
+
+For habitat sutbtype 2190_a we select all water surfaces within habitat map polygons that contain coastal dune habitat types. In a next step, this selection will have to be manually screened, as some of the larger (artificial) water surfaces within dune habitat polygons might not correspond with the 2190_a subtype.
+
+### Selection of dune habitat polygons
+
+```{r select dune habitat polygons}
+
+habitatmap_21xx_patches <- habmap$habitatmap_patches %>%
+  filter((str_sub(type, 1, 2) == "21")) 
+
+habitatmap_21xx_polygons<- habmap$habitatmap_polygons %>%
+  filter(polygon_id %in% habitatmap_21xx_patches$polygon_id)
+
+```
+
+### Selection of water surfaces that overlap with dune habitat polygons in habitat map
+
+```{r}
+
+watersurfaces_21xx <- watersurfaces[habitatmap_21xx_polygons,]
+
+```
+
+
+### Create 2190_a map 
+
+For each watersurface (that is situated in coastal dune habitat) we create following attributes:
+
+* polygon_id_ws: the id of the watersurface
+* polygon_id_habitatmap: the id of all habitatmap polygons that overlap with the watersurfaces. The different id's are separated with a '+'
+* description_orig: all unique habitat descriptions (description_orig attribute in habitatmap_stdized) of habitatmap polygons that overlap with the watersurfaces. The different descriptions are separated with a '+'.
+* polygon_id: we will use polygon_id_ws as polygon_id
+* polygon_type: to indicate the source of the polygon, either the watersurface map or the habitatmap
+
+To create the attributes 'polygon_id_habitatmap' and 'description_orig', we make a spatial intersection between the watersurfaces within  coastal dunes and the habitatmap. Next we summarise for each watersurface and paste the different polygon_id_habitatmap's and description_orig's.  
+
+```{r}
+
+intersection_ws_21xx <- watersurfaces_21xx %>%
+    st_intersection(habitatmap_21xx_polygons) %>%
+    select(polygon_id_ws, polygon_id, description_orig)
+
+watersurfaces_2190_a_patches <- intersection_ws_21xx %>%
+    st_drop_geometry() %>%
+    # add 'description_orig' attribute
+    left_join(habitatmap_21xx_patches, by = "polygon_id") %>% 
+    rename(polygon_id_habitatmap = polygon_id) %>%
+    distinct(polygon_id_ws, polygon_id_habitatmap, description_orig) %>%
+    mutate(type = "2190_a") %>%
+    group_by(polygon_id_ws, type) %>%
+    summarise(polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
+           description_orig =  str_c(description_orig, collapse = "+")) %>%
+    ungroup() 
+
+# we will add the description_orig attribute to the object that contains the polygons (analogous to habitatmap_stdized)
+description <- watersurfaces_2190_a_patches %>%
+    distinct(polygon_id_ws, polygon_id_habitatmap, description_orig)
+
+watersurfaces_2190_a_polygons <- watersurfaces_21xx %>%
+    left_join(description, by = "polygon_id_ws") %>%
+    mutate(polygon_type = "watersurface map",
+           polygon_id = polygon_id_ws) %>%
+    select(polygon_id, polygon_id_ws, polygon_id_habitatmap, description_orig, polygon_type)
+
+check_unique_polygon <- nrow(watersurfaces_2190_a_polygons) == n_distinct(watersurfaces_2190_a_polygons$geometry)
+check_unique_polygon
+
+watersurfaces_2190_a_patches <- watersurfaces_2190_a_patches %>%
+    select(-description_orig) %>%
+    mutate(patch_id = 1,
+           code_orig = NA,
+           certain = TRUE,
+           polygon_id = polygon_id_ws) %>%
+    select(polygon_id, patch_id, code_orig, certain, type)
+
+
+```
+
+## Create standing water (excl. 2190) + 7220 map
+
+```{r}
+
+standing_water <- read_types() %>%
+    filter(tag_1 == "SW" | type == "7220") %>%
+    filter(main_type != "2190")
+
+habitatmap_standw_patches <- habmap$habitatmap_patches %>%
+  filter(type %in% standing_water$type) 
+
+habitatmap_standw_polygons <- habmap$habitatmap_polygons %>%
+  filter(polygon_id %in% habitatmap_standw_patches$polygon_id)
+
+watersurfaces_standw <- watersurfaces[habitatmap_standw_polygons,] 
+
+check_id <- n_distinct(watersurfaces_standw$polygon_id_ws) == nrow(watersurfaces_standw)
+check_id
+```
+
+
+### Intersection water surfaces and standing water habitat
+
+We create the water surface map with standing water habitat in a very similar way than the 2190_a map.
+
+For each water surface we will create a patch for every standing water habitat type that occurs in the water surface according to the habitat map. We do not attempt to calculate a phab for the different patches. 
+
+```{r}
+
+intersection_ws_standw <- watersurfaces_standw %>%
+    st_intersection(habitatmap_standw_polygons) %>%
+    select(polygon_id_ws, polygon_id, description_orig)
+
+watersurfaces_standw_patches <- intersection_ws_standw %>%
+    st_drop_geometry() %>%
+    left_join(habitatmap_standw_patches, by = "polygon_id") %>%
+    rename(polygon_id_habitatmap = polygon_id) %>%
+    distinct(polygon_id_ws, polygon_id_habitatmap, description_orig, code_orig, certain, type) %>%
+    group_by(polygon_id_ws, code_orig, certain, type) %>%
+    summarise(polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
+           description_orig =  str_c(description_orig, collapse = "+")) %>%
+    ungroup() %>%
+    group_by(polygon_id_ws) %>%
+    mutate(patch_id = rank(code_orig),
+           polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
+           description_orig =  str_c(description_orig, collapse = "+")) %>%
+    ungroup()
+
+description <- watersurfaces_standw_patches %>%
+    distinct(polygon_id_ws, polygon_id_habitatmap, description_orig)
+
+watersurfaces_standw_polygons <- watersurfaces_standw %>%
+    # filter(polygon_id_ws %in% watersurfaces_standw_patches$polygon_id_ws) %>%
+    left_join(description, by = "polygon_id_ws") %>%
+    mutate(polygon_type = "watersurface map") %>%
+    select(polygon_id_ws, polygon_id_habitatmap, description_orig, polygon_type)
+
+check_unique_polygon <- nrow(watersurfaces_standw_polygons) == n_distinct(watersurfaces_standw_polygons$geometry)
+
+check_unique_polygon
+    
+watersurfaces_standw_patches <- watersurfaces_standw_patches %>%
+    select(-description_orig)
+
+
+```
+
+
+### Standing water habitat that does not intersect with the water surface map
+
+We also select all habitat map polyons that do not intersect with the water surface map (see map below). 
+
+```{r}
+
+habitatmap_standw_polygons_no_ws <- habitatmap_standw_polygons %>%
+    filter(!polygon_id %in% intersection_ws_standw$polygon_id) %>%
+    rename(polygon_id_habitatmap = polygon_id, geometry = geom) %>%
+    mutate(polygon_id_ws = NA,
+           polygon_type = "habitatmap")
+
+habitatmap_standw_patches_no_ws <- habitatmap_standw_patches %>%
+    filter(!polygon_id %in% intersection_ws_standw$polygon_id) %>%
+    mutate(polygon_id_habitatmap = polygon_id,
+           polygon_id_ws = NA) %>%
+    select(-phab)
+
+```
+
+
+
+```{r}
+library(leaflet)
+
+leaflet(habitatmap_standw_polygons_no_ws %>%
+            st_transform(crs = 4326)) %>%
+  addTiles(group = "OSM (default)") %>%
+  addPolygons(popup = ~htmltools::htmlEscape(description_orig)) %>% 
+  addLayersControl(
+    baseGroups = c("OSM (default)", "Esri.WorldImagery"),
+    options = layersControlOptions(collapsed = FALSE)) 
+
+
+
+```
+
+
+
+
+### Combine habitatmap polygons and water surface polygons
+
+```{r}
+
+habmap_standw_patches <- watersurfaces_standw_patches %>%
+    bind_rows(habitatmap_standw_patches_no_ws) %>%
+    mutate(polygon_id = ifelse(is.na(polygon_id_ws),
+                               as.character(polygon_id_habitatmap),
+                               as.character(polygon_id_ws))) %>%
+    select(polygon_id,  patch_id, everything())
+
+habmap_standw_polygons <- watersurfaces_standw_polygons %>%
+    rbind(habitatmap_standw_polygons_no_ws) %>%
+    mutate(polygon_id = ifelse(is.na(polygon_id_ws),
+                               as.character(polygon_id_habitatmap),
+                               as.character(polygon_id_ws))) %>%
+    select(polygon_id, polygon_id_ws, polygon_id_habitatmap, everything())
+    
+```
+
+## Combine 31xx/7220 and 2190_a map
+
+```{r}
+watersurfaces_hab_patches <- habmap_standw_patches %>%
+    bind_rows(watersurfaces_2190_a_patches) %>%
+    select(polygon_id, patch_id, code_orig, certain, type)
+
+watersurfaces_hab_polygons <- habmap_standw_polygons %>%
+    rbind(watersurfaces_2190_a_polygons) %>%
+    group_by(polygon_id, polygon_id_ws) %>%
+    summarise(polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
+              description_orig = str_c(description_orig, collapse = "+")
+              ) %>%
+    ungroup() %>%
+    arrange(polygon_id_ws)
+
+check_unique_id <- nrow(watersurfaces_hab_polygons) == n_distinct(watersurfaces_hab_polygons$polygon_id)
+check_unique_id
+
+check_unique_polygon <- nrow(watersurfaces_hab_polygons) == n_distinct(watersurfaces_hab_polygons$geometry)
+check_unique_polygon
+```
+
+
+## Write results into a geopackage
+
+```{r}
+
+if(!dir.exists(file.path(path, "20_processed/watersurfaces_hab"))){
+    
+    dir.create(file.path(path, "20_processed/watersurfaces_hab"), recursive = TRUE)
+}
+
+```
+
+
+```{r, eval = FALSE}
+
+st_write(watersurfaces_hab_polygons, file.path(path, "20_processed/watersurfaces_hab/watersurfaces_hab.gpkg"), layer = "watersurfaces_hab_polygons", driver = "GPKG")
+
+con = dbConnect(SQLite(),
+                dbname = file.path(path, "20_processed/watersurfaces_hab/watersurfaces_hab.gpkg"))
+
+dbWriteTable(con, "watersurfaces_hab_patches", watersurfaces_hab_patches)
+
+dbDisconnect(con)
+
+```
