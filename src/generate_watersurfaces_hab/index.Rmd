@@ -1,5 +1,5 @@
 ---
-title: "Processing habitatmap shallow waters"
+title: "Processing of the aquatic habitat map"
 # subtitle: "x"
 date: "`r lubridate::now()`"
 link-citations: true
@@ -37,7 +37,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-options(stringsAsFactors = FALSE)
+
 library(sf)
 library(rgdal)
 library(tidyverse)
