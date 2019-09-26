@@ -1,6 +1,6 @@
-## This R script lists the steps in order, required to generate original text
-## data and derived (binary) data in the 'textdata' and 'n2khab_data/20_processed'
-## subfolders respectively. It requires the RAW binary data to be present in the
+## This R script lists the steps in order, required to RE-generate processed
+## (large or binary) data in the 'n2khab_data/20_processed'
+## subfolder. It requires the RAW binary data to be present in the
 ## 'n2khab_data/10_raw' subfolder in the specified way (for further information,
 ## run: vignette("v020_datastorage", package = "n2khab")).
 
@@ -10,8 +10,11 @@
 
 ## !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! #
 ## WARNING ! This script may take a very LONG time to run. You are advised
-## to have a closer look into the sourced files: do you really need
+## to have a closer look into the sourced files: do you really want to reproduce
 ## everything?
+## For mere usage, the resulting processed data sources are already made
+## available! (for further information, run:
+## vignette("v020_datastorage", package = "n2khab"))
 ## !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! #
 
 
@@ -46,6 +49,20 @@ setwd("src/generate_habitatmap_stdized")
 rmarkdown::render_site(output_format = 'bookdown::html_document2',
                        encoding = 'UTF-8')
 
+# Generating watersurfaces_hab
+# ------------------------------
+
+setwd("src/generate_watersurfaces_hab")
+rmarkdown::render_site(output_format = 'bookdown::html_document2',
+                       encoding = 'UTF-8')
+
+
+# Generating habitatmap_terr
+# ------------------------------
+
+setwd("src/generate_habitatmap_terr")
+rmarkdown::render_site(output_format = 'bookdown::html_document2',
+                       encoding = 'UTF-8')
 
 
 
