@@ -1,0 +1,32 @@
+# Making a simple version of the `soilmap` data source
+
+As we incorporated two handles for processing the raw `soilmap` data source in the `read_soilmap()` function,
+we can implement directly as follows:
+
+```{r}
+soilmap_simple <- read_soilmap(use_processed = FALSE,
+                               standardize_polders = TRUE,
+                               simplify = TRUE)
+```
+
+# Writing the result as a GeoPackage
+
+```{r}
+datapath <- fileman_up("n2khab_data")
+```
+
+```{r}
+dir.create(file.path(datapath, "20_processed/soilmap_simple"), recursive = TRUE)
+```
+
+
+```{r}
+st_write(soilmap_simple,
+         file.path(datapath, 
+                   "20_processed/soilmap_simple/soilmap_simple.gpkg"), 
+         layer = "soilmap_simple", 
+         driver = "GPKG",
+         delete_dsn = TRUE)
+```
+
+
