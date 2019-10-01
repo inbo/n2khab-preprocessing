@@ -1,0 +1,126 @@
+---
+title: "Handling the soilmap"
+date: '`r paste("Version",lubridate::now())`'
+output:
+  html_notebook:
+    number_sections: yes
+    code_folding: show
+    includes:
+      in_header: ../header.html
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: no
+---
+
+```{r setup, message=FALSE, echo=FALSE}
+options(stringsAsFactors = FALSE)
+# library(sp)
+library(sf)
+library(raster)
+library(tidyverse)
+library(n2khab)
+# # library(plotly)
+# library(rasterVis)
+# library(stars)
+# library(units)
+# library(tmap)
+library(knitr)
+opts_chunk$set(
+  echo = TRUE,
+  dpi = 300
+)
+```
+
+
+# Exploring the soilmap data source
+
+```{r}
+soilmap <- read_sf(file.path(fileman_up("n2khab_data"), "10_raw/soilmap"),
+                   stringsAsFactors = TRUE) # for exploring unique values
+```
+
+
+```{r}
+soilmap %>% 
+  st_drop_geometry %>% 
+  summary
+```
+
+Number of unique values of numeric variables:
+
+```{r}
+ul <- function(x) x %>% unique %>% length
+list(soilmap$gid,
+     soilmap$id_kaartvl,
+     soilmap$Kaartbldnr) %>% 
+  lapply(ul)
+```
+
+Look at this:
+
+```{r}
+all(soilmap$gid == soilmap$id_kaartvl)
+```
+
+
+Number of NA's of some numeric variables:
+
+```{r}
+nal <- function(x) x %>% is.na %>% sum
+list(soilmap$gid,
+     soilmap$id_kaartvl,
+     soilmap$Kaartbldnr,
+     soilmap$codeid) %>% 
+  lapply(nal)
+```
+
+Inspecting the number of levels of variables.
+Note that in several cases, the number of different codes does not match the number of different meanings/explanations.
+
+```{r}
+soilmap %>% st_drop_geometry %>% lapply(ul)
+```
+
+String inconsistencies do happen:
+
+```{r}
+soilmap$Type_class %>% unique %>% as.matrix
+```
+
+`codeid` refers to `Bodemtype` according to the metadatafile "20140814Uitleg_bij_veldnamen_bodemkaart.docx", and indeed it has the same number of levels.
+Somehow the order of variables is a bit confusing here.
+
+Explanations of `Fase_c` are not data, but metadata:
+
+```{r}
+soilmap %>% 
+  st_drop_geometry %>% 
+  select(contains("Fase")) %>% 
+  distinct
+```
+
+## Exploring the relation between `Bodemtype` and `Unitype`
+
+```{r}
+soilmap %>% 
+  mutate(same = as.character(Bodemtype) == as.character(Unitype)) %>% 
+  .$same %>% summary
+```
+
+```{r}
+soilmap %>% 
+  st_drop_geometry %>% 
+  mutate(same = as.character(Bodemtype) == as.character(Unitype)) %>% 
+  filter(!same) %>% 
+  count(Bodemtype, Textuur_c, Bodemser_c, Type_c, Unitype)
+```
+
+
+```{r}
+soilmap %>% 
+  st_drop_geometry %>% 
+  mutate(same = as.character(Bodemtype) == as.character(Unitype)) %>% 
+  filter(!same) %>% 
+  .$Bodemtype %>% str_sub(1,1) %>% unique
+```
