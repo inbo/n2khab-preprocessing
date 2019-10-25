@@ -1,6 +1,6 @@
 # Generate map of watersurfaces that contain aquatic habitat
 
-We will create a map with watersurfaces that contain aquatic habitat and rib. The structure of the map will be similar to the processed habitatmap of Flanders: it will consist of spatial file that contains the polygons and a table with the different habitat 'patches' within the polygons.  
+We will create a map with watersurfaces that contain aquatic habitat and rib. The structure of the map will be similar to the processed habitatmap of Flanders: it will consist of spatial file that contains the polygons and a table with the different types within the polygons.  
 
 ## Data sources
 
@@ -50,11 +50,11 @@ For habitat sutbtype 2190_a we select all water surfaces within habitat map poly
 
 ```{r select dune habitat polygons}
 
-habitatmap_21xx_patches <- habmap$habitatmap_patches %>%
+habitatmap_21xx_types <- habmap$habitatmap_types %>%
   filter((str_sub(type, 1, 2) == "21")) 
 
 habitatmap_21xx_polygons<- habmap$habitatmap_polygons %>%
-  filter(polygon_id %in% habitatmap_21xx_patches$polygon_id)
+  filter(polygon_id %in% habitatmap_21xx_types$polygon_id)
 
 ```
 
@@ -85,10 +85,10 @@ intersection_ws_21xx <- watersurfaces_21xx %>%
     st_intersection(habitatmap_21xx_polygons) %>%
     select(polygon_id_ws, polygon_id, description_orig)
 
-watersurfaces_2190_a_patches <- intersection_ws_21xx %>%
+watersurfaces_2190_a_types <- intersection_ws_21xx %>%
     st_drop_geometry() %>%
     # add 'description_orig' attribute
-    left_join(habitatmap_21xx_patches, by = "polygon_id") %>% 
+    left_join(habitatmap_21xx_types, by = "polygon_id") %>% 
     rename(polygon_id_habitatmap = polygon_id) %>%
     distinct(polygon_id_ws, polygon_id_habitatmap, description_orig) %>%
     mutate(type = "2190_a") %>%
@@ -98,7 +98,7 @@ watersurfaces_2190_a_patches <- intersection_ws_21xx %>%
     ungroup() 
 
 # we will add the description_orig attribute to the object that contains the polygons (analogous to habitatmap_stdized)
-description <- watersurfaces_2190_a_patches %>%
+description <- watersurfaces_2190_a_types %>%
     distinct(polygon_id_ws, polygon_id_habitatmap, description_orig)
 
 watersurfaces_2190_a_polygons <- watersurfaces_21xx %>%
@@ -110,13 +110,12 @@ watersurfaces_2190_a_polygons <- watersurfaces_21xx %>%
 check_unique_polygon <- nrow(watersurfaces_2190_a_polygons) == n_distinct(watersurfaces_2190_a_polygons$geometry)
 check_unique_polygon
 
-watersurfaces_2190_a_patches <- watersurfaces_2190_a_patches %>%
+watersurfaces_2190_a_types <- watersurfaces_2190_a_types %>%
     select(-description_orig) %>%
-    mutate(patch_id = 1,
-           code_orig = NA,
+    mutate(code_orig = NA,
            certain = TRUE,
            polygon_id = polygon_id_ws) %>%
-    select(polygon_id, patch_id, code_orig, certain, type)
+    select(polygon_id, code_orig, certain, type)
 
 
 ```
@@ -129,11 +128,11 @@ standing_water <- read_types() %>%
     filter(tag_1 == "SW" | type == "7220") %>%
     filter(main_type != "2190")
 
-habitatmap_standw_patches <- habmap$habitatmap_patches %>%
+habitatmap_standw_types <- habmap$habitatmap_types %>%
   filter(type %in% standing_water$type) 
 
 habitatmap_standw_polygons <- habmap$habitatmap_polygons %>%
-  filter(polygon_id %in% habitatmap_standw_patches$polygon_id)
+  filter(polygon_id %in% habitatmap_standw_types$polygon_id)
 
 watersurfaces_standw <- watersurfaces[habitatmap_standw_polygons,] 
 
@@ -146,7 +145,7 @@ check_id
 
 We create the water surface map with standing water habitat in a very similar way than the 2190_a map.
 
-For each water surface we will create a patch for every standing water habitat type that occurs in the water surface according to the habitat map. We do not attempt to calculate a phab for the different patches. 
+For each water surface we will create a record for every standing water habitat type that occurs in the water surface according to the habitat map. We do not attempt to calculate a phab for the different types. 
 
 ```{r}
 
@@ -154,9 +153,9 @@ intersection_ws_standw <- watersurfaces_standw %>%
     st_intersection(habitatmap_standw_polygons) %>%
     select(polygon_id_ws, polygon_id, description_orig)
 
-watersurfaces_standw_patches <- intersection_ws_standw %>%
+watersurfaces_standw_types <- intersection_ws_standw %>%
     st_drop_geometry() %>%
-    left_join(habitatmap_standw_patches, by = "polygon_id") %>%
+    left_join(habitatmap_standw_types, by = "polygon_id") %>%
     rename(polygon_id_habitatmap = polygon_id) %>%
     distinct(polygon_id_ws, polygon_id_habitatmap, description_orig, code_orig, certain, type) %>%
     group_by(polygon_id_ws, code_orig, certain, type) %>%
@@ -164,16 +163,15 @@ watersurfaces_standw_patches <- intersection_ws_standw %>%
            description_orig =  str_c(description_orig, collapse = "+")) %>%
     ungroup() %>%
     group_by(polygon_id_ws) %>%
-    mutate(patch_id = rank(code_orig),
-           polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
+    mutate(polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
            description_orig =  str_c(description_orig, collapse = "+")) %>%
     ungroup()
 
-description <- watersurfaces_standw_patches %>%
+description <- watersurfaces_standw_types %>%
     distinct(polygon_id_ws, polygon_id_habitatmap, description_orig)
 
 watersurfaces_standw_polygons <- watersurfaces_standw %>%
-    # filter(polygon_id_ws %in% watersurfaces_standw_patches$polygon_id_ws) %>%
+    # filter(polygon_id_ws %in% watersurfaces_standw_types$polygon_id_ws) %>%
     left_join(description, by = "polygon_id_ws") %>%
     mutate(polygon_type = "watersurface map") %>%
     select(polygon_id_ws, polygon_id_habitatmap, description_orig, polygon_type)
@@ -182,7 +180,7 @@ check_unique_polygon <- nrow(watersurfaces_standw_polygons) == n_distinct(waters
 
 check_unique_polygon
     
-watersurfaces_standw_patches <- watersurfaces_standw_patches %>%
+watersurfaces_standw_types <- watersurfaces_standw_types %>%
     select(-description_orig)
 
 
@@ -201,7 +199,7 @@ habitatmap_standw_polygons_no_ws <- habitatmap_standw_polygons %>%
     mutate(polygon_id_ws = NA,
            polygon_type = "habitatmap")
 
-habitatmap_standw_patches_no_ws <- habitatmap_standw_patches %>%
+habitatmap_standw_types_no_ws <- habitatmap_standw_types %>%
     filter(!polygon_id %in% intersection_ws_standw$polygon_id) %>%
     mutate(polygon_id_habitatmap = polygon_id,
            polygon_id_ws = NA) %>%
@@ -233,12 +231,12 @@ leaflet(habitatmap_standw_polygons_no_ws %>%
 
 ```{r}
 
-habmap_standw_patches <- watersurfaces_standw_patches %>%
-    bind_rows(habitatmap_standw_patches_no_ws) %>%
+habmap_standw_types <- watersurfaces_standw_types %>%
+    bind_rows(habitatmap_standw_types_no_ws) %>%
     mutate(polygon_id = ifelse(is.na(polygon_id_ws),
                                as.character(polygon_id_habitatmap),
                                as.character(polygon_id_ws))) %>%
-    select(polygon_id,  patch_id, everything())
+    select(polygon_id, everything())
 
 habmap_standw_polygons <- watersurfaces_standw_polygons %>%
     rbind(habitatmap_standw_polygons_no_ws) %>%
@@ -252,9 +250,9 @@ habmap_standw_polygons <- watersurfaces_standw_polygons %>%
 ## Combine 31xx/7220 and 2190_a map
 
 ```{r}
-watersurfaces_hab_patches <- habmap_standw_patches %>%
-    bind_rows(watersurfaces_2190_a_patches) %>%
-    select(polygon_id, patch_id, code_orig, certain, type)
+watersurfaces_hab_types <- habmap_standw_types %>%
+    bind_rows(watersurfaces_2190_a_types) %>%
+    select(polygon_id, code_orig, certain, type)
 
 watersurfaces_hab_polygons <- habmap_standw_polygons %>%
     rbind(watersurfaces_2190_a_polygons) %>%
@@ -292,7 +290,7 @@ st_write(watersurfaces_hab_polygons, file.path(path, "20_processed/watersurfaces
 con = dbConnect(SQLite(),
                 dbname = file.path(path, "20_processed/watersurfaces_hab/watersurfaces_hab.gpkg"))
 
-dbWriteTable(con, "watersurfaces_hab_patches", watersurfaces_hab_patches)
+dbWriteTable(con, "watersurfaces_hab_types", watersurfaces_hab_types)
 
 dbDisconnect(con)
 
