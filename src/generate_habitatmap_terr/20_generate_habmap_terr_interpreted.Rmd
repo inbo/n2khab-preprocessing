@@ -33,7 +33,9 @@ habmap_stdized <- read_habitatmap_stdized()
 
 habmap_polygons <- habmap_stdized$habitatmap_polygons
 
-habmap_patches <- habmap_stdized$habitatmap_patches
+# following requires at least n2khab 0.0.3.9037 and 
+# data source version habitatmap_stdized_2018_v2:
+habmap_types <- habmap_stdized$habitatmap_types 
 
 ```
 
@@ -54,11 +56,11 @@ Rbbhfl is a code which needs interpretation from BWK + habitatmap, in order to m
 
 ```{r detect rbbhfl}
 
-#filter hfl-patches from bwk units
+#filter hfl-types from bwk units
 habmap_hfl <- habmap_sf  %>% 
-    inner_join(habmap_patches, by = c("TAG" = "polygon_id"))%>% 
+    inner_join(habmap_types, by = c("TAG" = "polygon_id")) %>% 
     mutate(rbbhfl = str_detect(BWKLABEL, "hfl")) %>% 
-    select(TAG, BWKLABEL, rbbhfl, type, code_orig, patch_id) %>% 
+    select(TAG, BWKLABEL, rbbhfl, type, code_orig) %>% 
     filter(rbbhfl == TRUE & type == "rbbhf") 
 
 #update habmap_polygons -> habmap_polygons_interpreted
@@ -70,11 +72,11 @@ habmap_polygons_interpreted <- habmap_polygons %>%
            source = ifelse(is.na(rbbhfl), "habitatmap_stdized", "habitatmap_stdized + interpretation")) %>% 
     select(-rbbhfl)
 
-#update habmap_patches -> habmap_patches_interpreted
-habmap_patches_interpreted <- habmap_patches %>% 
+#update habmap_types -> habmap_types_interpreted
+habmap_types_interpreted <- habmap_types %>% 
     left_join(habmap_hfl %>% 
-                  select(TAG, patch_id, rbbhfl) %>% 
-                   st_drop_geometry(), by = c("polygon_id" = "TAG", "patch_id" = "patch_id")) %>% 
+                  select(TAG, rbbhfl) %>% 
+                   st_drop_geometry(), by = c("polygon_id" = "TAG")) %>% 
     mutate(type = ifelse(is.na(rbbhfl) | type != "rbbhf", as.character(type), str_replace_all(type, "rbbhf", "rbbhfl")),
            source = ifelse(is.na(rbbhfl) | type != "rbbhfl", "habitatmap_stdized", "habitatmap_stdized + interpretation")) %>% 
     select(-rbbhfl) 
@@ -97,9 +99,9 @@ It's possible that a watersurface is being mapped together with other biotopes. 
 
 ```{r detect dune water}
 habmap_dunewater <- habmap_sf %>% 
-    inner_join(habmap_patches_interpreted, by = c("TAG" = "polygon_id")) %>% 
+    inner_join(habmap_types_interpreted, by = c("TAG" = "polygon_id")) %>% 
     mutate(dunewater = str_detect(EENH1, c("ae|kn"))) %>% 
-    select(TAG, BWKLABEL, dunewater, type, code_orig, patch_id) %>% 
+    select(TAG, BWKLABEL, dunewater, type, code_orig) %>% 
     filter(dunewater == TRUE & type == "2190") 
 
 #update habmap_polygons -> habmap_polygons_interpreted
@@ -119,11 +121,11 @@ habmap_polygons_interpreted <- habmap_polygons_interpreted %>%
     mutate(description = str_replace_all(description, "2191", "2190")) %>% 
     select(-dunewater)
 
-#update habmap_patches -> habmap_patches_interpreted
-habmap_patches_interpreted <- habmap_patches_interpreted %>% 
+#update habmap_types -> habmap_types_interpreted
+habmap_types_interpreted <- habmap_types_interpreted %>% 
     left_join(habmap_dunewater %>% 
-                  select(TAG, patch_id, dunewater) %>% 
-                   st_drop_geometry(), by = c("polygon_id" = "TAG", "patch_id" = "patch_id")) %>% 
+                  select(TAG, dunewater) %>% 
+                   st_drop_geometry(), by = c("polygon_id" = "TAG")) %>% 
     mutate(type = str_replace_all(type, "2190_", "2191_")) %>% # mark mappings on subtype-level
     mutate(type = case_when(
                     is.na(dunewater) & str_detect(type, "2190") ~ "2190_overig", 
@@ -152,22 +154,22 @@ This applies to the following cases:
 * code_orig is 6510,gh or 9120,gh
 
 ```{r exclude some uncertain mapping units}
-habmap_patches_interpreted <- 
-    habmap_patches_interpreted %>%
+habmap_types_interpreted <- 
+    habmap_types_interpreted %>%
     filter(!str_detect(code_orig, "bos") & !(code_orig %in% c("6510,gh", "9120,gh")))
 habmap_polygons_interpreted <- 
     habmap_polygons_interpreted %>%
-    semi_join(habmap_patches_interpreted, by = "polygon_id")
+    semi_join(habmap_types_interpreted, by = "polygon_id")
 ```
 
 ## Exclude water surfaces
 
 This interpreted version of the habitat map contains only terrestrial biotopes. The interpreted water surfaces are returned by `read_watersurfaces_hab(interpreted = TRUE)`.
 The standardized habitatmap contains also watersurfaces (streaming water are much less mapped). They have therefore to be excluded from the interpreted terrestrial version.
-By using habitatmap_stdized we actually can never be sure about 'pure' water, because patches were already dropped from non-dropped polygons before:
+By using habitatmap_stdized we actually can never be sure about 'pure' water, because types were already dropped from non-dropped polygons before:
 
-* in generating habitatmap_stdized, only patches containing a habitat or RIB code have been retained, others were dropped (such as gh, x and bos) ;
-* patches containing "bos", or being one of "6510,gh", "9120,gh" were already omitted.
+* in generating habitatmap_stdized, only rows where `code_orig` contains a habitat or RIB code have been retained, others were dropped (such as gh, x and bos) ;
+* rows where `code_orig` contains "bos" or is one of "6510,gh", "9120,gh" were already omitted.
 
 It means we will actually drop polygons which, besides water types, _contain no other habitat or rib_. And that still matches our aim, i.e. terrestrial habitats / rib
 
@@ -179,7 +181,7 @@ watertypes <- data.frame( "watertype" = c("1130", "2190_a", "3110", "3130", "313
 # fyi: polygons with a very small portion of watersurface that for the remaining part are terrestrial non(!)-habitat/rib are excluded
 
 habmap_polygons_water <- 
-    habmap_patches_interpreted %>% 
+    habmap_types_interpreted %>% 
     group_by(polygon_id) %>% 
     mutate(oppsum = sum(phab)) %>% 
     semi_join(watertypes, by = c("type" = "watertype")) %>% 
@@ -191,7 +193,7 @@ habmap_polygons_water <-
 habmap_polygons_interpreted <- habmap_polygons_interpreted %>% 
     anti_join(habmap_polygons_water)
 
-habmap_patches_interpreted <- habmap_patches_interpreted %>% 
+habmap_types_interpreted <- habmap_types_interpreted %>% 
     anti_join(habmap_polygons_water)    
 
 
@@ -236,7 +238,7 @@ habmap_polygons_interpreted <- habmap_polygons_interpreted %>%
     mutate( description = str_replace_all(description, "µ_", "0_")) %>% 
     mutate( source =  as.factor(source))
 
-habmap_patches_interpreted <- habmap_patches_interpreted %>% 
+habmap_types_interpreted <- habmap_types_interpreted %>% 
     mutate(type = str_replace_all(type, c("6410_" = "641µ_",
                                                         "6430_" = "643µ_",
                                                         "6510_" = "651µ_",
@@ -282,7 +284,7 @@ con = dbConnect(SQLite(),
                   "20_processed/habitatmap_terr/habitatmap_terr.gpkg")
                 )
 
-dbWriteTable(con, "habitatmap_terr_patches", habmap_patches_interpreted)
+dbWriteTable(con, "habitatmap_terr_types", habmap_types_interpreted)
 
 dbDisconnect(con)
 ```
