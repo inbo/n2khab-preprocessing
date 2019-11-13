@@ -120,12 +120,12 @@ watersurfaces_2190_a_types <- watersurfaces_2190_a_types %>%
 
 ```
 
-## Create standing water (excl. 2190) + 7220 map
+## Create standing water (excl. 2190)
 
 ```{r}
 
 standing_water <- read_types() %>%
-    filter(tag_1 == "SW" | type == "7220") %>%
+    filter(tag_1 == "SW") %>%
     filter(main_type != "2190")
 
 habitatmap_standw_types <- habmap$habitatmap_types %>%
@@ -247,7 +247,7 @@ habmap_standw_polygons <- watersurfaces_standw_polygons %>%
     
 ```
 
-## Combine 31xx/7220 and 2190_a map
+## Combine 31xx and 2190_a map
 
 ```{r}
 watersurfaces_hab_types <- habmap_standw_types %>%
