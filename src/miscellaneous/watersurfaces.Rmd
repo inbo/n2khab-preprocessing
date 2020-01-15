@@ -1,0 +1,101 @@
+---
+title: "Handling the watersurfaces data source"
+date: '`r paste("Version",lubridate::now())`'
+output:
+  html_notebook:
+    number_sections: yes
+    code_folding: hide
+    includes:
+      in_header: ../header.html
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: no
+---
+
+```{r setup, message=FALSE, echo=FALSE}
+options(stringsAsFactors = FALSE)
+# library(sp)
+library(sf)
+library(raster)
+library(tidyverse)
+library(n2khab)
+# # library(plotly)
+# library(rasterVis)
+# library(stars)
+# library(units)
+# library(tmap)
+library(knitr)
+opts_chunk$set(
+  echo = TRUE,
+  dpi = 300
+)
+```
+
+
+# Exploring the watersurfaces data source
+
+```{r}
+ws <- read_sf(file.path(fileman_up("n2khab_data"), "10_raw/watersurfaces"),
+                   stringsAsFactors = TRUE) # for exploring unique values
+```
+
+
+```{r}
+ws %>% 
+  st_drop_geometry %>% 
+  summary
+```
+
+Number of unique values of numeric variable `HYLAC`:
+
+```{r}
+ws$HYLAC %>% unique %>% length
+```
+
+```{r eval=FALSE}
+ul <- function(x) x %>% unique %>% length
+list(ws$HYLAC) %>% 
+  lapply(ul)
+```
+
+How many `NA` values for numeric variable `HYLAC`?
+
+```{r}
+ws$HYLAC %>% is.na %>% sum
+```
+
+Potential issues:
+
+- `WTRLICHC`: 10 `<Null>` values which should be `NA`
+- `HYLAC`: `0` values should be `NA`
+- `NAAM`: 5 `<Null>` values which should be `NA`
+- `CONNECT`: not yet conforming to the codes in the metadata report (Packet et al 2018)
+- There seems to be a mistake in the (explanation of) classes of `CONNECT` in the metadata report (Packet et al 2018): 'inzonder' vs. 'uitmet'
+
+
+# Tidyverse-styled, internationalized column names when using the data source in R
+
+```{r eval = FALSE}
+ws %>% colnames %>% cat(sep = "\n")
+```
+
+data source variable          data frame variable
+----------------------        ---------------------
+`WVLC`                        `polygon_id`
+`WTRLICHC`                    `altcode_waterbody`
+`HYLAC`                       `altcode_hyla`
+`NAAM`                        `name`
+`GEBIED`                      `area_name`
+`KRWTYPE`                     `watertype_wfd `
+`KRWTYPES`                    `watertype_wfd_status`
+`DIEPKL`                      `waterdepth_class`
+`CONNECT`                     `connectivity`
+`FUNCTIE`                     `usage`
+
+Other considerations for the R object:
+
+- not uptaking `OPPWVL` & `OMTWVL` (area & perimeter are easily calculated etc)
+- sort by `polygon_id`
+- add translations to long text for `watertype_wfd `, `watertype_wfd_status`,
+`connectivity` and `usage`?
