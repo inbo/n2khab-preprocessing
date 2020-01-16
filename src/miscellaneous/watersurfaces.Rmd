@@ -68,11 +68,12 @@ ws$HYLAC %>% is.na %>% sum
 Potential issues:
 
 - `WTRLICHC`: 10 `<Null>` values which should be `NA`
-- `HYLAC`: `0` values should be `NA`
+- `HYLAC`: `0` values should be `NA` (empty values, i.e. no code available)
 - `NAAM`: 5 `<Null>` values which should be `NA`
-- `CONNECT`: not yet conforming to the codes in the metadata report (Packet et al 2018)
+- `CONNECT`, `KRWTYPES`: levels in the dataset do not yet conform to the codes in the metadata report (Packet et al 2018)
 - There seems to be a mistake in the (explanation of) classes of `CONNECT` in the metadata report (Packet et al 2018): 'inzonder' vs. 'uitmet'
 
+These aspects will ± be taken care of by `read_watersurfaces()`.
 
 # Tidyverse-styled, internationalized column names when using the data source in R
 
@@ -93,7 +94,7 @@ data source variable          data frame variable
 `CONNECT`                     `connectivity`
 `FUNCTIE`                     `usage`
 
-Other considerations for the R object:
+Other considerations for the R object returned by `read_watersurfaces()`:
 
 - not uptaking `OPPWVL` & `OMTWVL` (area & perimeter are easily calculated etc) -- OK
 - sort by `polygon_id` -- OK
