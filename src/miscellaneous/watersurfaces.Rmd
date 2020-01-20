@@ -1,0 +1,110 @@
+---
+title: "Handling the watersurfaces data source"
+date: '`r paste("Version",lubridate::now())`'
+output:
+  html_notebook:
+    number_sections: yes
+    code_folding: hide
+    includes:
+      in_header: ../header.html
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: no
+---
+
+```{r setup, message=FALSE, echo=FALSE}
+options(stringsAsFactors = FALSE)
+# library(sp)
+library(sf)
+library(raster)
+library(tidyverse)
+library(n2khab)
+# # library(plotly)
+# library(rasterVis)
+# library(stars)
+# library(units)
+# library(tmap)
+library(knitr)
+opts_chunk$set(
+  echo = TRUE,
+  dpi = 300
+)
+```
+
+
+# Exploring the watersurfaces data source
+
+```{r}
+ws <- read_sf(file.path(fileman_up("n2khab_data"), "10_raw/watersurfaces"),
+                   stringsAsFactors = TRUE) # for exploring unique values
+```
+
+
+```{r}
+ws %>% 
+  st_drop_geometry %>% 
+  summary
+```
+
+Number of unique values of numeric variable `HYLAC`:
+
+```{r}
+ws$HYLAC %>% unique %>% length
+```
+
+```{r eval=FALSE}
+ul <- function(x) x %>% unique %>% length
+list(ws$HYLAC) %>% 
+  lapply(ul)
+```
+
+How many `NA` values for numeric variable `HYLAC`?
+
+```{r}
+ws$HYLAC %>% is.na %>% sum
+```
+
+Potential issues:
+
+- `WTRLICHC`: 10 `<Null>` values which should be `NA`
+- `HYLAC`: `0` values should be `NA` (empty values, i.e. no code available)
+- `NAAM`: 5 `<Null>` values which should be `NA`
+- `CONNECT`, `KRWTYPES`: levels in the dataset do not yet conform to the codes in the metadata report (Packet et al 2018)
+- There seems to be a mistake in the (explanation of) classes of `CONNECT` in the metadata report (Packet et al 2018): 'inzonder' vs. 'uitmet'
+
+These aspects will ± be taken care of by `read_watersurfaces()`.
+
+# Tidyverse-styled, internationalized column names when using the data source in R
+
+```{r eval = FALSE}
+ws %>% colnames %>% cat(sep = "\n")
+```
+
+data source variable          data frame variable
+----------------------        ---------------------
+`WVLC`                        `polygon_id` -- note: these are currently not unique [^note]
+`WTRLICHC`                    `wfd_code`
+`HYLAC`                       `hyla_code`
+`NAAM`                        `name`
+`GEBIED`                      `area_name`
+`KRWTYPE`                     `wfd_type `
+`KRWTYPES`                    `wfd_type_certain`
+`DIEPKL`                      `depth_class`
+`CONNECT`                     `connectivity`
+`FUNCTIE`                     `usage`
+
+Other considerations for the R object returned by `read_watersurfaces()`:
+
+- not uptaking `OPPWVL` & `OMTWVL` (area & perimeter are easily calculated etc) -- OK
+- sort by `polygon_id` -- OK
+- add translations to long text for `wfd_type `,
+`connectivity` and `usage`? -- OK, but not by default
+- converting null / 0 values to `NA` -- OK
+- combining polygons with same `WVLC` value into a multipolygon -- no (see note with `polygon_id`)
+
+[^note]: A new version of the data source is now underway and will effectively 
+provide unique codes.
+So while it is not unique in the current version, we will apply this variable name anyway.
+
+
