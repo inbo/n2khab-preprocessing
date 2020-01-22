@@ -5,7 +5,7 @@ we can implement directly as follows:
 
 ```{r}
 soilmap_simple <- read_soilmap(use_processed = FALSE,
-                               standardize_polders = TRUE,
+                               standardize_coastalplain = TRUE,
                                simplify = TRUE)
 ```
 
