@@ -39,10 +39,6 @@ hs_attr <-
 ```{r}
 hs_attr %>% 
   write_tsv("data/hs_attr.tsv")
-  write_vc("data/habitatsprings_df",
-           optimize = FALSE,
-           sorting = "id",
-           na = "")
 ```
 
 Not automatically executed but to be done manually:
