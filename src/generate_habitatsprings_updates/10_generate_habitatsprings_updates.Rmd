@@ -1,0 +1,62 @@
+# Strategy for updating attributes, coordinates and even new locations (rows)
+
+1. load current data source as `sf` object with `read_habitatsprings()`
+1. write attributes, with xy-coordinates, to:
+  - tsv (tab separated values). This one is only meant for git version control.
+  - googlesheet
+1. after updating googlesheet, read it back in
+1. with the result, overwrite the tsv-file
+1. use the new dataframe to replace attributes of `sf` object (depending on the specific change, specific handling could be done)
+1. write new `sf` object to geojson format RFC7946
+
+New locations can however also be retrieved from another, separate input layer, and added to the existing `sf` object.
+
+See also the `mapedit` project that allows to create / edit spatial `sf` objects in a graphical interface, but not yet attributes.
+
+# Execution
+
+## Load current version
+
+```{r paged.print = FALSE}
+path <- fileman_up("n2khab_data")
+file <-  "10_raw/habitatsprings/habitatsprings.geojson"
+filepath <- file.path(path, file)
+habitatsprings <- read_sf(filepath)
+habitatsprings
+```
+
+## Write attributes
+
+```{r paged.print = FALSE}
+oldopt <- options(digits = 15)
+hs_attr <- 
+  habitatsprings %>%
+  mutate(X = st_coordinates(.)[,1],
+         Y = st_coordinates(.)[,2]) %>% 
+  st_drop_geometry()
+```
+
+```{r}
+hs_attr %>% 
+  write_tsv("data/hs_attr.tsv")
+  write_vc("data/habitatsprings_df",
+           optimize = FALSE,
+           sorting = "id",
+           na = "")
+```
+
+Not automatically executed but to be done manually:
+
+```{r eval=FALSE}
+hs_gs <- gs_key("1YCClw_1psllIwSNYZhol38dX4yqA674j95u6lfroXmU")
+ws_name <- lubridate::today() %>% as.character
+hs_gs %>% 
+  gs_ws_new(ws_name)
+hs_gs <- gs_key("1YCClw_1psllIwSNYZhol38dX4yqA674j95u6lfroXmU")
+hs_gs %>% 
+  gs_edit_cells(ws = ws_name,
+                input = hs_attr)
+```
+
+
+
