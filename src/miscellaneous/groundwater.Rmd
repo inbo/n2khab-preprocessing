@@ -340,7 +340,7 @@ mpg <-
                    select(MeetpuntWID, MeetpuntGroepWID), by = "MeetpuntWID") %>% 
     inner_join(tbl(watina, "vwDimMeetpuntGroep"), by = "MeetpuntGroepWID") %>% 
     collect %>% 
-    filter(str_detect(MeetpuntGroepCode, "Gr_"))
+    filter(str_detect(MeetpuntGroepCode, "Gr_....+"))
 ```
 
 Frequency of piezometers per group:
@@ -421,23 +421,7 @@ result %>%
     table
 ```
 
-The one group with 11 piezometers:
-
-```{r out.width='800px', out.height='500px'}
-result %>% 
-    filter(is.na(cluster_id)) %>% 
-    count(MeetpuntGroepCode) %>% 
-    filter(n > 3) %>% 
-    semi_join(result, .,
-              by = "MeetpuntGroepCode") %>% 
-    as_points(xvar = "MeetpuntXCoordinaat",
-              yvar = "MeetpuntYCoordinaat") %>% 
-    mapview::mapview(zcol = "MeetpuntGroepCode")
-```
-
-The locations of `Gr_WAR` are spread over > 1 km.
-
-Interactive histogram of within-cluster distances (for not-yet clustered piezometers):
+Interactive histogram of within-cluster distances (for groups with at least one not-yet clustered piezometer):
 
 ```{r warning=FALSE}
 distances_unclustered <- 
