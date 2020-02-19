@@ -327,6 +327,152 @@ gwfilters %>%
 ```
 
 
+### Exploring well clusters
+
+Taking the piezometer groups from Watina DWH:
+
+```{r}
+library(watina)
+watina <- connect_watina()
+mpg <- 
+    tbl(watina, "vwDimMeetpunt") %>% 
+    inner_join(tbl(watina, "m2mMeetpuntGroep") %>% 
+                   select(MeetpuntWID, MeetpuntGroepWID), by = "MeetpuntWID") %>% 
+    inner_join(tbl(watina, "vwDimMeetpuntGroep"), by = "MeetpuntGroepWID") %>% 
+    collect %>% 
+    filter(str_detect(MeetpuntGroepCode, "Gr_"))
+```
+
+Frequency of piezometers per group:
+
+```{r}
+mpg %>% 
+  count(MeetpuntGroepCode) %>% 
+  pull(n) %>% 
+  table
+```
+
+
+Comparing this with cluster result:
+
+```{r}
+result <- 
+    tbl(watina, "vwDimMeetpunt") %>% 
+    collect %>% 
+    rename(x = MeetpuntXCoordinaat,
+           y = MeetpuntYCoordinaat) %>% 
+    cluster_locs %>% 
+    select(MeetpuntCode, x, y, cluster_id) %>% 
+    group_by(cluster_id) %>% 
+    mutate(cluster_size = n()) %>% 
+    ungroup %>% 
+    filter(cluster_size > 1) %>% 
+    full_join(mpg %>% select(MeetpuntCode, MeetpuntGroepCode, contains("Coord")),
+              by = "MeetpuntCode")
+```
+
+
+```{r}
+result$MeetpuntGroepCode %>% is.na %>% sum
+```
+
+This result says that > 1000 piezometers, clustered by `cluster_locs()` (within distance of 2 m), are not defined by groups in Watina.
+
+On a map:
+
+```{r out.width='1600px', out.height='500px'}
+result %>% 
+    filter(is.na(MeetpuntGroepCode)) %>% 
+    as_points() %>% 
+    mapview::mapview(zcol = "cluster_id")
+```
+
+Inspecting cluster-piezometers from Watina, not clustered by `cluster_loc()`:
+
+```{r}
+result$cluster_id %>%  is.na %>% sum
+```
+
+
+```{r out.width='1600px', out.height='500px'}
+result %>% 
+    filter(is.na(cluster_id)) %>% 
+    as_points(xvar = "MeetpuntXCoordinaat",
+              yvar = "MeetpuntYCoordinaat") %>% 
+    mapview::mapview(zcol = "MeetpuntGroepCode")
+```
+
+
+```{r}
+result %>% 
+    filter(is.na(cluster_id),
+           is.na(MeetpuntXCoordinaat) | is.na(MeetpuntYCoordinaat)) %>% 
+    nrow
+```
+
+36 groups have one remaining piezometer.
+So part of the clusters were actually clustered by `cluster_loc()`.
+
+```{r}
+result %>% 
+    filter(is.na(cluster_id)) %>% 
+    count(MeetpuntGroepCode) %>% 
+    pull(n) %>% 
+    table
+```
+
+The one group with 11 piezometers:
+
+```{r out.width='800px', out.height='500px'}
+result %>% 
+    filter(is.na(cluster_id)) %>% 
+    count(MeetpuntGroepCode) %>% 
+    filter(n > 3) %>% 
+    semi_join(result, .,
+              by = "MeetpuntGroepCode") %>% 
+    as_points(xvar = "MeetpuntXCoordinaat",
+              yvar = "MeetpuntYCoordinaat") %>% 
+    mapview::mapview(zcol = "MeetpuntGroepCode")
+```
+
+The locations of `Gr_WAR` are spread over > 1 km.
+
+Interactive histogram of within-cluster distances (for not-yet clustered piezometers):
+
+```{r warning=FALSE}
+distances_unclustered <- 
+  result %>% 
+    filter(is.na(cluster_id),
+           !is.na(MeetpuntXCoordinaat),
+           !is.na(MeetpuntYCoordinaat)) %>% 
+    group_by(MeetpuntGroepCode) %>% 
+    summarise(maxdist = dist(data.frame(MeetpuntXCoordinaat, 
+                                        MeetpuntYCoordinaat)) %>% max)
+p <- 
+  distances_unclustered %>% 
+    ggplot(aes(x = maxdist))
+p + geom_histogram(binwidth = 5, fill = "white", colour = "grey70")
+```
+
+Zooming in below 50 m:
+
+```{r warning=FALSE}
+p + 
+  geom_histogram(binwidth = 1, fill = "white", colour = "grey70") +
+  xlim(0, 50)
+```
+
+Looking at percentiles:
+
+```{r}
+distances_unclustered %>% 
+  filter(is.finite(maxdist)) %>% 
+  pull(maxdist) %>% 
+  quantile(seq(0,1,0.1))
+```
+
+
+
 ## Groundwater levels: XG3
 
 ```{r}
@@ -577,5 +723,7 @@ chem_measurements %>%
 ```{r}
 dbDisconnect(con)
 ```
+
+
 
 
