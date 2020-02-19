@@ -329,11 +329,61 @@ gwfilters %>%
 
 ### Exploring well clusters
 
-Taking the piezometer groups from Watina DWH:
+#### Choosing a default value of max_dist argument in `cluster_locs()`
 
 ```{r}
 library(watina)
 watina <- connect_watina()
+```
+
+
+```{r}
+locs_terr <- get_locs(watina, 
+                     loc_type = "P", 
+                     loc_validity = c("VLD", "ENT"),
+                     collect = TRUE)
+clus1 <- 
+  locs_terr %>% 
+  cluster_locs(max_dist = 1) %>% 
+  group_by(cluster) %>% 
+  mutate(n1 = n()) %>% 
+  ungroup %>% 
+  select(-cluster)
+clus2 <- 
+  locs_terr %>% 
+  cluster_locs(max_dist = 2) %>% 
+  group_by(cluster) %>% 
+  mutate(n2 = n()) %>% 
+  ungroup %>% 
+  select(-cluster)
+clus1 %>% 
+  inner_join(clus2 %>% select(loc_code, n2), 
+             by = "loc_code") %>% 
+  mutate(clustermove = ifelse(n1 == 1 & n2 > 1,
+                              "changed_cluster",
+                              ifelse(n1 > 1 & n2 > 1,
+                              "cluster",
+                              "single"))
+         ) %>% 
+  as_points %>% 
+  arrange(desc(clustermove)) %>% 
+  mapview::mapview(zcol = "clustermove", 
+                   col.regions = c("red", "blue", "grey"))
+                   # map.types = "Wikimedia")
+
+locs_terr %>% 
+  cluster_locs(max_dist = 2) %>% 
+  count(cluster) %>% 
+  pull(n) %>% table
+```
+
+Based on this, we choose `max_dist = 2`.
+
+#### Comparing with the piezometer groups from Watina DWH.
+
+Taking the piezometer groups from Watina DWH:
+
+```{r}
 mpg <- 
     tbl(watina, "vwDimMeetpunt") %>% 
     inner_join(tbl(watina, "m2mMeetpuntGroep") %>% 
