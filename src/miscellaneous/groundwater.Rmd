@@ -421,14 +421,15 @@ result %>%
     table
 ```
 
-Interactive histogram of within-cluster distances (for groups with at least one not-yet clustered piezometer):
+Histogram of within-cluster distances (for groups with at least one not-yet clustered piezometer):
 
 ```{r warning=FALSE}
 distances_unclustered <- 
   result %>% 
-    filter(is.na(cluster_id),
-           !is.na(MeetpuntXCoordinaat),
-           !is.na(MeetpuntYCoordinaat)) %>% 
+  filter(is.na(cluster_id)) %>% 
+  semi_join(result, ., by = "MeetpuntGroepCode") %>% 
+  filter(!is.na(MeetpuntXCoordinaat),
+         !is.na(MeetpuntYCoordinaat)) %>% 
     group_by(MeetpuntGroepCode) %>% 
     summarise(maxdist = dist(data.frame(MeetpuntXCoordinaat, 
                                         MeetpuntYCoordinaat)) %>% max)
