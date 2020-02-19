@@ -352,6 +352,12 @@ mpg %>%
   table
 ```
 
+Note that there are some single-piezometer groups.
+
+```{r}
+mpg %>% nrow
+```
+
 
 Comparing this with cluster result:
 
@@ -402,6 +408,7 @@ result %>%
     mapview::mapview(zcol = "MeetpuntGroepCode")
 ```
 
+Some of these have no coordinates:
 
 ```{r}
 result %>% 
@@ -439,12 +446,12 @@ p <-
 p + geom_histogram(binwidth = 5, fill = "white", colour = "grey70")
 ```
 
-Zooming in below 50 m:
+Zooming in below 20 m:
 
 ```{r warning=FALSE}
 p + 
   geom_histogram(binwidth = 1, fill = "white", colour = "grey70") +
-  xlim(0, 50)
+  xlim(0, 20)
 ```
 
 Looking at percentiles:
