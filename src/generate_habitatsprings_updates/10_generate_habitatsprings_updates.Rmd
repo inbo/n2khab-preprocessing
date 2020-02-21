@@ -82,6 +82,7 @@ hs_attr %>%
          Y = Y %>% `attributes<-`(NULL)
          ) %>% 
   all.equal(hs_attr_new[,1:10])
+# TRUE
 ```
 
 Inspecting and rearranging column order:
@@ -135,6 +136,7 @@ hs_attr_new2 %>%
          Y = Y %>% `attributes<-`(NULL)
          ) %>% 
   all.equal(hs_attr_new)
+# TRUE
 ```
 
 
