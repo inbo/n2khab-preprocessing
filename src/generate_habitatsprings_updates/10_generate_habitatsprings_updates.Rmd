@@ -151,4 +151,27 @@ habitatsprings_new %>%
            delete_dsn = TRUE)
 ```
 
+# Final file checks
+
+```{r paged.print=FALSE}
+habitatsprings_new2 <- read_sf("habitatsprings.geojson")
+habitatsprings_new2
+```
+
+Are all attributes and coordinates the same as in the prepared sf object?
+
+```{r}
+habitatsprings_new2 %>%
+  mutate(X = st_coordinates(.)[,1],
+         Y = st_coordinates(.)[,2]) %>% 
+  st_drop_geometry() %>% 
+  all.equal(
+    habitatsprings_new %>%
+      mutate(X = st_coordinates(.)[,1],
+             Y = st_coordinates(.)[,2]) %>% 
+      st_drop_geometry()
+  )
+# TRUE
+```
+
 
