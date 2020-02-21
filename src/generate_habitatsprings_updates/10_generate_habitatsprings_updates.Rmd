@@ -54,5 +54,99 @@ hs_gs %>%
                 input = hs_attr)
 ```
 
+## Manual steps for updating to data from gsheet-tab '2020-02-07'
+
+### Read from googlesheet and straighten data
+
+Setting tab name:
+
+```{r eval=FALSE}
+ws_name <- "2020-02-07"
+```
+
+Reading the information:
+
+```{r eval=FALSE}
+hs_gs <- gs_key("1YCClw_1psllIwSNYZhol38dX4yqA674j95u6lfroXmU")
+hs_attr_new <- 
+  hs_gs %>% 
+  gs_read(ws = ws_name) %>% 
+  arrange(id)
+```
+
+Compare columns that should match: are they still the same?
+
+```{r}
+hs_attr %>% 
+  mutate(X = X %>% `attributes<-`(NULL),
+         Y = Y %>% `attributes<-`(NULL)
+         ) %>% 
+  all.equal(hs_attr_new[,1:10])
+```
+
+Inspecting and rearranging column order:
+
+```{r eval=FALSE}
+hs_attr_new <- 
+  hs_attr_new %>% 
+  select(1:4, 
+         system_type, 
+         habitattype, 
+         unit_id, 
+         everything())
+hs_attr_new %>% 
+  glimpse
+```
+
+
+### Overwrite tsv file
+
+```{r eval=FALSE}
+hs_attr_new %>% 
+   write_tsv("data/hs_attr.tsv")
+```
+
+### Update sf object
+
+```{r eval=FALSE, paged.print=FALSE}
+habitatsprings_new <- 
+  habitatsprings %>% 
+  bind_cols(hs_attr_new %>% select(system_type, unit_id)) %>% 
+  select(1:4, 
+         system_type, 
+         habitattype, 
+         unit_id, 
+         everything())
+habitatsprings_new
+```
+
+## Recheck attributes of sf object
+
+When extracting attributes from new sf object, are they the same as the prepared attributes?
+
+```{r}
+hs_attr_new2 <- 
+  habitatsprings_new %>%
+  mutate(X = st_coordinates(.)[,1],
+         Y = st_coordinates(.)[,2]) %>% 
+  st_drop_geometry()
+hs_attr_new2 %>% 
+  mutate(X = X %>% `attributes<-`(NULL),
+         Y = Y %>% `attributes<-`(NULL)
+         ) %>% 
+  all.equal(hs_attr_new)
+```
+
+
+## Write geojson file (format RFC7946)
+
+Using current working directory to write new file this (overwrite in old folder as a manual step outside R):
+
+```{r}
+habitatsprings_new %>% 
+  st_write("habitatsprings.geojson",
+           layer_options = "RFC7946=YES",
+           delete_dsn = TRUE)
+```
 
 
