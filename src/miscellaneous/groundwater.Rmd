@@ -185,7 +185,7 @@ gwfilters %>%
   collect
 ```
 
-Another way of obtaining this seems to be:
+A way to obtain unique values of `PeilpuntCode` seems to be:
 
 ```{r}
 gwfilters %>% 
@@ -193,10 +193,19 @@ gwfilters %>%
   count
 ```
 
-
 Info on an odd record (this seems a mistake):
 
-```{r paged.print = FALSE, message=FALSE}
+```{r paged.print=FALSE, message=FALSE}
+gwfilters %>% 
+  filter(PeilpuntOpenbaarheidTypeCode == "PLME", PeilpuntOpenbaarheidCode == "UNKWN") %>%
+  count(PeilpuntCode) %>% 
+  filter(n > 1) %>% 
+  inner_join(gwfilters)
+```
+
+Clearly, several values of `PeilpuntStatusCode` co-occur in some cases (below) which should not be a problem (we filter them), however after filtering for `PeilpuntStatusCode` we should drop the column and make everything unique.
+
+```{r message=FALSE}
 gwfilters %>% 
   distinct(PeilpuntCode,
            MeetpuntWID,
@@ -205,8 +214,69 @@ gwfilters %>%
            ReferentieNiveauMaaiveld) %>%
   count(PeilpuntCode) %>% 
   filter(n > 1) %>% 
-  inner_join(gwfilters)
+  inner_join(gwfilters %>% 
+               distinct(PeilpuntCode,
+                        MeetpuntWID,
+                        PeilpuntStatusCode,
+                        PeilbuisLengte,
+                        ReferentieNiveauMaaiveld)) %>% 
+  arrange(PeilpuntCode)
 ```
+
+Further, note that adding `PeilpuntToestandCode` and `PeilpuntToestandNaam` does not matter:
+
+```{r}
+gwfilters %>% 
+  distinct(PeilpuntCode,
+           MeetpuntWID,
+           PeilpuntStatusCode,
+           PeilpuntToestandCode, 
+           PeilpuntToestandNaam,
+           PeilbuisLengte,
+           ReferentieNiveauMaaiveld) %>% 
+  count
+```
+
+```{r}
+gwfilters %>% 
+  distinct(PeilpuntCode,
+           PeilpuntVersie,
+           MeetpuntWID,
+           # PeilpuntStatusCode,
+           PeilpuntToestandCode, 
+           PeilpuntToestandNaam,
+           PeilbuisLengte,
+           ReferentieNiveauMaaiveld) %>% 
+  count
+```
+
+
+Variability of `PeilpuntToestandCode`:
+
+```{r}
+gwfilters %>% 
+  filter(PeilpuntStatusCode %in% c("VLD","ENT","CLD")) %>% 
+  count(PeilpuntToestandCode, PeilpuntToestandNaam)
+```
+
+Adding `ReferentieNiveauTAW` does add one row, which points at a mistake:
+
+```{r}
+gwfilters %>% 
+  distinct(PeilpuntCode,
+           PeilpuntVersie,
+           MeetpuntWID,
+           # PeilpuntStatusCode,
+           PeilpuntToestandCode, 
+           PeilpuntToestandNaam,
+           PeilbuisLengte,
+           ReferentieNiveauMaaiveld,
+           ReferentieNiveauTAW
+  ) %>% head(100) %>% collect %>%  View
+  count
+```
+
+
 
 Different available combinations:
 
@@ -242,7 +312,7 @@ The table `vwDimPeilpunt` will be needed to select the shallow groundwater filte
 Let's explore that a little more:
 
 ```{r}
-gwfilters <- 
+gwfilters_distinct <- 
   gwfilters %>% 
   filter(PeilpuntStatusCode %in% c("VLD","ENT","CLD")) %>% 
   distinct(PeilpuntCode,
@@ -254,19 +324,19 @@ gwfilters <-
 
 
 ```{r}
-gwfilters %>% 
+gwfilters_distinct %>% 
   dbplot_histogram(ReferentieNiveauMaaiveld)
 ```
 
 ```{r}
-gwfilters %>% 
+gwfilters_distinct %>% 
   filter(is.na(ReferentieNiveauMaaiveld)) %>% 
   collect %>% 
   nrow
 ```
 
 ```{r}
-gwfilters %>% 
+gwfilters_distinct %>% 
   select(1) %>% 
   collect %>% 
   nrow
@@ -274,7 +344,7 @@ gwfilters %>%
 
 
 ```{r}
-gwfilters %>% 
+gwfilters_distinct %>% 
     mutate(filterbase = -(PeilbuisLengte - ReferentieNiveauMaaiveld)) %>% 
     ggplot(aes(x = filterbase)) + 
     geom_histogram(colour = "grey90") +
@@ -283,7 +353,7 @@ gwfilters %>%
 ```
 
 ```{r}
-gwfilters %>% 
+gwfilters_distinct %>% 
     collect %>%
     mutate(filterbase = -(PeilbuisLengte - ReferentieNiveauMaaiveld),
            shallow = filterbase > -3) %>% 
@@ -295,7 +365,7 @@ gwfilters %>%
 ```
 
 ```{r}
-gwfilters %>% 
+gwfilters_distinct %>% 
     mutate(filterbase = -(PeilbuisLengte - ReferentieNiveauMaaiveld)) %>% 
     filter(filterbase == -3) %>% 
     select(PeilpuntCode) %>% 
@@ -306,7 +376,7 @@ gwfilters %>%
 Just including the filterdepths of exactly 3 meters deep would however add 129 filters, so let's include that one as well (it probably has to do with rounding effects):
 
 ```{r}
-gwfilters %>% 
+gwfilters_distinct %>% 
     collect %>%
     mutate(filterbase = -(PeilbuisLengte - ReferentieNiveauMaaiveld),
            shallow = filterbase >= -3) %>% 
@@ -318,7 +388,7 @@ gwfilters %>%
 ```
 
 ```{r}
-gwfilters %>% 
+gwfilters_distinct %>% 
     mutate(filterbase = -(PeilbuisLengte - ReferentieNiveauMaaiveld)) %>% 
     filter(filterbase >= -3) %>% 
     select(PeilpuntCode) %>% 
