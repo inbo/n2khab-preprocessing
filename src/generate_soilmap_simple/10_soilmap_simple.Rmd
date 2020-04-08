@@ -6,8 +6,46 @@ we can implement directly as follows:
 ```{r}
 soilmap_simple <- read_soilmap(use_processed = FALSE,
                                standardize_coastalplain = TRUE,
-                               simplify = TRUE)
+                               simplify = TRUE,
+                               explan = TRUE)
 ```
+
+# Split off a lookup table with factor levels & their explanations
+
+```{r}
+soilmap_df <-
+    soilmap_simple %>%
+    st_drop_geometry %>% 
+    select(contains("bsm_mo"), -bsm_mo_soilunitype)
+subjects <- soilmap_df %>% 
+    select(-contains("_explan")) %>% 
+    colnames
+explanations <- tibble()
+for (i in 1:6) {
+    explanations <-
+        bind_rows(explanations,
+                  tibble(subject = subjects[i],
+                         code = soilmap_df %>% 
+                                    pull((i * 2 - 1)) %>% 
+                                    levels,
+                         explan = soilmap_df %>% 
+                                    pull((i * 2)) %>% 
+                                    levels
+                  )
+                  )
+}
+```
+
+```{r}
+soilmap_simple <- 
+    soilmap_simple %>% 
+    select(-contains("_explan"))
+```
+
+```{r paged.print=FALSE}
+soilmap_simple
+```
+
 
 # Writing the result as a GeoPackage
 
@@ -27,6 +65,14 @@ st_write(soilmap_simple,
          layer = "soilmap_simple", 
          driver = "GPKG",
          delete_dsn = TRUE)
+
+con <- dbConnect(SQLite(),
+                 dbname = file.path(datapath, 
+                                    "20_processed/soilmap_simple/soilmap_simple.gpkg"))
+
+dbWriteTable(con, "explanations", explanations)
+
+dbDisconnect(con)
 ```
 
 
