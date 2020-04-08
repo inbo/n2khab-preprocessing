@@ -45,7 +45,7 @@ library(stringr)
 library(knitr)
 library(n2khab)
 library(sf)
-library(RSQLite)
+library(DBI)
 opts_chunk$set(
   echo = TRUE,
   dpi = 300,

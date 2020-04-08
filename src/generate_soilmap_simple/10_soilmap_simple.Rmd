@@ -66,7 +66,7 @@ st_write(soilmap_simple,
          driver = "GPKG",
          delete_dsn = TRUE)
 
-con <- dbConnect(SQLite(),
+con <- dbConnect(RSQLite::SQLite(),
                  dbname = file.path(datapath, 
                                     "20_processed/soilmap_simple/soilmap_simple.gpkg"))
 
