@@ -66,11 +66,18 @@ st_write(soilmap_simple,
          driver = "GPKG",
          delete_dsn = TRUE)
 
+gpkg_contents_add <- 
+    tribble(
+        ~table_name, ~data_type, ~identifier,
+        "explanations", "aspatial", "explanations"
+    )
+
 con <- dbConnect(RSQLite::SQLite(),
                  dbname = file.path(datapath, 
                                     "20_processed/soilmap_simple/soilmap_simple.gpkg"))
 
 dbWriteTable(con, "explanations", explanations)
+devnull <- dbAppendTable(con, "gpkg_contents", gpkg_contents_add)
 
 dbDisconnect(con)
 ```
