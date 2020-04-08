@@ -159,7 +159,7 @@ habmap_types_sf <- habmap_sf %>%
 
 st_write(habmap_types_sf, file.path(path,"20_processed/habitatmap_stdized/habitatmap_stdized.gpkg"), layer = "habitatmap_polygons", driver = "GPKG")
 
-con = dbConnect(SQLite(),
+con = dbConnect(RSQLite::SQLite(),
                 dbname = file.path(path,"20_processed/habitatmap_stdized/habitatmap_stdized.gpkg"))
 
 dbWriteTable(con, "habitatmap_types", habmap_types)
