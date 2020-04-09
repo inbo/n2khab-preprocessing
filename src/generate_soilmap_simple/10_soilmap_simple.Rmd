@@ -28,7 +28,7 @@ for (i in 1:6) {
                          code = soilmap_df %>% 
                                     pull((i * 2 - 1)) %>% 
                                     levels,
-                         explan = soilmap_df %>% 
+                         name = soilmap_df %>% 
                                     pull((i * 2)) %>% 
                                     levels
                   )
