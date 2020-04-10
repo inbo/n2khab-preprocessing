@@ -5,7 +5,7 @@ More specifically, it generates _those_ processed data sources that are worth sa
 Providing readily processed datasets makes sense in the case of time-consuming calculations, despite the reproducibility given the availability of a preprocessing workflow.
 Finally, the repo will also provide datachecks for the workflows (explicit checking of file integrity and version).
 
-The repo is a companion to the R package **[n2khab](https://github.com/inbo/n2khab)**, which provides functions that return several datasets as standardized R-objects, as well as functions to do certain preprocessing steps.
+The repo is a companion to the R package **[n2khab](https://inbo.github.io/n2khab)**, which provides functions that return several datasets as standardized R-objects, as well as functions to do certain preprocessing steps.
 So, if you're just looking for a standardized way of reading existing (raw or processed) data sources into R, look no further than the package!
 That is, unless the data source is not yet covered there -> [contribute](#you-are-welcome-to-contribute) to this repo!
 
@@ -44,14 +44,14 @@ You should definitely have a look at the distribution and setup of standard data
 vignette("v020_datastorage", package = "n2khab")
 ```
 
-Processed data, or the results of dataset-specific reading functions (see [n2khab](https://github.com/inbo/n2khab) package), are to be [tidied](https://r4ds.had.co.nz/tidy-data.html#tidy-data-1) and as much as possible internationalized:
+Processed data, or the results of dataset-specific reading functions (see [n2khab](https://inbo.github.io/n2khab) package), are to be [tidied](https://r4ds.had.co.nz/tidy-data.html#tidy-data-1) and as much as possible internationalized:
 
 - availability of English names for types, environmental pressures, ...
 Other languages can be accomodated as well;
 - English names for table headings (dataframe variables).
 
-Note that the [n2khab](https://github.com/inbo/n2khab) package holds some textual reference data files itself.
-The code to reproduce those is part of the [n2khab](https://github.com/inbo/n2khab) repository.
+Note that the [n2khab](https://inbo.github.io/n2khab) package holds some textual reference data files itself.
+The code to reproduce those is part of the [n2khab](https://inbo.github.io/n2khab) repository.
 
 
 #### Coding tools: it's never too late for learning!
