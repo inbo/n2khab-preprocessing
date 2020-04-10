@@ -48,7 +48,7 @@ library(n2khab)
 library(git2rdata)
 library(googlesheets)
 library(kableExtra)
-library(RSQLite) 
+library(DBI) 
 
 opts_chunk$set(
   echo = TRUE,

@@ -1,5 +1,5 @@
 ---
-title: "Processing of the aquatic habitat map"
+title: "Generating updates of habitatsprings"
 # subtitle: "x"
 date: "`r lubridate::now()`"
 link-citations: true
@@ -37,27 +37,18 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-
 library(sf)
-library(rgdal)
 library(tidyverse)
-library(stringr)
 library(knitr)
 library(n2khab)
-library(git2rdata)
 library(googlesheets)
-library(kableExtra)
-library(DBI)
-#devtools::install_github("inbo/inborutils", ref = "sessioninfo")
-library(inborutils)
-
 opts_chunk$set(
   echo = TRUE,
   dpi = 300
 )
 ```
 
-**Note: this is a bookdown project, supposed to be run from within the `src/generate_watersurfaces_hab` subfolder. You can use the `generate_watersurfaces_hab.Rproj` RStudio project file in this subfolder to run it.**
+**Note: this is a bookdown project, supposed to be run from within the `src/generate_habitatsprings_updates` subfolder. You can use the `generate_habitatsprings_updates.Rproj` RStudio project file in this subfolder to run it.**
 
 
 

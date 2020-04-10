@@ -23,7 +23,7 @@ straightforward. Table \@ref(tab:code_corrected) shows the corrected codes.
 
 ```{r, eval = FALSE}
 
-habmap_correction <-  gs_key("1Lltpq1_OQENZKrCmfDLuBiaZQ0_YCoGkFAqcOtFRdHg") %>%
+habmap_correction <-  gs_key("1PU9MDyJKZz2DOrKqb-SIIVmSaR1mh4Ke6v0WCqhr8t4") %>%
   gs_read(ws = 3)
 
 write_vc(habmap_correction,  "habmap_correction/habmap_correction",
@@ -159,7 +159,7 @@ habmap_types_sf <- habmap_sf %>%
 
 st_write(habmap_types_sf, file.path(path,"20_processed/habitatmap_stdized/habitatmap_stdized.gpkg"), layer = "habitatmap_polygons", driver = "GPKG")
 
-con = dbConnect(SQLite(),
+con = dbConnect(RSQLite::SQLite(),
                 dbname = file.path(path,"20_processed/habitatmap_stdized/habitatmap_stdized.gpkg"))
 
 dbWriteTable(con, "habitatmap_types", habmap_types)

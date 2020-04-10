@@ -1,0 +1,103 @@
+id	source	validity_status	name	system_type	habitattype	unit_id	area_m2	year	sbz	X	Y
+1	kalktufproject	gecontroleerd	Steenputbeek 2	rivulet	7220	1	50	2014	1	4.2756496	50.7077746
+2	kalktufproject	gecontroleerd	Steenputbeek 1	rivulet	7220	1	20	2014	1	4.278431	50.7137719
+3	kalktufproject	gecontroleerd	Duling	NA	7230	NA	0	2014	1	4.3043239	50.7155098
+4	kalktufproject	gecontroleerd	Kapittelbeek	NA	gh	NA	0	2014	1	4.2890398	50.7184435
+5	kalktufproject	gecontroleerd	Remersdaal 1	rivulet	7220	2	200	2014	1	5.9025649	50.735567
+6	kalktufproject	gecontroleerd	Remersdaal 2	rivulet	7220	2	500	2014	1	5.9040286	50.7355681
+7	anb	te controleren	Kesterbeek	unknown	7220,gh	32	0	0	1	4.3084522	50.7513556
+8	kalktufproject	gecontroleerd	Krindaal	rivulet	7220	3	800	2014	1	5.8320205	50.745719
+9	kalktufproject	gecontroleerd	Bois de Bilande	rivulet	7220	4	50	2014	1	4.5772421	50.7547578
+10	kalktufproject	gecontroleerd	KwintenHolleWeg	mire	7220	5	10	2014	1	5.8176321	50.750045
+11	kalktufproject	gecontroleerd	Liefdesbron	NA	gh	NA	0	2014	1	3.4986447	50.7633765
+12	kalktufproject	gecontroleerd	Rodebos	NA	gh	NA	0	2014	1	4.61783	50.7699246
+13	kalktufproject	gecontroleerd	Fonteinbos 1	NA	gh	NA	0	2014	1	3.5584025	50.7696267
+14	kalktufproject	gecontroleerd	Fonteinbos 2	unknown	7220	6	20	2014	1	3.5619183	50.7708667
+15	kalktufproject	gecontroleerd	Noorbeek	mire	7220	7	900	2014	1	5.7980832	50.7651284
+16	kalktufproject	gecontroleerd	Feelbos 1	rivulet	7220	8	130	2014	1	3.5379533	50.7719859
+17	inbo	te controleren	Watermolenbos	unknown	7220,gh	33	0	0	1	3.5449352	50.7747759
+18	kalktufproject	gecontroleerd	Meldertbos 2	rivulet	7220	9	10	2014	1	4.8322798	50.7810332
+19	kalktufproject	gecontroleerd	Meldertbos	NA	gh	NA	0	2014	1	4.8326443	50.7821618
+20	kalktufproject	gecontroleerd	Moen	mire	7220	10	10	2014	1	3.3758827	50.785436
+21	inbo	te controleren	Nieuwenhove	unknown	7220,gh	34	0	0	1	3.9784535	50.7907979
+22	inbo	te controleren	Elenebos	unknown	7220,gh	35	0	0	1	3.575218	50.7920503
+23	kalktufproject	gecontroleerd	Haren	rivulet	7220	11	10	2014	1	5.4038378	50.7914714
+24	inbo	te controleren	Margijsbos	unknown	7220,gh	36	0	0	1	4.6029644	50.7964405
+25	kalktufproject	gecontroleerd	Keiberg	NA	gh	NA	0	2014	1	5.4532161	50.8011706
+26	kalktufproject	gecontroleerd	Keizersbron	NA	gh	NA	0	2014	1	4.4538638	50.8091474
+27	kalktufproject	gecontroleerd	Borgloon	rivulet	7220	12	50	2014	1	5.351446	50.8065654
+28	kalktufproject	gecontroleerd	Grootbos	rivulet	7220	13	30	2014	1	5.54892	50.8094526
+29	kalktufproject	gecontroleerd	Hasselbos	NA	gh	NA	0	2014	1	5.455619	50.8124757
+30	kalktufproject	gecontroleerd	Zammelen	mire	7220	14	50	2014	1	5.4040874	50.8131411
+31	kalktufproject	gecontroleerd	Zoet Water 2	mire	7220	15	200	2014	1	4.6564796	50.8214077
+32	kalktufproject	gecontroleerd	Wijngaardbos 1	rivulet	7220	16	200	2014	1	5.4758737	50.8171063
+33	kalktufproject	gecontroleerd	Zoet Water 1	NA	gh	NA	0	2014	1	4.6624837	50.8225531
+34	kalktufproject	gecontroleerd	Parkbos	NA	gh	NA	0	2014	1	3.849598	50.8378995
+35	kalktufproject	gecontroleerd	Boterhoek 1	rivulet	7220	17	50	2014	1	3.7758523	50.8379
+36	kalktufproject	gecontroleerd	Steenbergen	NA	gh	NA	0	2014	1	3.8025556	50.8436148
+37	inbo	te controleren	Bruulbos	unknown	7220,gh	37	0	0	1	4.7979974	50.8493975
+38	inbo	te controleren	Vallenbos	unknown	7220,gh	38	0	0	1	4.2592726	50.8516067
+39	kalktufproject	gecontroleerd	Wolfsputten	NA	gh	NA	0	2014	1	4.2518896	50.8531852
+40	kalktufproject	gecontroleerd	Enamebos	mire	7220	18	300	2014	1	3.6494108	50.8537526
+41	kalktufproject	gecontroleerd	Koebos-Langebos	NA	gh	NA	0	2014	1	4.795121	50.8577963
+42	kalktufproject	gecontroleerd	Korbeek-Lo	NA	gh	NA	0	2014	1	4.7557433	50.8585849
+43	kalktufproject	gecontroleerd	Pellenberg	NA	gh	NA	0	2014	1	4.8088314	50.8710221
+44	inbo	te controleren	Zwalm	unknown	7220,gh	39	0	0	1	3.7529269	50.8724012
+45	kalktufproject	gecontroleerd	Torfbroek	NA	gh	NA	0	2014	1	4.5449936	50.925642
+46	kalktufproject	gecontroleerd	Lombergbos	NA	gh	NA	0	2014	1	4.1025604	50.7803258
+47	kalktufproject	gecontroleerd	Brandersbos	NA	gh	NA	0	2014	1	2.7679206	50.7965566
+48	kalktufproject	gecontroleerd	Hellegat	NA	gh	NA	0	2014	1	2.7583155	50.7863608
+49	kalktufproject	gecontroleerd	Baneberg	NA	gh	NA	0	2014	1	2.7579657	50.7803359
+50	kalktufproject	gecontroleerd	Monteberg zuid	NA	gh	NA	0	2014	1	2.8078273	50.7707775
+51	kalktufproject	gecontroleerd	Kemmelberg	NA	gh	NA	0	2014	1	2.8182477	50.7742871
+52	kalktufproject	gecontroleerd	Terrijst2	NA	gh	NA	0	2014	1	3.6903594	50.7850215
+53	kalktufproject	gecontroleerd	Terrijst1	NA	gh	NA	0	2014	1	3.6911066	50.7815703
+54	kalktufproject	gecontroleerd	Burreken 1	NA	gh	NA	0	2014	1	3.709748	50.8021705
+55	kalktufproject	gecontroleerd	Kluisbos centraal	NA	gh	NA	0	2014	1	3.5043517	50.7642217
+56	kalktufproject	gecontroleerd	Meise 1	mire	7220	19	150	2014	0	4.3206899	50.926153
+57	kalktufproject	gecontroleerd	Meise 2	mire	7220	19	50	2014	0	4.3227189	50.9278874
+58	kalktufproject	gecontroleerd	Hornebeek	rivulet	7220	20	100	2014	0	5.2384528	50.7216672
+59	kalktufproject	gecontroleerd	Zevenbronnen	NA	gh	NA	0	2014	0	5.1082177	50.7152034
+60	kalktufproject	gecontroleerd	Neerlanden	NA	gh	NA	0	2014	0	5.0810467	50.7807142
+61	kalktufproject	gecontroleerd	Fonteinbeek	rivulet	7220	21	10	2014	0	4.8444082999999996	50.8099866
+62	kalktufproject	gecontroleerd	Aardgat	NA	gh	NA	0	2014	0	4.9126524	50.8134516
+63	kalktufproject	gecontroleerd	Neervelp	NA	gh	NA	0	2014	0	4.807209	50.8168089
+64	kalktufproject	gecontroleerd	Meldertkerkhof	NA	gh	NA	0	2014	0	4.8424642	50.7896387
+65	kalktufproject	gecontroleerd	Rosdel	NA	gh	NA	0	2014	0	4.8513214	50.7696579
+66	kalktufproject	gecontroleerd	Overijse Fluxys	rivulet	7220	22	10	2014	0	4.512619	50.7318744
+67	kalktufproject	gecontroleerd	Laarbeekbos	mire	7220	23	50	2014	0	4.297848	50.8854138
+68	kalktufproject	gecontroleerd	Poelbos	rivulet	7220	24	80	2014	0	4.3123264	50.882499
+69	kalktufproject	gecontroleerd	Dielegembos	mire	7220	25	50	2014	0	4.321555	50.8869946
+70	kalktufproject	gecontroleerd	Klein-Gelmen	NA	gh	NA	0	2014	1	5.2861004	50.7732902
+71	kalktufproject	gecontroleerd	Molenbeemd	rivulet	7220	26	20	2014	0	5.5163576	50.8210239
+72	kalktufproject	gecontroleerd	Kwinten	rivulet	7220	27	100	2014	1	5.8125166	50.7513399
+73	kalktufproject	gecontroleerd	Mater-Kerkgate	mire	7220	28	50	2014	0	3.676738	50.8490249
+74	kalktufproject	gecontroleerd	Michelbeke	NA	gh	NA	0	2014	0	3.7533147	50.8236825
+75	kalktufproject	gecontroleerd	Mabroek	rivulet	7220	29	10	2014	0	5.9012548	50.7274686
+76	kalktufproject	gecontroleerd	Tongeren Noord	NA	gh	NA	0	2014	0	5.4541133	50.7943725
+77	kalktufproject	gecontroleerd	Werm	NA	gh	NA	0	2014	0	5.4718812	50.8281512
+78	kalktufproject	gecontroleerd	Karkool	NA	gh	NA	0	2014	1	3.9337441	50.7673633
+79	kalktufproject	gecontroleerd	Galmaarden 1	rivulet	7220	30	150	2014	1	3.9413906	50.7622864
+80	kalktufproject	gecontroleerd	Galmaarden 2	rivulet	7220	30	150	2014	1	3.9409292	50.7623351
+81	kalktufproject	gecontroleerd	Raspaille	NA	gh	NA	0	2014	1	3.941509	50.774071
+82	kalktufproject	gecontroleerd	Boterhoek 2	NA	gh	NA	0	2014	1	3.7769282	50.835381
+83	kalktufproject	gecontroleerd	Wijngaardbos 2	rivulet	7220	16	100	2014	1	5.4808115	50.8167466
+84	kalktufproject	gecontroleerd	Waltwilder	NA	gh	NA	0	2014	0	5.5343892	50.8652134
+85	kalktufproject	gecontroleerd	Remershoven	NA	gh	NA	0	2014	0	5.4647536	50.8558995
+86	kalktufproject	te controleren	Thaborberg	unknown	7220,gh	40	0	0	0	4.2805929	50.8556939
+87	kalktufproject	te controleren	Neerheide	unknown	7220,gh	41	0	0	0	4.2113554	50.8906724
+88	kalktufproject	te controleren	Kesterheide-Lombergbos	unknown	7220,gh	42	0	0	1	4.1110098	50.7839014
+89	kalktufproject	te controleren	Begijnenbos	unknown	7220,gh	43	0	0	1	4.3020639	50.7398785
+90	kalktufproject	te controleren	Maasdalbos	unknown	7220,gh	44	0	0	0	4.252525	50.710055
+91	kalktufproject	gecontroleerd	Burreken 2	NA	gh	NA	0	2014	1	3.7050964	50.8066002
+92	habkaart	gecontroleerd	Hoeselt	mire	7220	31	100	2017	0	5.4775467	50.8252914
+93	habkaart	te controleren	NA	unknown	7220,gh	45	0	0	0	3.5632762	50.7717109
+94	habkaart	te controleren	NA	unknown	7220,gh	46	0	0	0	3.6411035	50.8361947
+95	habkaart	te controleren	NA	unknown	7220,gh	47	0	0	0	4.2132857	50.7830679
+96	habkaart	te controleren	NA	unknown	7220,gh	48	0	0	0	4.0885062	50.7200706
+97	habkaart	te controleren	NA	unknown	7220,gh	49	0	0	0	3.8553092	50.7548358
+98	habkaart	te controleren	Feelbos 2	unknown	7220,gh	8	0	0	0	3.5385645	50.7687738
+99	habkaart	te controleren	NA	unknown	7220,gh	50	0	0	0	3.5872409	50.7887517
+100	habkaart	te controleren	NA	unknown	7220,gh	51	0	0	0	3.6371136	50.7384927
+101	habkaart	te controleren	NA	unknown	7220,gh	52	0	0	0	5.4052919	50.7954385
+102	habkaart	te controleren	NA	unknown	7220,gh	53	0	0	0	4.2872162	50.7118851
