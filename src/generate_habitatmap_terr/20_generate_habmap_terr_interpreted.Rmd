@@ -278,7 +278,7 @@ st_write(habmap_polygons_interpreted,
          driver = "GPKG",
          delete_dsn = TRUE)
 
-con = dbConnect(SQLite(),
+con = dbConnect(RSQLite::SQLite(),
                 dbname = file.path(
                   datapath, 
                   "20_processed/habitatmap_terr/habitatmap_terr.gpkg")

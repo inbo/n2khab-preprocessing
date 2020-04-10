@@ -47,7 +47,7 @@ library(n2khab)
 library(git2rdata)
 library(googlesheets)
 library(kableExtra)
-library(RSQLite)
+library(DBI)
 #devtools::install_github("inbo/inborutils", ref = "sessioninfo")
 library(inborutils)
 

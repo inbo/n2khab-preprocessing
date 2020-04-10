@@ -287,7 +287,7 @@ if(!dir.exists(file.path(path, "20_processed/watersurfaces_hab"))){
 
 st_write(watersurfaces_hab_polygons, file.path(path, "20_processed/watersurfaces_hab/watersurfaces_hab.gpkg"), layer = "watersurfaces_hab_polygons", driver = "GPKG")
 
-con = dbConnect(SQLite(),
+con = dbConnect(RSQLite::SQLite(),
                 dbname = file.path(path, "20_processed/watersurfaces_hab/watersurfaces_hab.gpkg"))
 
 dbWriteTable(con, "watersurfaces_hab_types", watersurfaces_hab_types)
