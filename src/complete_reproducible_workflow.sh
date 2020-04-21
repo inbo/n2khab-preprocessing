@@ -71,6 +71,16 @@ Rscript -e "rmarkdown::render_site(output_format = 'bookdown::html_document2',\
 
 
 
+# Generating soilmap_simple
+# ------------------------------
+
+(cd src/generate_soilmap_simple;\
+Rscript -e "rmarkdown::render_site(output_format = 'bookdown::html_document2',\
+                       encoding = 'UTF-8')"\
+)
+
+
+
 
 
 
