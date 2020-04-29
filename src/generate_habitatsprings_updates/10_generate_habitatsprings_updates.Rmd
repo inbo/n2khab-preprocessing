@@ -61,7 +61,7 @@ hs_gs %>%
 Setting tab name:
 
 ```{r eval=FALSE}
-ws_name <- "2020-02-07"
+ws_name <- "2020-04-29"
 ```
 
 Reading the information:
@@ -72,17 +72,6 @@ hs_attr_new <-
   hs_gs %>% 
   gs_read(ws = ws_name) %>% 
   arrange(id)
-```
-
-Compare columns that should match: are they still the same?
-
-```{r}
-hs_attr %>% 
-  mutate(X = X %>% `attributes<-`(NULL),
-         Y = Y %>% `attributes<-`(NULL)
-         ) %>% 
-  all.equal(hs_attr_new[,1:10])
-# TRUE
 ```
 
 Inspecting and rearranging column order:
@@ -99,6 +88,17 @@ hs_attr_new %>%
   glimpse
 ```
 
+Compare columns that should match: are they still the same?
+
+```{r}
+hs_attr %>% 
+  mutate(X = X %>% `attributes<-`(NULL),
+         Y = Y %>% `attributes<-`(NULL)
+         ) %>% 
+  all.equal(hs_attr_new)
+# [1] "Different number of rows"
+```
+
 
 ### Overwrite tsv file
 
@@ -112,12 +112,10 @@ hs_attr_new %>%
 ```{r eval=FALSE, paged.print=FALSE}
 habitatsprings_new <- 
   habitatsprings %>% 
-  bind_cols(hs_attr_new %>% select(system_type, unit_id)) %>% 
-  select(1:4, 
-         system_type, 
-         habitattype, 
-         unit_id, 
-         everything())
+  rbind(hs_attr_new %>% 
+          slice(n() - 1, n()) %>% 
+          st_as_sf(coords = c("X", "Y"), 
+                   crs = 4326))
 habitatsprings_new
 ```
 
