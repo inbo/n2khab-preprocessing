@@ -101,3 +101,5 @@ id	source	validity_status	name	system_type	habitattype	unit_id	area_m2	year	sbz	
 100	habkaart	te controleren	NA	unknown	7220,gh	51	0	0	0	3.6371136	50.7384927
 101	habkaart	te controleren	NA	unknown	7220,gh	52	0	0	0	5.4052919	50.7954385
 102	habkaart	te controleren	NA	unknown	7220,gh	53	0	0	0	4.2872162	50.7118851
+103	kalktufproject	gecontroleerd	Kwinten 2	NA	7230	NA	0	2014	1	5.811475	50.751384
+104	kalktufproject	gecontroleerd	Krindaal 2	rivulet	7220	3	100	2014	1	5.832216	50.745716
