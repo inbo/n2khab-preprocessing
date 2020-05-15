@@ -4,6 +4,7 @@ date: '`r paste("Version",lubridate::now())`'
 output:
   html_document:
     number_sections: yes
+    code_folding: show
     includes:
       in_header: ../header.html
     toc: yes
