@@ -71,6 +71,51 @@ one_multiline %>%
   theme_bw()
 ```
 
+## A longer multilines object
+
+We shorten the file in order to inspect results more easily:
+
+```{r}
+more_multilines <- 
+  read_sf("habitatmap3260_v14.gpkg") %>% 
+  mutate(length = st_length(.) %>% units::drop_units()) %>% 
+  filter(provincie == "Limburg",
+         length > 1500)
+```
+
+```{r paged.print=FALSE}
+more_multilines
+```
+
+We better cast it to linestrings in order to distinguish single linestrings (one multilinestring was composed of two linestrings):
+
+```{r paged.print=FALSE}
+linestrings <- 
+  more_multilines %>% 
+  st_cast("LINESTRING")
+linestrings
+```
+
+
+
+
+```{r}
+summary(linestrings$length)
+```
+
+```{r}
+linestrings %>% 
+  ggplot() +
+  geom_sf(data = 
+            read_admin_areas(dsn = "provinces") %>% 
+            filter(name == "Limburg"),
+          colour = NA) +
+  geom_sf(colour = "red") + 
+  coord_sf(datum = st_crs(31370)) +
+  theme_bw()
+```
+
+
 ## GRASS temporary project setup & data import in GRASS database
 
 For more tedious geoprocessing we can use [GRASS](https://grass.osgeo.org/), through the packages `link2GI` en `rgrass7`.
@@ -97,15 +142,18 @@ Note that there's also:
 rgrass7::gmeta()
 ```
 
-Add the sf object to the GRASS database:
+Add the sf objects to the GRASS database:
 
 ```{r}
 one_multiline %>% 
   writeVECT("one_multiline",
               v.in.ogr_flags = c("overwrite", "o"))
+linestrings %>% 
+  writeVECT("linestrings",
+              v.in.ogr_flags = c("overwrite", "o"))
 ```
 
-Check presence of the layer:
+Check presence of the layers:
 
 ```{r}
 execGRASS("g.list", type = "vector", flags = "p")
@@ -149,6 +197,8 @@ execGRASS("g.manual",
 
 ## v.split
 
+### one_multiline
+
 ```{r}
 system("v.split -f input=one_multiline output=split1 length=100")
 ```
@@ -163,6 +213,46 @@ split1 %>%
 ```{r paged.print=FALSE}
 split1 %>% as_tibble() %>% st_as_sf()
 ```
+
+### linestrings
+
+Now using the rgrass7 function:
+
+```{r}
+execGRASS("v.split",
+          flags = c("f", "overwrite"),
+          input = "linestrings",
+          output = "split2",
+          length = 100)
+```
+
+
+
+```{r out.width='800px', out.height='500px'}
+split2 <- readVECT("split2")
+split2 %>% 
+  cbind(col = factor(1:2)) %>% 
+  mapview::mapview(zcol = "col",
+                   color = c("green3", "purple"),
+                   lwd = 4)
+```
+
+```{r paged.print=FALSE}
+split2 %>% as_tibble() %>% st_as_sf()
+```
+
+We can see that each linestring was segmented **independently**, resulting in as many segments shorter than 100 m as there are linestrings.
+
+```{r}
+split2 %>% 
+  mutate(length = st_length(.) %>% round(2)) %>% 
+  st_drop_geometry() %>% 
+  count(length) %>% 
+  mutate(rank = 1:nrow(.)) %>% 
+  kable
+```
+
+
 
 
 # Used environment
