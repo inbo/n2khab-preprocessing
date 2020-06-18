@@ -67,12 +67,21 @@ At this stage, `habitatcaves1.gpkg` has been copied to `habitatcaves2.gpkg` whic
 - capitalized a lowercase name in `source`;
 - added a few extra `unit_id` values for adjacent polygons.
 
+```{r eval=FALSE}
+# Saving/updating the manually crafted habitatcaves2.gpkg in Google Drive:
+drive_update(media = "data/habitatcaves2.gpkg",
+             file = as_id("14MGdxHtxe8VGaCu70Y8Pmc0jusZgpym9"))
+```
+
 ## Final standardization and writing the resulting data source
 
 Reading `habitatcaves2.gpkg` and turning it into a standardized data source:
 
 ```{r paged.print = FALSE}
-habitatcaves <- read_sf("data/habitatcaves2.gpkg") 
+drive_download(as_id("1aM3hZqEp3ax66PCrhuyjwBZKd3EcALUS"),
+               path = file.path(tempdir(), "habitatcaves2.gpkg"),
+               overwrite = TRUE)
+habitatcaves <- read_sf(file.path(tempdir(), "habitatcaves2.gpkg")) 
 # for spatial sorting:
 centr <- 
   st_centroid(habitatcaves) %>% 
