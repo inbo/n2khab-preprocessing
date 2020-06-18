@@ -10,6 +10,7 @@ dir.create("data")
 ## Load draft dataset
 
 ```{r}
+drive_auth(email = TRUE)
 drive_ls(as_id("1tJLjAlVbcNHcP4bgp7zRLS9e0KB9vyMs")) %>% 
   {map2(.$name, .$id, function(name, id) {
     drive_download(as_id(id),
