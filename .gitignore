@@ -15,3 +15,5 @@ src/**/*.md
 _book*
 !_bookdown.yml
 src/private_code.R
+*.gpkg
+src/generate_habitatcaves/data/

@@ -1,0 +1,110 @@
+# Making the data source
+
+We will create a 'raw' data source `habitatcaves` by cleaning a precursor dataset.
+
+```{r}
+dir.create("data")
+```
+
+
+## Load draft dataset
+
+```{r}
+drive_ls(as_id("1tJLjAlVbcNHcP4bgp7zRLS9e0KB9vyMs")) %>% 
+  {map2(.$name, .$id, function(name, id) {
+    drive_download(as_id(id),
+               path = file.path(tempdir(), name),
+               overwrite = TRUE)
+  })} %>% 
+  invisible()
+```
+
+
+```{r paged.print = FALSE}
+habitatcaves <- read_sf(file.path(tempdir(), "8310_v2018_RAPHAB2019.shp"),
+                        crs = 31370)
+```
+
+```{r paged.print = FALSE}
+habitatcaves
+```
+
+## First standardization steps
+
+From common values of variables `id_old1` and `id_old2` in the below standardized dataset, we will derive a `unit_id` variable that represents somehow interconnected systems:
+
+```{r paged.print = FALSE}
+(habitatcaves <- 
+   habitatcaves %>% 
+   select(id_old1 = Id, 
+          id_old2 = nr,
+          name = Naam,
+          type = HT8310,
+          source = Bron))
+```
+
+Writing a derived dataset that contains the auto-generated `unit_id`:
+
+```{r}
+habitatcaves %>% 
+  st_drop_geometry %>% 
+  count(id_old1, id_old2) %>% 
+  filter(n > 1, id_old1 > 0 | id_old2 > 0) %>% 
+  mutate(unit_id = 1:nrow(.)) %>% 
+  select(-n) %>% 
+  right_join(habitatcaves, by = c("id_old1", "id_old2")) %>% 
+  select(-contains("old")) %>% 
+  st_write("data/habitatcaves1.gpkg",
+           delete_dsn = TRUE)
+```
+
+## Manual updates
+
+At this stage, `habitatcaves1.gpkg` has been copied to `habitatcaves2.gpkg` which was subsequently edited in **QGIS** 3.12:
+
+- updated a truncated value for `source`;
+- capitalized a lowercase name in `source`;
+- added a few extra `unit_id` values for adjacent polygons.
+
+## Final standardization and writing the resulting data source
+
+Reading `habitatcaves2.gpkg` and turning it into a standardized data source:
+
+```{r paged.print = FALSE}
+habitatcaves <- read_sf("data/habitatcaves2.gpkg") 
+# for spatial sorting:
+centr <- 
+  st_centroid(habitatcaves) %>% 
+  st_coordinates()
+read_sf("data/habitatcaves2.gpkg") %>% 
+  # filter(!st_is_empty(geom)) %>% 
+  mutate(x = centr[,"X"],
+         y = centr[,"Y"]) %>% 
+  arrange(unit_id, x, y) %>% 
+  mutate(polygon_id = 1:nrow(.),
+         unit_id = ifelse(is.na(unit_id),
+                          100 + polygon_id,
+                          unit_id) %>% 
+                    as.integer,
+         code_orig = type,
+         type = ifelse(str_detect(type, "8310"), 
+                       "8310", 
+                       NA)) %>% 
+  select(polygon_id,
+         unit_id,
+         name,
+         code_orig,
+         type,
+         source) %>% 
+  st_write("data/habitatcaves3.gpkg",
+           delete_dsn = TRUE)
+```
+
+# Checks on the data source
+
+```{r paged.print = FALSE}
+read_sf("data/habitatcaves3.gpkg") %>% 
+  st_drop_geometry %>% 
+  count(source)
+```
+
