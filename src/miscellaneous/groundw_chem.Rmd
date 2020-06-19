@@ -1,0 +1,168 @@
+---
+title: "Exploring Watina chemistry (extract from complete notebook)"
+date: '`r paste("Version",lubridate::now())`'
+output:
+  html_document:
+    df_print: paged
+    number_sections: yes
+    code_folding: show
+    includes:
+      in_header: ../header.html
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: no
+---
+
+```{r setup, message=FALSE, echo=FALSE}
+options(stringsAsFactors = FALSE)
+library(tidyverse)
+library(stringr)
+library(knitr)
+opts_chunk$set(
+  echo = TRUE,
+  dpi = 300
+)
+```
+
+
+```{r}
+con <- inbodb::connect_inbo_dbase("W0002_00_Watina")
+```
+
+```{r}
+chemvars <- tbl(con, "DimChemVar")
+chemvars %>% glimpse()
+```
+
+```{r}
+chem_measurements <- tbl(con, "FactChemischeMeting")
+chem_measurements %>% glimpse
+```
+
+Essential variables are: `MeetpuntWID`, `DatumWID`, `ChemVarWID`, `Meetwaarde`, `MeetwaardeMEQ`, `IsBelowLOQ`.
+
+# IsBelowLOQ
+
+Which values occur for `IsBelowLOQ`?
+
+```{r}
+chem_measurements %>% 
+  group_by(IsBelowLOQ) %>% 
+  summarise(n = n(),
+            mindate = min(DatumWID, na.rm = TRUE),
+            maxdate = max(DatumWID, na.rm = TRUE))
+```
+
+The interpretation here is that:
+
+- only for LIMS data this is (automatically) imported, i.e. for data since 2014.
+This concerns the `TRUE` & `FALSE` values.
+- The `NA` values after 2014 are from external sources.
+
+No `NA` values occur for `Meetwaarde` when `IsBelowLOQ == "TRUE"`:
+
+```{r}
+chem_measurements %>% 
+  filter(IsBelowLOQ == "TRUE") %>% 
+  select(Meetwaarde) %>% 
+  collect %>% 
+  summary
+```
+
+This is because LOQ values were used and divided by 2, in those cases:
+
+```{r}
+chem_measurements %>% 
+  filter(IsBelowLOQ == "TRUE") %>% 
+  inner_join(chemvars,
+             by = "ChemVarWID") %>% 
+  select(ChemVarCode, Meetwaarde) %>% 
+  collect %>% 
+  split(x = ., f = .$ChemVarCode) %>% 
+  purrr::map(.x = ., .f = table)
+```
+
+Furthermore, quite a lot of `NA` values are present for `Meetwaarde`:
+
+```{r}
+chem_measurements %>% 
+  filter(is.na(Meetwaarde)) %>% 
+  inner_join(chemvars %>% select(ChemVarWID, ChemVarNaam, ChemVarEenheid),
+             by = "ChemVarWID") %>% 
+  group_by(IsBelowLOQ, ChemVarNaam) %>% 
+  count %>% 
+  arrange(desc(n)) %>% 
+  kable
+```
+
+So we should take into account that `NA` values do occur, when calculating summary statistics.
+Update: `NA` values are already removed by `watina::get_chem()`.
+
+# mass vs. meq data
+
+For which variables are these values equal?
+
+```{r}
+chem_measurements %>% 
+  filter(Meetwaarde == MeetwaardeMEQ,
+         IsBelowLOQ == "FALSE") %>% 
+  count(ChemVarWID) %>% 
+  inner_join(chemvars %>% select(ChemVarWID, ChemVarNaam, ChemVarEenheid),
+             by = "ChemVarWID")
+```
+
+```{r}
+chem_measurements %>% 
+  filter(IsBelowLOQ == "FALSE") %>% 
+  inner_join(chemvars %>% select(ChemVarWID, ChemVarNaam, ChemVarEenheid),
+             by = "ChemVarWID") %>% 
+  filter(ChemVarNaam %in% c("Al", "Mn", "Si")) %>% 
+  count
+```
+
+So _all_ data of Al, Mn and Si show no difference between both columns.
+It appears they wrongly have a `Coefficient` = 1 in `chemvars`.
+
+Checking calculations where `Coefficient` > 1, this seems OK:
+
+```{r paged.print=FALSE}
+chem_measurements %>% 
+  filter(IsBelowLOQ == "FALSE") %>% 
+  inner_join(chemvars %>% 
+               select(ChemVarWID, ChemVarNaam, ChemVarEenheid, Coefficient) %>% 
+               filter(Coefficient > 1),
+             by = "ChemVarWID") %>% 
+  mutate(test = Meetwaarde / Coefficient) %>% 
+  select(ChemVarNaam, Meetwaarde, MeetwaardeMEQ, test, Coefficient)
+```
+
+```{r}
+chem_measurements %>% 
+  filter(IsBelowLOQ == "FALSE") %>% 
+  inner_join(chemvars %>% 
+               select(ChemVarWID, ChemVarNaam, ChemVarEenheid, Coefficient) %>% 
+               filter(Coefficient > 1),
+             by = "ChemVarWID") %>% 
+  mutate(test = Meetwaarde / Coefficient) %>% 
+  select(ChemVarNaam, Meetwaarde, MeetwaardeMEQ, test, Coefficient) %>% 
+  filter(abs(test - MeetwaardeMEQ) >= 0.1)
+```
+
+Number of observations per chemical variable:
+
+```{r}
+chem_measurements %>% 
+  inner_join(chemvars %>% select(ChemVarWID, ChemVarNaam, ChemVarEenheid),
+             by = "ChemVarWID") %>% 
+  count(ChemVarNaam)
+```
+
+
+```{r}
+DBI::dbDisconnect(con)
+```
+
+
+
+
