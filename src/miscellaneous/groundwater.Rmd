@@ -41,7 +41,7 @@ The below explorations are based on code of Ivy Jansen, but use the `DBI` librar
 
 
 ```{r}
-con <- inborutils::connect_inbo_dbase("W0002_00_Watina")
+con <- inbodb::connect_inbo_dbase("W0002_00_Watina")
 ```
 
 
@@ -66,11 +66,10 @@ dbGetQuery(con, "SELECT * FROM ext.vwDocumentatie") %>%
 The above was the DWH (datawarehouse).
 What is in the database itself?
 
-```{r}
-con2 <- inborutils::connect_inbo_dbase("D0025_00_Watina")
+```{r eval=FALSE}
+con2 <- inbodb::connect_inbo_dbase("D0025_00_Watina")
 ```
 
-Aha.
 
 ## Locations and filters
 
