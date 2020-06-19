@@ -49,12 +49,6 @@ con <- inbodb::connect_inbo_dbase("W0002_00_Watina")
 dbListTables(con) %>% sort %>%  View("tables")
 ```
 
-```{r}
-dbListTables(con) %>% 
-  sort %>% 
-  enframe() %>% 
-  
-```
 
 
 ```{r}
