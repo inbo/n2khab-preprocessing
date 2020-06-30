@@ -91,7 +91,6 @@ centr <-
   st_centroid(habitatquarries) %>% 
   st_coordinates()
 habitatquarries %>% 
-  # filter(!st_is_empty(geom)) %>% 
   mutate(x = centr[,"X"],
          y = centr[,"Y"]) %>% 
   arrange(unit_id, x, y) %>% 
@@ -111,7 +110,8 @@ habitatquarries %>%
          type = ifelse(str_detect(type, "8310") & 
                          !str_detect(type, "WAL|NL"), 
                        "8310", 
-                       NA_character_)) %>% 
+                       NA_character_),
+         source = ifelse(source == "", NA, source)) %>% 
   select(polygon_id,
          unit_id,
          name,
@@ -119,15 +119,15 @@ habitatquarries %>%
          type,
          is_habitat,
          extra_reference = source) %>% 
-  st_write("data/habitatquarries3.gpkg",
+  st_write("data/habitatquarries.gpkg",
            delete_dsn = TRUE)
 ```
 
 # Checks on the data source
 
 ```{r paged.print = FALSE}
-read_sf("data/habitatquarries3.gpkg") %>% 
+read_sf("data/habitatquarries.gpkg") %>% 
   st_drop_geometry %>% 
-  count(source)
+  count(extra_reference)
 ```
 
