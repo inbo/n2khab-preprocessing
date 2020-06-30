@@ -1,5 +1,5 @@
 ---
-title: "Preparing the raw data source habitatcaves"
+title: "Preparing the raw data source habitatquarries"
 # subtitle: "x"
 date: "`r lubridate::now()`"
 link-citations: true
@@ -39,7 +39,7 @@ opts_chunk$set(
 )
 ```
 
-**Note: this is a bookdown project, supposed to be run from within the `src/generate_habitatcaves` subfolder. You can use the `generate_habitatcaves.Rproj` RStudio project file in this subfolder to run it.**
+**Note: this is a bookdown project, supposed to be run from within the `src/generate_habitatquarries` subfolder. You can use the `generate_habitatquarries.Rproj` RStudio project file in this subfolder to run it.**
 
 
 
