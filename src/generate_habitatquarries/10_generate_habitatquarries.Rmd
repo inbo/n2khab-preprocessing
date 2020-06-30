@@ -61,11 +61,15 @@ habitatquarries %>%
 
 ## Manual updates
 
-At this stage, `habitatquarries1.gpkg` has been copied to `habitatquarries2.gpkg` which was subsequently edited in **QGIS** 3.12:
+At this stage, `habitatquarries1.gpkg` has been copied to `habitatquarries2.gpkg` which was subsequently edited in **QGIS** 3.14:
 
 - updated a truncated value for `source`;
 - capitalized a lowercase name in `source`;
-- added a few extra `unit_id` values for adjacent polygons.
+- added a few extra `unit_id` values for adjacent polygons and interconnected quarries;
+- deleted 2 rows without geometry;
+- updated the value of `type` for one polygon;
+- updated the value of `name` for many polygons;
+- updated the value of `source` for many polygons.
 
 ```{r eval=FALSE}
 # Saving/updating the manually crafted habitatquarries2.gpkg in Google Drive:
