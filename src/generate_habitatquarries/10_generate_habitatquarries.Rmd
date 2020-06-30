@@ -86,7 +86,7 @@ habitatquarries <- read_sf(file.path(tempdir(), "habitatquarries2.gpkg"))
 centr <- 
   st_centroid(habitatquarries) %>% 
   st_coordinates()
-read_sf("data/habitatquarries2.gpkg") %>% 
+habitatquarries %>% 
   # filter(!st_is_empty(geom)) %>% 
   mutate(x = centr[,"X"],
          y = centr[,"Y"]) %>% 
