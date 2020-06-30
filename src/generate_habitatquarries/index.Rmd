@@ -31,6 +31,7 @@ output:
 library(sf)
 library(dplyr)
 library(stringr)
+library(purrr)
 library(knitr)
 library(googledrive)
 opts_chunk$set(
