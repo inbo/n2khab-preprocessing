@@ -70,7 +70,7 @@ At this stage, `habitatquarries1.gpkg` has been copied to `habitatquarries2.gpkg
 ```{r eval=FALSE}
 # Saving/updating the manually crafted habitatquarries2.gpkg in Google Drive:
 drive_update(media = "data/habitatquarries2.gpkg",
-             file = as_id("14MGdxHtxe8VGaCu70Y8Pmc0jusZgpym9"))
+             file = as_id("1aM3hZqEp3ax66PCrhuyjwBZKd3EcALUS"))
 ```
 
 ## Final standardization and writing the resulting data source
