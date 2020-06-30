@@ -96,16 +96,25 @@ read_sf("data/habitatquarries2.gpkg") %>%
                           100 + polygon_id,
                           unit_id) %>% 
                     as.integer,
-         code_orig = type,
-         type = ifelse(str_detect(type, "8310"), 
+         code_orig = ifelse(str_detect(type, "WAL|NL"),
+                            NA_character_,
+                            type),
+         is_habitat = case_when(
+           str_detect(type, "WAL|NL") ~ NA,
+           str_detect(type, "8310") ~ TRUE,
+           TRUE ~ FALSE
+         ),
+         type = ifelse(str_detect(type, "8310") & 
+                         !str_detect(type, "WAL|NL"), 
                        "8310", 
-                       NA)) %>% 
+                       NA_character_)) %>% 
   select(polygon_id,
          unit_id,
          name,
          code_orig,
          type,
-         source) %>% 
+         is_habitat,
+         extra_reference = source) %>% 
   st_write("data/habitatquarries3.gpkg",
            delete_dsn = TRUE)
 ```
