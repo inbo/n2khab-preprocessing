@@ -134,7 +134,11 @@ habitatquarries %>%
 
 # Adding the bibliography
 
-## Creating a dataframe from the bibtex file
+The literature references have been saved as a BibTeX bibliography file `habitatquarries.bib`, making it usable by most reference management software and R Markdown.
+
+We will include this information as a table inside the GeoPackage, in order to make the latter self-contained, but we'll do that in a way that it can be read out to a BibTeX file.
+
+## Creating a dataframe from the BibTeX bibliography file
 
 ```{r warning=FALSE}
 refs <- bib2df(file.path(datapath, "habitatquarries.bib"))
@@ -156,7 +160,7 @@ refs2 <-
 glimpse(refs2)
 ```
 
-Suggestion for making a function to read back as bibtex:
+Suggestion for making a function to read back as BibTeX bibliography:
 
 ```{r eval=FALSE}
 refs2 %>% 
