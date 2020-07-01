@@ -11,7 +11,10 @@ if (!dir.exists(datapath)) dir.create(datapath)
 
 ## Load draft dataset
 
-```{r}
+This code is no longer executed because of the manual steps undertaken afterwards.
+Go to [manual-updates].
+
+```{r eval=FALSE}
 drive_auth(email = TRUE)
 drive_ls(as_id("1tJLjAlVbcNHcP4bgp7zRLS9e0KB9vyMs")) %>% 
   {map2(.$name, .$id, function(name, id) {
@@ -23,12 +26,12 @@ drive_ls(as_id("1tJLjAlVbcNHcP4bgp7zRLS9e0KB9vyMs")) %>%
 ```
 
 
-```{r paged.print = FALSE}
+```{r paged.print = FALSE, eval=FALSE}
 habitatquarries <- read_sf(file.path(tempdir(), "8310_v2018_RAPHAB2019.shp"),
                         crs = 31370)
 ```
 
-```{r paged.print = FALSE}
+```{r paged.print = FALSE, eval=FALSE}
 habitatquarries
 ```
 
@@ -36,7 +39,7 @@ habitatquarries
 
 From common values of variables `id_old1` and `id_old2` in the below standardized dataset, we will derive a `unit_id` variable that represents somehow interconnected systems:
 
-```{r paged.print = FALSE}
+```{r paged.print = FALSE, eval=FALSE}
 (habitatquarries <- 
    habitatquarries %>% 
    select(id_old1 = Id, 
@@ -48,7 +51,7 @@ From common values of variables `id_old1` and `id_old2` in the below standardize
 
 Writing a derived dataset that contains the auto-generated `unit_id`:
 
-```{r}
+```{r eval=FALSE}
 habitatquarries %>% 
   st_drop_geometry %>% 
   count(id_old1, id_old2) %>% 
