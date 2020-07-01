@@ -15,6 +15,7 @@ documentclass: "article"
 site: bookdown::bookdown_site
 output:
   bookdown::html_document2:
+    code_folding: show
     keep_md: TRUE
     number_sections: yes
     fig_caption: yes
