@@ -33,6 +33,7 @@ library(dplyr)
 library(stringr)
 library(purrr)
 library(knitr)
+library(rprojroot)
 library(googledrive)
 opts_chunk$set(
   echo = TRUE,

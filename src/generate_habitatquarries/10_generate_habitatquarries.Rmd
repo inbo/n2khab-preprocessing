@@ -3,7 +3,9 @@
 We will create a 'raw' data source `habitatquarries` by cleaning a precursor dataset.
 
 ```{r}
-dir.create("data")
+local_root <- find_root(has_file("generate_habitatquarries.Rproj"))
+datapath <- file.path(local_root, "data")
+if (!dir.exists(datapath)) dir.create(datapath)
 ```
 
 
@@ -55,7 +57,8 @@ habitatquarries %>%
   select(-n) %>% 
   right_join(habitatquarries, by = c("id_old1", "id_old2")) %>% 
   select(-contains("old")) %>% 
-  st_write("data/habitatquarries1.gpkg",
+  st_write(file.path(datapath,
+                     "habitatquarries1.gpkg"),
            delete_dsn = TRUE)
 ```
 
@@ -73,7 +76,7 @@ At this stage, `habitatquarries1.gpkg` has been copied to `habitatquarries2.gpkg
 
 ```{r eval=FALSE}
 # Saving/updating the manually crafted habitatquarries2.gpkg in Google Drive:
-drive_update(media = "data/habitatquarries2.gpkg",
+drive_update(media = file.path(datapath, "habitatquarries2.gpkg"),
              file = as_id("1aM3hZqEp3ax66PCrhuyjwBZKd3EcALUS"))
 ```
 
@@ -119,14 +122,14 @@ habitatquarries %>%
          type,
          is_habitat,
          extra_reference = source) %>% 
-  st_write("data/habitatquarries.gpkg",
+  st_write(file.path(datapath, "habitatquarries.gpkg"),
            delete_dsn = TRUE)
 ```
 
 # Checks on the data source
 
 ```{r paged.print = FALSE}
-read_sf("data/habitatquarries.gpkg") %>% 
+read_sf(file.path(datapath, "habitatquarries.gpkg")) %>% 
   st_drop_geometry %>% 
   count(extra_reference)
 ```
