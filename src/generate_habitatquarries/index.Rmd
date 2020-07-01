@@ -35,6 +35,7 @@ library(purrr)
 library(knitr)
 library(rprojroot)
 library(googledrive)
+library(bib2df)
 opts_chunk$set(
   echo = TRUE,
   dpi = 300

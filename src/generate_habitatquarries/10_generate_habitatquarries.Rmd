@@ -129,6 +129,50 @@ habitatquarries %>%
            delete_dsn = TRUE)
 ```
 
+# Adding the bibliography
+
+## Creating a dataframe from the bibtex file
+
+```{r}
+refs <- bib2df(file.path(datapath, "habitatquarries.bib"))
+```
+
+
+```{r}
+refs2 <-
+  refs %>% 
+  map_lgl(function(col) any(!is.na(col))) %>% 
+  refs[,.] %>% 
+  `colnames<-`(tolower(colnames(.))) %>% 
+  mutate(author = map_chr(author, 
+                          function(x) paste(x, collapse = " and ")))
+```
+
+
+```{r}
+glimpse(refs2)
+```
+
+Suggestion for making a function to read back as bibtex:
+
+```{r eval=FALSE}
+refs2 %>% 
+  mutate(author = str_split(author, " and ")) %>% 
+  `colnames<-`(toupper(colnames(.))) %>%
+  df2bib
+```
+
+## Adding the dataframe
+
+```{r}
+refs2 %>% 
+  st_write(file.path(datapath, "habitatquarries.gpkg"),
+           layer = "extra_references",
+           delete_layer = TRUE)
+```
+
+
+
 # Checks on the data source
 
 ```{r paged.print = FALSE}
