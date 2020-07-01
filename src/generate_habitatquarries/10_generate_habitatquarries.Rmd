@@ -11,8 +11,8 @@ if (!dir.exists(datapath)) dir.create(datapath)
 
 ## Load draft dataset
 
-This code is no longer executed because of the manual steps undertaken afterwards.
-Go to [manual-updates].
+_This code is no longer executed because of the manual steps undertaken afterwards._
+_Go directly to [manual updates](#manual-updates)._
 
 ```{r eval=FALSE}
 drive_auth(email = TRUE)
@@ -36,6 +36,9 @@ habitatquarries
 ```
 
 ## First standardization steps
+
+_This code is no longer executed because of the manual steps undertaken afterwards._
+_Go directly to [manual updates](#manual-updates)._
 
 From common values of variables `id_old1` and `id_old2` in the below standardized dataset, we will derive a `unit_id` variable that represents somehow interconnected systems:
 
@@ -133,7 +136,7 @@ habitatquarries %>%
 
 ## Creating a dataframe from the bibtex file
 
-```{r}
+```{r warning=FALSE}
 refs <- bib2df(file.path(datapath, "habitatquarries.bib"))
 ```
 
@@ -162,7 +165,7 @@ refs2 %>%
   df2bib
 ```
 
-## Adding the dataframe
+## Adding the dataframe to the GeoPackage
 
 ```{r}
 refs2 %>% 
