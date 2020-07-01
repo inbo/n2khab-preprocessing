@@ -108,25 +108,14 @@ habitatquarries %>%
                           100 + polygon_id,
                           unit_id) %>% 
                     as.integer,
-         code_orig = ifelse(str_detect(type, "WAL|NL"),
+         habitattype = ifelse(str_detect(type, "WAL|NL"),
                             NA_character_,
                             type),
-         is_habitat = case_when(
-           str_detect(type, "WAL|NL") ~ NA,
-           str_detect(type, "8310") ~ TRUE,
-           TRUE ~ FALSE
-         ),
-         type = ifelse(str_detect(type, "8310") & 
-                         !str_detect(type, "WAL|NL"), 
-                       "8310", 
-                       NA_character_),
          source = ifelse(source == "", NA, source)) %>% 
   select(polygon_id,
          unit_id,
          name,
-         code_orig,
-         type,
-         is_habitat,
+         habitattype,
          extra_reference = source) %>% 
   st_write(file.path(datapath, "habitatquarries.gpkg"),
            delete_dsn = TRUE)
@@ -229,23 +218,14 @@ habitatquarries_test %>%
   kable
 ```
 
-Number of unique combinations of `type` and `is_habitat`:
+Number of unique combinations of `habitattype`:
 
 ```{r}
 habitatquarries_test %>% 
   st_drop_geometry %>% 
-  count(type, is_habitat)
+  count(habitattype)
 ```
-Zooming in on non-TRUE cases of `is_habitat` shows that this coincides with two possible values of `code_orig`:
-
-```{r}
-habitatquarries_test %>% 
-  st_drop_geometry %>% 
-  filter(!is_habitat | is.na(is_habitat)) %>% 
-  count(code_orig, type, is_habitat)
-```
-
-Hence, when `is_habitat = FALSE` we know that no habitat is present.
+When `habitattype = "gh"` we know that no habitat is present.
 When unknown (outside of Flanders), it is set as `NA`.
 
 Occurrence of different references:
@@ -299,19 +279,14 @@ ggplot() +
         axis.title = element_blank())
 ```
 
-With the combined values shown of `code_orig`, `is_habitat` and `type`:
+With the values shown of `habitattype`:
 
 ```{r}
 ggplot() +
   geom_sf(data = provinces, fill = "white", colour = "grey70") +
-  geom_sf(data = 
-            habitatquarries_test %>% 
-            mutate(`code_orig:is_habitat:type` = paste(code_orig, 
-                                                       is_habitat, 
-                                                       type, 
-                                                       sep = ":")),
+  geom_sf(data = habitatquarries_test,
           colour = NA,
-          aes(fill = `code_orig:is_habitat:type`)) + 
+          aes(fill = `habitattype`)) + 
   zoom +
   theme_bw() +
   theme(legend.position = "bottom")
