@@ -116,9 +116,9 @@
       "RemoteHost": "api.github.com",
       "RemoteRepo": "bib2df",
       "RemoteUsername": "ropensci",
-      "RemoteRef": "v1.1.2",
-      "RemoteSha": "ad349fef53d26434c6e270bc386ae18f16b80522",
-      "Hash": "a335b9407f154160cc3e04c0ec091b4f"
+      "RemoteRef": "master",
+      "RemoteSha": "04b2a2394dd743370a09b47e5c18dfd580efa74e",
+      "Hash": "d3934c6c0b404526704635dce522222a"
     },
     "bookdown": {
       "Package": "bookdown",
