@@ -175,8 +175,14 @@ Checksums:
 
 ```{r}
 filepath <- file.path(datapath, "habitatquarries.gpkg")
-openssl::md5(filepath) %>% str_c(collapse = '') %>% `names<-`("md5sum")
-openssl::sha256(filepath) %>% str_c(collapse = '') %>% `names<-`("sha256sum")
+file(filepath) %>% 
+  openssl::md5() %>% 
+  str_c(collapse = '') %>% 
+  `names<-`("md5sum")
+file(filepath) %>% 
+  openssl::sha256() %>% 
+  str_c(collapse = '') %>% 
+  `names<-`("sha256sum")
 ```
 
 
