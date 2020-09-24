@@ -224,7 +224,7 @@ habitatquarries_test %>%
   kable
 ```
 
-Number of unique combinations of `habitattype`:
+Number of unique values of `habitattype`:
 
 ```{r}
 habitatquarries_test %>% 
