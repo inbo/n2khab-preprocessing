@@ -10,12 +10,22 @@
 
 
 
-filepath <- file.path(datapath, "habitatquarries.gpkg")
+filepath <- file.path(datapath, "habitatquarries_previous.gpkg")
 habitatquarries_test <-
   read_sf(filepath,
           layer = "habitatquarries")
 
-filepath_new <- "/media/floris/DATA/PROJECTS/09685_NatuurlijkMilieu/160 Bewerkingen en resultaat/Dataketen/habitatquarries_intermediates"
+drive_auth(email = TRUE)
+drive_ls(as_id("14MGdxHtxe8VGaCu70Y8Pmc0jusZgpym9")) %>%
+  filter(str_detect(name, "habitatquarries_v2_20200917")) %>%
+  {map2(.$name, .$id, function(name, id) {
+    drive_download(as_id(id),
+                   path = file.path(tempdir(), name),
+                   overwrite = TRUE)
+  })} %>%
+  invisible()
+
+filepath_new <- file.path(tempdir(), "habitatquarries_v2_20200917.shp")
 st_layers(filepath_new)
 (habitatquarries_new <-
   read_sf(filepath_new))
@@ -131,4 +141,83 @@ ggplot() +
   #          ylim = bbox1$ylim + c(-2e3, 2e3)) +
   theme_bw() +
   theme(legend.position = "bottom")
+
+
+# checking reasoning of units with multiple polygons & of unit_id > 100
+
+habitatquarries_new %>%
+  st_drop_geometry %>%
+  count(unit_id) %>%
+  filter(n > 1) %>%
+  semi_join(habitatquarries_new, ., by = "unit_id") %>%
+  # st_drop_geometry %>%
+  # count(unit_id, name)
+        #   # A tibble: 7 x 3
+        #   unit_id name                           n
+        # <dbl> <chr>                      <int>
+        # 1     100 De Keel                        2
+        # 2     102 Kleine Keel                    2
+        # 3     103 Muizenberg                     3
+        # 4     104 Ternaaien beneden              2
+        # 5     105 Ternaaien boven                2
+        # 6     106 Caestert                       2
+        # 7     107 Roosburg - Drie-dagen-berg     2
+  ggplot() +
+  geom_sf(colour = "green",
+          aes(fill = `habitattyp`)) +
+  geom_sf(data = provinces, fill = NA, colour = "purple") +
+  zoom +
+  # coord_sf(datum = st_crs(31370),
+  #          xlim = bbox1$xlim + c(-2e3, 2e3),
+  #          ylim = bbox1$ylim + c(-2e3, 2e3)) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+habitatquarries_new %>%
+  st_drop_geometry %>%
+  count(unit_id) %>%
+  filter(n == 1, unit_id >= 100) %>%
+  semi_join(habitatquarries_new, ., by = "unit_id") %>%
+  # st_drop_geometry %>%
+  # count(unit_id, name)
+        #   # A tibble: 1 x 3
+        #   unit_id name                 n
+        # <dbl> <chr>            <int>
+        #   1     101 De Keel - Balkon     1
+  ggplot() +
+  geom_sf(colour = "green",
+          aes(fill = `habitattyp`)) +
+  geom_sf(data = provinces, fill = NA, colour = "purple") +
+  # zoom +
+  coord_sf(datum = st_crs(31370),
+           xlim = c(240e3, 241e3),
+           ylim = c(168e3, 169e3)) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+habitatquarries_new %>%
+  st_drop_geometry %>%
+  filter(str_detect(name, "Keel"))
+    # # A tibble: 5 x 6
+    # fid_ polygon_id unit_id name             habitattyp extra_refe
+    # <dbl>      <dbl>   <dbl> <chr>            <chr>      <chr>
+    #   1     0         13     100 De Keel          8310       Walschot 2010
+    # 2     0         14     100 De Keel          NA         Walschot 2010
+    # 3     0         18     102 Kleine Keel      8310       Walschot 2010
+    # 4     0         19     102 Kleine Keel      NA         Walschot 2010
+    # 5     0         45     101 De Keel - Balkon 8310       Walschot 2010
+
+
+# how are polygon_ids and unit_ids sorted?
+
+habitatquarries_new %>%
+  st_drop_geometry %>%
+  arrange(name, polygon_id) %>%
+  View("arranged")
+
+habitatquarries_new %>%
+  st_drop_geometry %>%
+  arrange(unit_id >= 100, name, polygon_id) %>%
+  select(polygon_id, unit_id, name) %>%
+  kable
 
