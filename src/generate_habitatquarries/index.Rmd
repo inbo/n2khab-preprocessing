@@ -38,6 +38,7 @@ library(rprojroot)
 library(googledrive)
 library(bib2df)
 library(ggplot2)
+library(readr)
 opts_chunk$set(
   echo = TRUE,
   dpi = 300

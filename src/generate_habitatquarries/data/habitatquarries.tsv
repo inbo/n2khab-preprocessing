@@ -1,0 +1,46 @@
+polygon_id	unit_id	name	habitattype	extra_reference
+4	4	Avergat - Driesberg	gh	Lahaye 2018
+6	6	Avergat - Grootberg	8310	Lahaye 2018
+5	5	Avergat - Putberg	gh	Lahaye 2018
+20	20	Coolen	8310	Limburgs Landschap 2020; pers. comm. Veerle Cielen (Limburgs Landschap vzw)
+21	21	Coolen	gh	Limburgs Landschap 2020
+29	29	Groeve Lindestraat	8310	NA
+31	31	Grote berg - centraal	8310	De Haan & Lahaye 2018
+37	37	Grote berg - Pauly	8310	De Haan & Lahaye 2018
+24	24	Henisdael - Champignonkuil	8310	Dusar et al. 2007
+34	34	Henisdael - Grote Kuil	8310	Dusar et al. 2007
+36	36	Henisdael - Hussenkuil noord	8310	Dusar et al. 2007
+27	27	Henisdael - Hussenkuil zuid	8310	Dusar et al. 2007
+25	25	Henisdael - Walenkuil	8310	Dusar et al. 2007
+26	26	Henisdael - Waterkuil VII	8310	Dusar et al. 2007
+35	35	Henisdael - Waterkuil VIII	8310	Dusar et al. 2007
+44	44	Jageneau's Huiske	8310	NA
+28	28	Janekes Koet	8310	NA
+32	32	Juge Zussen	8310	NA
+1	1	Kuilen van Valmeer	gh	NA
+2	2	Kuilen van Valmeer	gh	NA
+3	3	Kuilen van Valmeer	gh	NA
+30	30	Pitjesberg - centraal	8310	Jennekens & Hageman 2012
+38	38	Pitjesberg - Tiendenschuur	8310	Jennekens & Hageman 2012
+41	41	Roosburg - Flessenberg	8310	NA
+40	40	Roosburg - Koeberg	8310	NA
+33	33	Roosburg - Verbiestberg	8310	NA
+39	39	Roosburg - Verbiestberg midden	8310	NA
+22	22	Werken van Mathuus	8310	Walschot 2010
+23	23	Werken van Mathuus	8310	Walschot 2010
+7	106	Caestert	8310	Verhoeven 2008
+8	106	Caestert	NA	Verhoeven 2008
+13	100	De Keel	8310	Walschot 2010
+14	100	De Keel	NA	Walschot 2010
+45	101	De Keel - Balkon	8310	Walschot 2010
+18	102	Kleine Keel	8310	Walschot 2010
+19	102	Kleine Keel	NA	Walschot 2010
+15	103	Muizenberg	gh	Walschot 2010; Wikipedia 2019
+16	103	Muizenberg	NA	Walschot 2010; Wikipedia 2019
+17	103	Muizenberg	gh	Walschot 2010; Wikipedia 2019
+42	107	Roosburg - Drie-dagen-berg	8310	NA
+43	107	Roosburg - Drie-dagen-berg	NA	NA
+11	104	Ternaaien beneden	8310	Verhoeven 2008
+12	104	Ternaaien beneden	NA	Verhoeven 2008
+9	105	Ternaaien boven	8310	Verhoeven 2008
+10	105	Ternaaien boven	NA	Verhoeven 2008

@@ -213,6 +213,14 @@ habitatquarries_test <-
           layer = "habitatquarries")
 ```
 
+Writing attributes to text file for version control:
+
+```{r}
+habitatquarries_test %>% 
+  st_drop_geometry %>% 
+  write_tsv("data/habitatquarries.tsv")
+```
+
 Overview of contents:
 
 ```{r paged.print = FALSE}
