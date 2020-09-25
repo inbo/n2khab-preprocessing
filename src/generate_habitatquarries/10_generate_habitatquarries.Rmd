@@ -92,7 +92,7 @@ drive_update(media = file.path(datapath, "habitatquarries2.gpkg"),
 After that, further standardization has been done on the result, in an attempt to create a first version of the final file.
 This refers to the state of paragraph \@ref(standardization) at commit 4f41a46 (2020-07-02 08:58:29 +0200).
 
-Then, the file has been reworked manually again, regarding both geometry and non-spatial attributes, according to several conclusions written down in `compare_old_new_endresult.R`.
+Then, the file has been reworked manually again, regarding both geometry and non-spatial attributes.
 This mainly had to do with the applied definition of a 'unit'; see the Zenodo metadata for more information.
 The result was the shapefile `habitatquarries_v2_20200917.shp`, which will now be handled further by the R code.
 
