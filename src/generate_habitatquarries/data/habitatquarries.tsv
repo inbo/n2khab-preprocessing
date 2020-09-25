@@ -27,9 +27,9 @@ polygon_id	unit_id	name	habitattype	extra_reference
 33	33	Roosburg - Verbiestberg	8310	NA
 39	39	Roosburg - Verbiestberg midden	8310	NA
 22	22	Werken van Mathuus	8310	Walschot 2010
-23	23	Werken van Mathuus	8310	Walschot 2010
-7	106	Caestert	8310	Verhoeven 2008
-8	106	Caestert	NA	Verhoeven 2008
+23	23	Werken van Mathuus - Opkanne IV	8310	Walschot 2010
+7	106	Caestert	8310	Silvertant 2003, Verhoeven 2008
+8	106	Caestert	NA	Silvertant 2003, Verhoeven 2008
 13	100	De Keel	8310	Walschot 2010
 14	100	De Keel	NA	Walschot 2010
 45	101	De Keel - Balkon	8310	Walschot 2010
@@ -40,7 +40,7 @@ polygon_id	unit_id	name	habitattype	extra_reference
 17	103	Muizenberg	gh	Walschot 2010; Wikipedia 2019
 42	107	Roosburg - Drie-dagen-berg	8310	NA
 43	107	Roosburg - Drie-dagen-berg	NA	NA
-11	104	Ternaaien beneden	8310	Verhoeven 2008
-12	104	Ternaaien beneden	NA	Verhoeven 2008
-9	105	Ternaaien boven	8310	Verhoeven 2008
-10	105	Ternaaien boven	NA	Verhoeven 2008
+11	104	Ternaaien beneden	8310	Silvertant 2003, Verhoeven 2008
+12	104	Ternaaien beneden	NA	Silvertant 2003, Verhoeven 2008
+9	105	Ternaaien boven	8310	Silvertant 2003, Verhoeven 2008
+10	105	Ternaaien boven	NA	Silvertant 2003, Verhoeven 2008

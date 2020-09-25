@@ -94,16 +94,16 @@ This refers to the state of paragraph \@ref(standardization) at commit 4f41a46 (
 
 Then, the file has been reworked manually again, regarding both geometry and non-spatial attributes.
 This mainly had to do with the applied definition of a 'unit'; see the Zenodo metadata for more information.
-The result was the shapefile `habitatquarries_v2_20200917.shp`, which will now be handled further by the R code.
+The result was the shapefile `habitatquarries_v2_20200925.shp`, which will now be handled further by the R code.
 
 ## Final standardization and writing the resulting data source {#standardization}
 
-Reading `habitatquarries_v2_20200917.shp` and turning it into a standardized data source:
+Reading `habitatquarries_v2_20200925.shp` and turning it into a standardized data source:
 
 ```{r}
 drive_auth(email = TRUE)
 drive_ls(as_id("14MGdxHtxe8VGaCu70Y8Pmc0jusZgpym9")) %>% 
-  filter(str_detect(name, "habitatquarries_v2_20200917")) %>% 
+  filter(str_detect(name, "habitatquarries_v2_20200925")) %>% 
   {map2(.$name, .$id, function(name, id) {
     drive_download(as_id(id),
                path = file.path(tempdir(), name),
@@ -115,7 +115,7 @@ drive_ls(as_id("14MGdxHtxe8VGaCu70Y8Pmc0jusZgpym9")) %>%
 
 ```{r paged.print = FALSE}
 read_sf(file.path(tempdir(), 
-                  "habitatquarries_v2_20200917.shp")) %>% 
+                  "habitatquarries_v2_20200925.shp")) %>% 
   select(polygon_id,
          unit_id,
          name, 
