@@ -15,3 +15,7 @@ src/**/*.md
 _book*
 !_bookdown.yml
 src/private_code.R
+*.gpkg*
+*.qgs
+*.bak
+*.qgz
