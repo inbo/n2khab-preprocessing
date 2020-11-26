@@ -131,7 +131,7 @@ Some GRASS project metadata:
 
 ```{r}
 system("g.region -p
-        g.proj -j")
+        g.proj -w")
 ```
 
 Note that there's also:
