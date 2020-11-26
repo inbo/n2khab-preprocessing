@@ -1,0 +1,345 @@
+# Making the data source
+
+We will create a 'raw' data source `habitatquarries` by cleaning a precursor dataset.
+
+```{r}
+local_root <- find_root(has_file("generate_habitatquarries.Rproj"))
+datapath <- file.path(local_root, "data")
+if (!dir.exists(datapath)) dir.create(datapath)
+finalpath <- find_root_file("n2khab_data/10_raw/habitatquarries", 
+                            criterion = has_dir("n2khab_data"))
+if (!dir.exists(finalpath)) dir.create(finalpath)
+```
+
+
+## Load draft dataset
+
+_This code is no longer executed because of the manual steps undertaken afterwards._
+_Go directly to [manual updates](#manual-updates)._
+
+```{r eval=FALSE}
+drive_auth(email = TRUE)
+drive_ls(as_id("1tJLjAlVbcNHcP4bgp7zRLS9e0KB9vyMs")) %>% 
+  {map2(.$name, .$id, function(name, id) {
+    drive_download(as_id(id),
+               path = file.path(tempdir(), name),
+               overwrite = TRUE)
+  })} %>% 
+  invisible()
+```
+
+
+```{r paged.print = FALSE, eval=FALSE}
+habitatquarries <- read_sf(file.path(tempdir(), "8310_v2018_RAPHAB2019.shp"),
+                        crs = 31370)
+```
+
+```{r paged.print = FALSE, eval=FALSE}
+habitatquarries
+```
+
+## First standardization steps
+
+_This code is no longer executed because of the manual steps undertaken afterwards._
+_Go directly to [manual updates](#manual-updates)._
+
+From common values of variables `id_old1` and `id_old2` in the below standardized dataset, we will derive a `unit_id` variable that represents somehow interconnected systems:
+
+```{r paged.print = FALSE, eval=FALSE}
+(habitatquarries <- 
+   habitatquarries %>% 
+   select(id_old1 = Id, 
+          id_old2 = nr,
+          name = Naam,
+          type = HT8310,
+          source = Bron))
+```
+
+Writing a derived dataset that contains the auto-generated `unit_id`:
+
+```{r eval=FALSE}
+habitatquarries %>% 
+  st_drop_geometry %>% 
+  count(id_old1, id_old2) %>% 
+  filter(n > 1, id_old1 > 0 | id_old2 > 0) %>% 
+  mutate(unit_id = 1:nrow(.)) %>% 
+  select(-n) %>% 
+  right_join(habitatquarries, by = c("id_old1", "id_old2")) %>% 
+  select(-contains("old")) %>% 
+  st_write(file.path(datapath,
+                     "habitatquarries1.gpkg"),
+           delete_dsn = TRUE)
+```
+
+## Manual updates
+
+At this stage, `habitatquarries1.gpkg` has been copied to `habitatquarries2.gpkg` which was subsequently edited in **QGIS** 3.14:
+
+- updated a truncated value for `source`;
+- capitalized a lowercase name in `source`;
+- added a few extra `unit_id` values for adjacent polygons and interconnected quarries;
+- deleted 2 rows without geometry;
+- updated the value of `type` for one polygon;
+- updated the value of `name` for many polygons;
+- updated the value of `source` for many polygons.
+
+```{r eval=FALSE}
+# Saving/updating the manually crafted habitatquarries2.gpkg in Google Drive:
+drive_update(media = file.path(datapath, "habitatquarries2.gpkg"),
+             file = as_id("1aM3hZqEp3ax66PCrhuyjwBZKd3EcALUS"))
+```
+
+After that, further standardization has been done on the result, in an attempt to create a first version of the final file.
+This refers to the state of paragraph \@ref(standardization) at commit 4f41a46 (2020-07-02 08:58:29 +0200).
+
+Then, the file has been reworked manually again, regarding both geometry and non-spatial attributes.
+This mainly had to do with the applied definition of a 'unit'; see the Zenodo metadata for more information.
+The result was the shapefile `habitatquarries_v2_20200925.shp`, which will now be handled further by the R code.
+
+## Final standardization and writing the resulting data source {#standardization}
+
+Reading `habitatquarries_v2_20200925.shp` and turning it into a standardized data source:
+
+```{r}
+drive_auth(email = TRUE)
+drive_ls(as_id("14MGdxHtxe8VGaCu70Y8Pmc0jusZgpym9")) %>% 
+  filter(str_detect(name, "habitatquarries_v2_20200925")) %>% 
+  {map2(.$name, .$id, function(name, id) {
+    drive_download(as_id(id),
+               path = file.path(tempdir(), name),
+               overwrite = TRUE)
+  })} %>% 
+  invisible()
+```
+
+
+```{r paged.print = FALSE}
+read_sf(file.path(tempdir(), 
+                  "habitatquarries_v2_20200925.shp")) %>% 
+  select(polygon_id,
+         unit_id,
+         name, 
+         habitattype = habitattyp,
+         extra_reference = extra_refe) %>% 
+  arrange(unit_id >= 100, name, polygon_id) %>% 
+  mutate(polygon_id = as.integer(polygon_id),
+         unit_id = as.integer(unit_id)) %>% 
+  st_write(file.path(finalpath, "habitatquarries.gpkg"),
+           delete_dsn = TRUE)
+```
+
+# Adding the bibliography
+
+The literature references have been saved as a BibTeX bibliography file `habitatquarries.bib`, making it usable by most reference management software and R Markdown.
+
+We will include this information as a table inside the GeoPackage, in order to make the latter self-contained, but we'll do that in a way that it can be read out to a BibTeX file.
+
+## Creating a dataframe from the BibTeX bibliography file
+
+```{r warning=FALSE}
+refs <- bib2df(file.path(datapath, "habitatquarries.bib"))
+```
+
+
+```{r}
+refs2 <-
+  refs %>% 
+  map_lgl(function(col) any(!is.na(col))) %>% 
+  refs[,.] %>% 
+  `colnames<-`(tolower(colnames(.))) %>% 
+  mutate(author = map_chr(author, 
+                          function(x) paste(x, collapse = " and ")))
+```
+
+
+```{r}
+glimpse(refs2)
+```
+
+Suggestion for making a function to read back as BibTeX bibliography:
+
+```{r eval=FALSE}
+refs2 %>% 
+  mutate(author = str_split(author, " and ")) %>% 
+  `colnames<-`(toupper(colnames(.))) %>%
+  df2bib
+```
+
+## Adding the dataframe to the GeoPackage
+
+```{r}
+refs2 %>% 
+  st_write(file.path(finalpath, "habitatquarries.gpkg"),
+           layer = "extra_references",
+           delete_layer = TRUE)
+```
+
+
+
+# Checks on the data source
+
+```{r}
+filepath <- file.path(finalpath, "habitatquarries.gpkg")
+```
+
+
+Checksums:
+
+```{r}
+file(filepath) %>% 
+  openssl::md5() %>% 
+  str_c(collapse = '') %>% 
+  `names<-`("md5sum")
+file(filepath) %>% 
+  openssl::sha256() %>% 
+  str_c(collapse = '') %>% 
+  `names<-`("sha256sum")
+```
+
+
+Available layers:
+
+```{r paged.print = FALSE}
+st_layers(filepath)
+```
+
+## Geospatial layer
+
+Reading from file:
+
+```{r paged.print = FALSE}
+habitatquarries_test <- 
+  read_sf(filepath,
+          layer = "habitatquarries")
+```
+
+Writing attributes to text file for version control:
+
+```{r}
+habitatquarries_test %>% 
+  st_drop_geometry %>% 
+  write_tsv("data/habitatquarries.tsv")
+```
+
+Overview of contents:
+
+```{r paged.print = FALSE}
+habitatquarries_test %>% 
+  print(n = Inf)
+```
+
+All attributes:
+
+```{r}
+habitatquarries_test %>% 
+  st_drop_geometry
+```
+Number of unique combinations of `unit_id` and `name`:
+
+```{r}
+habitatquarries_test %>% 
+  st_drop_geometry %>% 
+  count(unit_id, name) %>% 
+  kable
+```
+
+Number of unique values of `habitattype`:
+
+```{r}
+habitatquarries_test %>% 
+  st_drop_geometry %>% 
+  count(habitattype)
+```
+When `habitattype = "gh"` we know that no habitat is present.
+When unknown (outside of Flanders), it is set as `NA`.
+
+Occurrence of different references:
+
+```{r paged.print = FALSE}
+habitatquarries_test %>% 
+  st_drop_geometry %>% 
+  count(extra_reference)
+```
+
+```{r warning=FALSE}
+provinces_path <- find_root_file("n2khab_data/10_raw/provinces",
+                                 criterion = has_dir("n2khab_data"))
+provinces <- 
+  read_sf(provinces_path, crs = 31370)
+bbox1 <- st_bbox(habitatquarries_test)
+```
+
+Overview map:
+
+```{r}
+ggplot() +
+  geom_sf(data = provinces, fill = "white", colour = "grey70") +
+  geom_sf(data = habitatquarries_test,
+          colour = NA,
+          aes(fill = factor(unit_id))) + 
+  coord_sf(datum = st_crs(31370),
+           xlim = bbox1$xlim + c(-2e3, 2e3), 
+           ylim = bbox1$ylim + c(-2e3, 2e3)) +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+Zoomed in on the eastern part:
+
+```{r}
+zoom <- coord_sf(datum = st_crs(31370),
+                 xlim = c(234e3, 244e3), 
+                 ylim = c(163e3, 169.2e3))
+ggplot() +
+  geom_sf(data = provinces, fill = "white", colour = "grey70") +
+  geom_sf(data = habitatquarries_test,
+          colour = NA,
+          aes(fill = factor(unit_id))) + 
+  zoom +
+  geom_sf_text(data = habitatquarries_test,
+               aes(label = unit_id),
+               size = 3) +
+  theme_bw() +
+  theme(legend.position = "none",
+        axis.title = element_blank())
+```
+
+With the values shown of `habitattype`:
+
+```{r}
+ggplot() +
+  geom_sf(data = provinces, fill = "white", colour = "grey70") +
+  geom_sf(data = habitatquarries_test,
+          colour = NA,
+          aes(fill = `habitattype`)) + 
+  zoom +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+
+## Table with extra references
+
+Reading from file:
+
+```{r paged.print = FALSE}
+extra_references <- 
+  read_sf(filepath,
+          layer = "extra_references")
+```
+
+Overview of structure:
+
+```{r paged.print = FALSE}
+extra_references %>% 
+  glimpse()
+```
+
+Closer inspection:
+
+```{r}
+extra_references
+```
+
+The above table can be converted back into a BibTeX bibliography file, using code as shown above.
+
