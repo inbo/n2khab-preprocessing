@@ -29,6 +29,7 @@ opts_chunk$set(
 if (.Platform$OS.type == "unix") {
   Sys.setenv(GRASS_PYTHON = system("which python3", intern = TRUE))
 }
+mapview::mapviewOptions(fgb = FALSE)
 ```
 
 ## A simple multilinestring
