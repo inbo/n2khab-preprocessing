@@ -27,9 +27,7 @@ opts_chunk$set(
   dpi = 300
 )
 if (.Platform$OS.type == "unix") {
-  Sys.setenv(GRASS_PYTHON = reticulate::py_discover_config() %>% 
-                          as.character() %>% 
-                          .[1])
+  Sys.setenv(GRASS_PYTHON = system("which python3", intern = TRUE))
 }
 ```
 
