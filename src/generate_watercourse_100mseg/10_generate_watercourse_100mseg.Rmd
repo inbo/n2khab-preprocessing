@@ -208,5 +208,19 @@ execGRASS("v.to.points",
 <!-- all       263871          1     263871 -->
 
 
+
+## Exporting resulting objects from GRASS
+
+
+
+## Further handling in R
+
+
+
+## Writing the result to disk
+
+
+
+
 # Checks on the data source
 
