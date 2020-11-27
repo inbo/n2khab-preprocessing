@@ -1,5 +1,5 @@
 ---
-title: "Generate watercourse segments"
+title: "Generate watercourse 100 m segments"
 # subtitle: "x"
 date: "`r lubridate::now()`"
 link-citations: true

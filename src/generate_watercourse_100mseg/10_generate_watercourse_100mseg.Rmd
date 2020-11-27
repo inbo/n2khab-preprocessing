@@ -1,11 +1,11 @@
 # Making the data source
 
-We will create a master dataset of watercourse segments (`watercourse_100mseg`), in order to derive sampling frames of lotic types (3260 in particular).
+We will create a master dataset of watercourse segments of 100 m (`watercourse_100mseg`), in order to derive sampling frames of lotic types (3260 in particular).
 
 It is a processed data source, derived from the raw data source `watercourse_segments`.
 The segments have a 100 m length, except at the end of the linestrings in `watercourse_segments`.
 
-Further we derive a second data source `watercourse_100msegpoints` which represent the endpoints of the segments.
+Further we derive a second data source `watercourse_100msegpoints` which represent the endpoints of the 100 m segments.
 
 ```{r}
 local_root <- find_root(has_file("generate_watercourse_100mseg.Rproj"))
@@ -20,7 +20,7 @@ if (!dir.exists(finalpath_segmentpoints)) dir.create(finalpath_segmentpoints)
 ```
 
 ```{r}
-grass_location <- file.path(datapath, "grass_watercourse_segments")
+grass_location <- file.path(datapath, "grass_watercourses")
 if (!dir.exists(grass_location)) dir.create(file.path(grass_location, "PERMANENT"),
                                             recursive = TRUE)
 grass_exists <- file.exists(file.path(grass_location, "PERMANENT/PROJ_INFO"))
@@ -32,18 +32,18 @@ if (.Platform$OS.type == "unix") {
 
 ## Geoprocessing steps in GRASS
 
-<!-- Read the `watercourse_segments` data source (this needs improvement). -->
+Read the `watercourse_segments` data source (this needs improvement).
 
-<!-- ```{r paged.print=FALSE} -->
-<!-- watercourse_segments <- read_sf("data/watercourse_segments") -->
-<!-- ``` -->
+```{r eval=!grass_exists, paged.print=FALSE}
+watercourse_segments <- read_sf(file.path(datapath, "watercourse_segments"))
+```
 
 Initialize GRASS project if non-existant:
 
 ```{r eval=!grass_exists}
 initGRASS(gisBase = link2GI::findGRASS()[1, 1],
           home = tempdir(),
-          gisDbase = datapath, location = grass_location, 
+          gisDbase = datapath, location = "grass_watercourses", 
           mapset = "PERMANENT", override = TRUE)
 execGRASS("g.proj", flags = c("c", "quiet"), 
           georef = file.path(datapath, "watercourse_segments"))
