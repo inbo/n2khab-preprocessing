@@ -32,7 +32,7 @@ if (.Platform$OS.type == "unix") {
 
 ## Geoprocessing steps in GRASS
 
-Read the `watercourse_segments` data source (this needs improvement).
+Read the `watercourse_segments` data source (this step still needs reproducibility).
 
 ```{r eval=!grass_exists, paged.print=FALSE}
 watercourse_segments <- read_sf(file.path(datapath, "watercourse_segments"))
@@ -63,7 +63,7 @@ execGRASS("g.region", flags = c("quiet"),
 use_sf()
 ```
 
-Add `watercourse_segments` data source to GRASS:
+Add `watercourse_segments` data source to GRASS database:
 
 ```{r eval=!grass_exists}
 execGRASS("v.in.ogr",
@@ -72,6 +72,8 @@ execGRASS("v.in.ogr",
 ```
 
 ### Generate `watercourse_100mseg` in GRASS
+
+<!-- g.manual v.split -->
 
 ```{r eval=!grass_exists}
 execGRASS("v.split",
@@ -131,6 +133,8 @@ system('v.category input=watercourse_100mseg_pre1 option=add layer=2 output=wate
 <!-- layer <2/watercourse_100mseg_2> table <watercourse_100mseg_2> in database <(...)/n2khab-preprocessing/src/generate_watercourse_100mseg/data/grass_watercourses/PERMANENT/sqlite/sqlite.db> through driver <sqlite> with key <cat> -->
 
 ### Generate `watercourse_100msegpoints` in GRASS
+
+<!-- g.manual v.to.points -->
 
 ```{r eval=!grass_exists}
 execGRASS("v.to.points",
