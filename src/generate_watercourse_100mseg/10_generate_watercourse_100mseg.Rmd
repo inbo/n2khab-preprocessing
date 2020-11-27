@@ -38,13 +38,17 @@ Read the `watercourse_segments` data source (this needs improvement).
 watercourse_segments <- read_sf(file.path(datapath, "watercourse_segments"))
 ```
 
-Initialize GRASS project if non-existant:
+Initialize GRASS projectfolder if non-existant, or link to the already existing one:
 
-```{r eval=!grass_exists}
+```{r}
 initGRASS(gisBase = link2GI::findGRASS()[1, 1],
           home = tempdir(),
           gisDbase = datapath, location = "grass_watercourses", 
           mapset = "PERMANENT", override = TRUE)
+```
+
+
+```{r eval=!grass_exists}
 execGRASS("g.proj", flags = c("c", "quiet"), 
           georef = file.path(datapath, "watercourse_segments"))
 b_box <- st_bbox(watercourse_segments)
@@ -52,6 +56,10 @@ execGRASS("g.region", flags = c("quiet"),
           n = as.character(b_box["ymax"]), s = as.character(b_box["ymin"]), 
           e = as.character(b_box["xmax"]), w = as.character(b_box["xmin"]), 
           res = "1")
+```
+
+
+```{r}
 use_sf()
 ```
 
