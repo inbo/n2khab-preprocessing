@@ -196,7 +196,7 @@ execGRASS("g.manual",
 
 # Geoprocessing
 
-## v.split
+## GRASS: v.split + v.to.points
 
 ### one_multiline
 
@@ -227,15 +227,39 @@ execGRASS("v.split",
           length = 100)
 ```
 
+Also generate points at the segment ends:
+
+```{r}
+execGRASS("v.to.points",
+          flags = c("overwrite"),
+          input = "split2",
+          output = "split2points",
+          use = "end")
+```
 
 
 ```{r out.width='800px', out.height='500px'}
 split2 <- readVECT("split2")
-split2 %>% 
+split2points <- readVECT("split2points")
+segments <- 
+  split2 %>% 
   cbind(col = factor(1:2)) %>% 
-  mapview::mapview(zcol = "col",
-                   color = c("green3", "purple"),
-                   lwd = 4)
+  mutate(segment_id = 1:nrow(.))
+endpoints <- 
+  split2points %>% 
+  cbind(col = factor(1:2)) %>% 
+  mutate(point_id = 1:nrow(.))
+mapview(segments,
+        zcol = "col",
+        label = "segment_id",
+        color = c("green3", "purple"),
+        lwd = 4) +
+  mapview(endpoints,
+        zcol = "col",
+        label = "point_id",
+        cex = 5,
+        col.regions = c("green3", "purple"),
+        color = c("green3", "purple"))
 ```
 
 ```{r paged.print=FALSE}
