@@ -277,7 +277,68 @@ split2 %>%
   kable
 ```
 
+## Comparison with `sp::spsample()`
 
+We do this only for the `linestrings` object.
+
+We make a `pointsample1` and a `pointsample2` object.
+The difference is that `pointsample2` misses the watercourse where `OBJECTID==413`.
+In this way, stability of points can be verified toward changes in the dataset.
+
+```{r paged.print=FALSE, warning=FALSE}
+length_total <- 
+  linestrings %>% 
+  st_length() %>% 
+  sum %>% 
+  units::drop_units()
+pointsample1 <- 
+  sp::spsample(as_Spatial(linestrings),
+               n = ceiling(length_total/100),
+               type="regular",
+               cellsize=100,
+               offset=0) %>% 
+  st_as_sf
+```
+
+```{r paged.print=FALSE, warning=FALSE}
+length_total2 <- 
+  linestrings %>% 
+  filter(OBJECTID != 413) %>% 
+  st_length() %>% 
+  sum %>% 
+  units::drop_units()
+pointsample2 <- 
+  sp::spsample(as_Spatial(linestrings %>% 
+                            filter(OBJECTID != 413)),
+               n = ceiling(length_total2/100),
+               type="regular",
+               cellsize=100,
+               offset=0) %>% 
+  st_as_sf
+```
+
+Plot the points on top of the previous map:
+
+
+```{r out.width='800px', out.height='500px'}
+mapview(segments,
+        zcol = "col",
+        label = "segment_id",
+        color = c("green3", "purple"),
+        lwd = 4) +
+  mapview(endpoints,
+        zcol = "col",
+        label = "point_id",
+        cex = 5,
+        col.regions = c("green3", "purple"),
+        color = c("green3", "purple")) +
+  mapview(pointsample1,
+        cex = 5,
+        col.regions = "red") +
+  mapview(pointsample2,
+        cex = 5,
+        col.regions = "blue")
+```
 
 
 # Used environment
