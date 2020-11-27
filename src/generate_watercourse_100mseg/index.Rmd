@@ -1,0 +1,51 @@
+---
+title: "Generate watercourse segments"
+# subtitle: "x"
+date: "`r lubridate::now()`"
+link-citations: true
+linkcolor: link.colour
+citecolor: link.colour
+urlcolor: link.colour
+geometry: margin=1in
+mainfont: "Calibri"
+fontsize: 11pt
+documentclass: "article"
+# csl: ../inbo.csl
+# bibliography: ../references.bib
+site: bookdown::bookdown_site
+output:
+  bookdown::html_document2:
+    code_folding: show
+    keep_md: TRUE
+    number_sections: yes
+    fig_caption: yes
+    df_print: paged
+    toc: TRUE
+    toc_float:
+      collapsed: FALSE
+      smooth_scroll: FALSE
+    includes:
+        in_header: ../header.html
+---
+
+```{r setup, include=FALSE}
+library(sf)
+library(dplyr)
+library(knitr)
+library(rprojroot)
+library(ggplot2)
+library(rgrass7)
+opts_chunk$set(
+  echo = TRUE,
+  dpi = 300
+)
+library(mapview)
+mapviewOptions(fgb = FALSE)
+```
+
+**Note: this is a bookdown project, supposed to be run from within the `src/generate_watercourse_100mseg` subfolder. You can use the `generate_watercourse_100mseg.Rproj` RStudio project file in this subfolder to run it.**
+
+
+
+
+

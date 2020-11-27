@@ -1,0 +1,93 @@
+# Making the data source
+
+We will create a master dataset of watercourse segments (`watercourse_100mseg`), in order to derive sampling frames of lotic types (3260 in particular).
+
+It is a processed data source, derived from the raw data source `watercourse_segments`.
+The segments have a 100 m length, except at the end of the linestrings in `watercourse_segments`.
+
+Further we derive a second data source `watercourse_100msegpoints` which represent the endpoints of the segments.
+
+```{r}
+local_root <- find_root(has_file("generate_watercourse_100mseg.Rproj"))
+datapath <- file.path(local_root, "data")
+if (!dir.exists(datapath)) dir.create(datapath)
+finalpath_segments <- find_root_file("n2khab_data/20_processed/watercourse_100mseg", 
+                                     criterion = has_dir("n2khab_data"))
+if (!dir.exists(finalpath_segments)) dir.create(finalpath_segments)
+finalpath_segmentpoints <- find_root_file("n2khab_data/20_processed/watercourse_100msegpoints", 
+                                          criterion = has_dir("n2khab_data"))
+if (!dir.exists(finalpath_segmentpoints)) dir.create(finalpath_segmentpoints)
+```
+
+```{r}
+grass_location <- file.path(datapath, "grass_watercourse_segments")
+if (!dir.exists(grass_location)) dir.create(file.path(grass_location, "PERMANENT"),
+                                            recursive = TRUE)
+grass_exists <- file.exists(file.path(grass_location, "PERMANENT/PROJ_INFO"))
+if (.Platform$OS.type == "unix") {
+  Sys.setenv(GRASS_PYTHON = system("which python3", intern = TRUE))
+}
+```
+
+
+## Geoprocessing steps in GRASS
+
+<!-- Read the `watercourse_segments` data source (this needs improvement). -->
+
+<!-- ```{r paged.print=FALSE} -->
+<!-- watercourse_segments <- read_sf("data/watercourse_segments") -->
+<!-- ``` -->
+
+Initialize GRASS project if non-existant:
+
+```{r eval=!grass_exists}
+initGRASS(gisBase = link2GI::findGRASS()[1, 1],
+          home = tempdir(),
+          gisDbase = datapath, location = grass_location, 
+          mapset = "PERMANENT", override = TRUE)
+execGRASS("g.proj", flags = c("c", "quiet"), 
+          georef = file.path(datapath, "watercourse_segments"))
+b_box <- st_bbox(watercourse_segments)
+execGRASS("g.region", flags = c("quiet"), 
+          n = as.character(b_box["ymax"]), s = as.character(b_box["ymin"]), 
+          e = as.character(b_box["xmax"]), w = as.character(b_box["xmin"]), 
+          res = "1")
+use_sf()
+```
+
+Add `watercourse_segments` data source to GRASS:
+
+```{r eval=!grass_exists}
+execGRASS("v.in.ogr",
+          input = file.path(datapath, "watercourse_segments"),
+          output = "watercourse_segments")
+```
+
+### Generate `watercourse_100mseg` in GRASS
+
+```{r eval=!grass_exists}
+execGRASS("v.split",
+          flags = c("f", "overwrite"),
+          input = "watercourse_segments",
+          output = "watercourse_100mseg",
+          length = 100)
+```
+
+```{r eval=!grass_exists}
+system("v.category input=watercourse_100mseg option=report")
+```
+
+
+
+### Generate `watercourse_100msegpoints` in GRASS
+
+```{r eval=!grass_exists}
+execGRASS("v.to.points",
+          flags = c("overwrite"),
+          input = "watercourse_100mseg",
+          output = "watercourse_100msegpoints",
+          use = "end")
+```
+
+# Checks on the data source
+
