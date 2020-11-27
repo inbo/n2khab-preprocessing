@@ -22,6 +22,8 @@ library(sf)
 library(n2khab)
 library(rgrass7)
 library(knitr)
+library(mapview)
+mapviewOptions(fgb = FALSE)
 opts_chunk$set(
   echo = TRUE,
   dpi = 300
@@ -29,7 +31,7 @@ opts_chunk$set(
 if (.Platform$OS.type == "unix") {
   Sys.setenv(GRASS_PYTHON = system("which python3", intern = TRUE))
 }
-mapview::mapviewOptions(fgb = FALSE)
+
 ```
 
 ## A simple multilinestring
@@ -174,7 +176,7 @@ mapset_path <-
          intern = TRUE)
 system(paste0("gnome-terminal --working-directory=",
               mapset_path,
-              " -e 'grass --text .'")
+              " -- grass --text .")
 )
 ```
 
