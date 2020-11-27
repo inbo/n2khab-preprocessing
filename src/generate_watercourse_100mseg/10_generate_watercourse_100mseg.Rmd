@@ -23,7 +23,7 @@ if (!dir.exists(finalpath_segmentpoints)) dir.create(finalpath_segmentpoints)
 grass_location <- file.path(datapath, "grass_watercourses")
 if (!dir.exists(grass_location)) dir.create(file.path(grass_location, "PERMANENT"),
                                             recursive = TRUE)
-grass_exists <- file.exists(file.path(grass_location, "PERMANENT/PROJ_INFO"))
+grassdbase_exists <- file.exists(file.path(grass_location, "PERMANENT/PROJ_INFO"))
 if (.Platform$OS.type == "unix") {
   Sys.setenv(GRASS_PYTHON = system("which python3", intern = TRUE))
 }
@@ -34,7 +34,7 @@ if (.Platform$OS.type == "unix") {
 
 Read the `watercourse_segments` data source (this step still needs reproducibility).
 
-```{r eval=!grass_exists, paged.print=FALSE}
+```{r eval=!grassdbase_exists, paged.print=FALSE}
 watercourse_segments <- read_sf(file.path(datapath, "watercourse_segments"))
 ```
 
@@ -48,7 +48,7 @@ initGRASS(gisBase = link2GI::findGRASS()[1, 1],
 ```
 
 
-```{r eval=!grass_exists}
+```{r eval=!grassdbase_exists}
 # setting CRS and extent of the GRASS location, based on 'watercourse_segments'
 execGRASS("g.proj", flags = c("c", "quiet"), 
           georef = file.path(datapath, "watercourse_segments"))
@@ -67,7 +67,7 @@ use_sf()
 
 Add `watercourse_segments` data source to GRASS database:
 
-```{r eval=!grass_exists}
+```{r eval=!grassdbase_exists}
 execGRASS("v.in.ogr",
           input = file.path(datapath, "watercourse_segments"),
           output = "watercourse_segments")
@@ -79,7 +79,7 @@ To do this, we use the `v.split` command.
 
 <!-- g.manual v.split -->
 
-```{r eval=!grass_exists}
+```{r eval=!grassdbase_exists}
 execGRASS("v.split",
           flags = c("f", "overwrite"),
           input = "watercourse_segments",
@@ -101,7 +101,7 @@ This depends on the availability of the GRASS executables in the shell PATH, whi
 ]
 The `system()` command directly sends the below commands to the shell as one script for execution by GRASS.
 
-```{r eval=!grass_exists}
+```{r eval=!grassdbase_exists}
 system('v.category input=watercourse_100mseg_pre1 option=add layer=2 output=watercourse_100mseg
        # v.category input=watercourse_100mseg option=report
        # v.db.connect -p map=watercourse_100mseg
@@ -142,7 +142,7 @@ To do this, we use the `v.to.points` command.
 
 <!-- g.manual v.to.points -->
 
-```{r eval=!grass_exists}
+```{r eval=!grassdbase_exists}
 execGRASS("v.to.points",
           flags = c("overwrite"),
           input = "watercourse_100mseg",
