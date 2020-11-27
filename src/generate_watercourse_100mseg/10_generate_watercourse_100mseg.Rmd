@@ -69,15 +69,58 @@ execGRASS("v.in.ogr",
 execGRASS("v.split",
           flags = c("f", "overwrite"),
           input = "watercourse_segments",
-          output = "watercourse_100mseg",
+          output = "watercourse_100mseg_pre1",
           length = 100)
 ```
 
-```{r eval=!grass_exists}
-system("v.category input=watercourse_100mseg option=report")
+```{r}
+system("v.category input=watercourse_100mseg_pre1 option=report")
 ```
 
+As seen from the above input, in accordance with the `v.split` manual, the categories and the attribute table of the original vector map are simply copied over.
+This means that the individual 100 m segments have no unique category, i.e. cannot have their own rows (with ID) in another attribute table.
+To get that, as explained in the documentation, we define a second layer^[To do that, the vector map `watercourse_100mseg_pre1` is copied, including layers & the link to the same attribute table.] with a unique category per feature (100 m segment) and create a new attribute table that links to the new layer (an attribute table always has exactly 1 row for each category and uses 1 layer to take categories from).
+Next, we copy the category of layer 1 as a mere attribute into a second column in the new attribute table (which is linked to layer 2), in order to define the link between the grouped category `cat_group` (categories of `watercourses_segements`) and the unique category `cat`.
 
+In order to execute the below four GRASS commands (not the outcommented ones), it may be necessary to break them down into separate `execGRASS()` statements.^[
+This depends on the availability of the GRASS executables in the shell PATH, which should have been set by `initGRASS()`.
+]
+The `system()` command directly sends the below commands to the shell as one script for execution by GRASS.
+
+```{r eval=!grass_exists}
+system('v.category input=watercourse_100mseg_pre1 option=add layer=2 output=watercourse_100mseg
+       # v.category input=watercourse_100mseg option=report
+       # v.db.connect -p map=watercourse_100mseg
+       v.db.addtable watercourse_100mseg layer=2
+       # v.db.connect -p map=watercourse_100mseg
+       # v.info -c watercourse_100mseg layer=2
+       # v.info -c watercourse_100mseg layer=1
+       v.db.addcolumn map=watercourse_100mseg layer=2 column="cat_group int"
+       v.to.db map=watercourse_100mseg layer=2 option=query query_layer=1 query_column=cat columns=cat_group --overwrite
+       # v.db.select map=watercourse_100mseg layer=2 | head
+       ')
+```
+
+<!-- Output from the v.to.db command: -->
+
+<!-- WARNING: Values in column <cat_group> will be overwritten -->
+<!-- Reading features... -->
+<!--  100% -->
+<!-- Querying database... -->
+<!--  100% -->
+<!-- Updating database... -->
+<!--  100% -->
+<!-- 263871 categories read from vector map (layer 2) -->
+<!-- 263871 records selected from table (layer 1) -->
+<!-- 263871 categories read from vector map exist in selection from table -->
+<!-- 263871 records updated/inserted (layer 2) -->
+
+
+
+<!-- v.db.connect -p map=watercourse_100mseg -->
+<!-- Vector map <watercourse_100mseg> is connected by: -->
+<!-- layer <1/watercourse_segments> table <watercourse_100mseg> in database <(...)/n2khab-preprocessing/src/generate_watercourse_100mseg/data/grass_watercourses/PERMANENT/sqlite/sqlite.db> through driver <sqlite> with key <cat> -->
+<!-- layer <2/watercourse_100mseg_2> table <watercourse_100mseg_2> in database <(...)/n2khab-preprocessing/src/generate_watercourse_100mseg/data/grass_watercourses/PERMANENT/sqlite/sqlite.db> through driver <sqlite> with key <cat> -->
 
 ### Generate `watercourse_100msegpoints` in GRASS
 
@@ -85,9 +128,67 @@ system("v.category input=watercourse_100mseg option=report")
 execGRASS("v.to.points",
           flags = c("overwrite"),
           input = "watercourse_100mseg",
+          layer = "2",
           output = "watercourse_100msegpoints",
           use = "end")
 ```
+
+<!-- v.info watercourse_100msegpoints layer=1 -->
+<!--  +----------------------------------------------------------------------------+ -->
+<!--  | Name:            watercourse_100msegpoints                                 | -->
+<!--  | Mapset:          PERMANENT                                                 | -->
+<!--  | Location:        grass_watercourses                                        | -->
+<!--  | Database:        (...)                                                     | -->
+<!--  | Title:                                                                     | -->
+<!--  | Map scale:       1:1                                                       | -->
+<!--  | Name of creator: floris                                                    | -->
+<!--  | Organization:                                                              | -->
+<!--  | Source date:     Fri Nov 27 16:14:43 2020                                  | -->
+<!--  | Timestamp (first layer): none                                              | -->
+<!--  |----------------------------------------------------------------------------| -->
+<!--  | Map format:      native                                                    | -->
+<!--  |----------------------------------------------------------------------------| -->
+<!--  |   Type of map: vector (level: 2)                                           | -->
+<!--  |                                                                            | -->
+<!--  |   Number of points:       263871          Number of centroids:  0          | -->
+<!--  |   Number of lines:        0               Number of boundaries: 0          | -->
+<!--  |   Number of areas:        0               Number of islands:    0          | -->
+<!--  |                                                                            | -->
+<!--  |   Map is 3D:              No                                               | -->
+<!--  |   Number of dblinks:      2                                                | -->
+<!--  |                                                                            | -->
+<!--  |   Projection: Belge 1972 / Belgian Lambert 72                              | -->
+<!--  |                                                                            | -->
+<!--  |               N:       244044.9074    S:   153062.38093558                 | -->
+<!--  |               E:       258444.2968    W:    23006.85298789                 | -->
+<!--  |                                                                            | -->
+<!--  |   Digitization threshold: 0                                                | -->
+<!--  |   Comment:                                                                 | -->
+<!--  |                                                                            | -->
+<!--  +----------------------------------------------------------------------------+ -->
+
+<!-- v.category input=watercourse_100msegpoints option=report -->
+<!-- Layer/table: 1/watercourse_100msegpoints_1 -->
+<!-- type       count        min        max -->
+<!-- point     263871          1     263871 -->
+<!-- line           0          0          0 -->
+<!-- boundary       0          0          0 -->
+<!-- centroid       0          0          0 -->
+<!-- area           0          0          0 -->
+<!-- face           0          0          0 -->
+<!-- kernel         0          0          0 -->
+<!-- all       263871          1     263871 -->
+<!-- Layer/table: 2/watercourse_100msegpoints_2 -->
+<!-- type       count        min        max -->
+<!-- point     263871          1     263871 -->
+<!-- line           0          0          0 -->
+<!-- boundary       0          0          0 -->
+<!-- centroid       0          0          0 -->
+<!-- area           0          0          0 -->
+<!-- face           0          0          0 -->
+<!-- kernel         0          0          0 -->
+<!-- all       263871          1     263871 -->
+
 
 # Checks on the data source
 
