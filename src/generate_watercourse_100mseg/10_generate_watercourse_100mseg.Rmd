@@ -2,8 +2,8 @@
 
 We will create a master dataset of watercourse segments of 100 m (`watercourse_100mseg`), in order to derive sampling frames of lotic types (3260 in particular).
 
-It is a processed data source, derived from the raw data source `watercourse_segments`.
-The segments have a 100 m length, except at the end of the linestrings in `watercourse_segments`.
+It is a processed data source, derived from the raw data source `watercourse_segments` (version `watercourse_segments_20180601`).
+The segments will have a 100 m length, except at the end of the linestrings of `watercourse_segments`.
 
 Further we derive a second data source `watercourse_100msegpoints` which represent the endpoints of the 100 m segments.
 
@@ -49,8 +49,10 @@ initGRASS(gisBase = link2GI::findGRASS()[1, 1],
 
 
 ```{r eval=!grass_exists}
+# setting CRS and extent of the GRASS location, based on 'watercourse_segments'
 execGRASS("g.proj", flags = c("c", "quiet"), 
           georef = file.path(datapath, "watercourse_segments"))
+  # note: setting the extent should only affect raster computations (so we don't need it)
 b_box <- st_bbox(watercourse_segments)
 execGRASS("g.region", flags = c("quiet"), 
           n = as.character(b_box["ymax"]), s = as.character(b_box["ymin"]), 
@@ -72,6 +74,8 @@ execGRASS("v.in.ogr",
 ```
 
 ### Generate `watercourse_100mseg` in GRASS
+
+To do this, we use the `v.split` command.
 
 <!-- g.manual v.split -->
 
@@ -133,6 +137,8 @@ system('v.category input=watercourse_100mseg_pre1 option=add layer=2 output=wate
 <!-- layer <2/watercourse_100mseg_2> table <watercourse_100mseg_2> in database <(...)/n2khab-preprocessing/src/generate_watercourse_100mseg/data/grass_watercourses/PERMANENT/sqlite/sqlite.db> through driver <sqlite> with key <cat> -->
 
 ### Generate `watercourse_100msegpoints` in GRASS
+
+To do this, we use the `v.to.points` command.
 
 <!-- g.manual v.to.points -->
 
