@@ -31,7 +31,7 @@ if (.Platform$OS.type == "unix") {
 
 Read the `watercourse_segments` data source (this step still needs reproducibility).
 
-```{r eval=!grassdbase_exists, paged.print=FALSE}
+```{r paged.print=FALSE}
 watercourse_segments <- read_sf(file.path(datapath, "watercourse_segments"))
 ```
 
@@ -234,8 +234,47 @@ execGRASS("v.out.ogr",
 
 # Checks on the data source
 
+We best set the crs explicitly: while the WKT from the gpkg (exported from GRASS using GDAL/OGR) is correct (parameters identical to the ones of `watercourse_segments`), it lost a few names and would otherwise be displayed as 'unknown'.
 
+```{r paged.print=FALSE, warning=FALSE}
+(seg <- read_sf(file.path(finalpath, 
+                          "watercourse_100mseg.gpkg"), 
+                layer = "watercourse_100mseg_lines",
+                crs = 31370)
+)
+```
 
+```{r paged.print=FALSE, warning=FALSE}
+(pts <- read_sf(file.path(finalpath, 
+                          "watercourse_100mseg.gpkg"), 
+                layer = "watercourse_100mseg_points",
+                crs = 31370))
+```
 
-# Checks on the data source
+```{r}
+all.equal(seg$rank, pts$rank)
+```
+
+```{r}
+all.equal(seg$vhas_code, pts$vhas_code)
+```
+
+```{r}
+all.equal(unique(seg$vhas_code), unique(watercourse_segments$VHAS))
+```
+
+Cartographic display of a row selection:
+
+```{r}
+seg %>% 
+  filter(rank < 2e4) %>% 
+  ggplot() +
+  geom_sf(colour = "grey50") +
+  geom_sf(data = pts %>% filter(rank < 2e4), colour = "red", size = 0.5) +
+  lims(x = c(198e3, 204e3), y = c(183e3, 188e3)) +
+  coord_sf(datum = 31370) +
+  theme_bw()+
+  theme(panel.grid = element_blank())
+```
+
 
