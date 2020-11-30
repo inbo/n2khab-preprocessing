@@ -11,12 +11,9 @@ Further we derive a second data source `watercourse_100msegpoints` which represe
 local_root <- find_root(has_file("generate_watercourse_100mseg.Rproj"))
 datapath <- file.path(local_root, "data")
 if (!dir.exists(datapath)) dir.create(datapath)
-finalpath_segments <- find_root_file("n2khab_data/20_processed/watercourse_100mseg", 
-                                     criterion = has_dir("n2khab_data"))
-if (!dir.exists(finalpath_segments)) dir.create(finalpath_segments)
-finalpath_segmentpoints <- find_root_file("n2khab_data/20_processed/watercourse_100msegpoints", 
-                                          criterion = has_dir("n2khab_data"))
-if (!dir.exists(finalpath_segmentpoints)) dir.create(finalpath_segmentpoints)
+finalpath <- find_root_file("n2khab_data/20_processed/watercourse_100mseg", 
+                            criterion = has_dir("n2khab_data"))
+if (!dir.exists(finalpath)) dir.create(finalpath)
 ```
 
 ```{r}
@@ -210,13 +207,32 @@ execGRASS("v.to.points",
 
 ## Exporting resulting objects from GRASS
 
+We already took care of standardized column names within GRASS; so no further changes are needed when exporting the data from GRASS.
+We do it this way in order to minimize the number of times the data need to be written forth and back to a geopackage, which takes extra time (> 250e3 features) and file organization.
+
+```{r}
+execGRASS("v.out.ogr",
+          flags = "overwrite",
+          input = "watercourse_100mseg",
+          layer = "2",
+          output = file.path(finalpath, "watercourse_100mseg.gpkg"),
+          output_layer = "watercourse_100mseg_lines")
+```
+
+```{r}
+# This export takes a very long time (> 60 min).
+# There must be some bug in the export procedure 
+# (after all, the data are simpler than previous one).
+execGRASS("v.out.ogr",
+          input = "watercourse_100msegpoints",
+          layer = "1",
+          output = file.path(finalpath, "watercourse_100mseg.gpkg"),
+          output_layer = "watercourse_100mseg_points")
+```
 
 
-## Further handling in R
 
-
-
-## Writing the result to disk
+# Checks on the data source
 
 
 
