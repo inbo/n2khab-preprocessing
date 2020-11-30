@@ -10,6 +10,8 @@ geometry: margin=1in
 mainfont: "Calibri"
 fontsize: 11pt
 documentclass: "article"
+params:
+  grass_reexport: FALSE
 # csl: ../inbo.csl
 # bibliography: ../references.bib
 site: bookdown::bookdown_site
@@ -45,7 +47,8 @@ mapviewOptions(fgb = FALSE)
 
 **Note: this is a bookdown project, supposed to be run from within the `src/generate_watercourse_100mseg` subfolder. You can use the `generate_watercourse_100mseg.Rproj` RStudio project file in this subfolder to run it.**
 
-
+Upon building, a persistent GRASS project database will be created in which the data will be created.
+Because serious slowdown was encountered when exporting the points object (not the lines) to the final GPKG file, exporting (hence, recreating the GPKG file) will only be done when knitting with `params = list(grass_reexport = TRUE)`.
 
 
 

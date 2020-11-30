@@ -210,7 +210,7 @@ execGRASS("v.to.points",
 We already took care of standardized column names within GRASS; so no further changes are needed when exporting the data from GRASS.
 We do it this way in order to minimize the number of times the data need to be written forth and back to a geopackage, which takes extra time (> 250e3 features) and file organization.
 
-```{r}
+```{r eval=params$grass_reexport}
 execGRASS("v.out.ogr",
           flags = "overwrite",
           input = "watercourse_100mseg",
@@ -219,7 +219,7 @@ execGRASS("v.out.ogr",
           output_layer = "watercourse_100mseg_lines")
 ```
 
-```{r}
+```{r eval=params$grass_reexport}
 # This export takes a very long time (> 60 min).
 # There must be some bug in the export procedure 
 # (after all, the data are simpler than previous one).
