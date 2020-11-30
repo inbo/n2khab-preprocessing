@@ -33,6 +33,7 @@ output:
 ```{r setup, include=FALSE}
 library(sf)
 library(dplyr)
+library(stringr)
 library(knitr)
 library(rprojroot)
 library(ggplot2)
@@ -41,8 +42,6 @@ opts_chunk$set(
   echo = TRUE,
   dpi = 300
 )
-library(mapview)
-mapviewOptions(fgb = FALSE)
 ```
 
 **Note: this is a bookdown project, supposed to be run from within the `src/generate_watercourse_100mseg` subfolder. You can use the `generate_watercourse_100mseg.Rproj` RStudio project file in this subfolder to run it.**
