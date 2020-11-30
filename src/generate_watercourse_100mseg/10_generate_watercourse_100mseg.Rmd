@@ -234,6 +234,17 @@ execGRASS("v.out.ogr",
 ```
 
 
+# Attribute variables of the processed data source: explanation
+
+Both layers in the GPKG file have exactly the same attribute variables:
+
+- `rank`: a unique integer increment (1-2-3-4-5-...).
+It is to be used in a _relative_ way: it ranks the 100 m segments / points along each original linestring in the raw data source.
+- `vhas_code`: the unique VHAS code of the original linestring in the raw data source.
+It is common to all segments / points in the processed data source that belong to the same original watercourse segment.
+
+To obtain other attributes, one can make a join on the VHAS code column of the raw data source.
+
 
 # Checks on the data source
 
