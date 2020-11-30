@@ -96,7 +96,7 @@ This means that the individual 100 m segments have no unique category, i.e. they
 To get that, as explained in the documentation, we define a second layer^[To do that, the vector map `watercourse_100mseg_pre1` is copied, including layers & the link to the same attribute table.] with a unique category per feature (100 m segment) and create a new attribute table that links to the new layer (an attribute table always has exactly 1 row for each category and uses 1 layer to take categories from).
 Next, we copy the category of layer 1 as a mere attribute into a second column in the new attribute table (which is linked to layer 2), in order to define the link between the grouped category `cat_group` (categories of `watercourses_segements`) and the unique category `cat`.
 
-In order to execute the below four GRASS commands (not the outcommented ones), it may be necessary to break them down into separate `execGRASS()` statements.^[
+In order to execute the below three GRASS commands (not the outcommented ones), it may be necessary to break them down into separate `execGRASS()` statements.^[
 This depends on the availability of the GRASS executables in the shell PATH, which should have been set by `initGRASS()`.
 ]
 The `system()` command directly sends the below commands to the shell as one script for execution by GRASS.
@@ -105,19 +105,18 @@ The `system()` command directly sends the below commands to the shell as one scr
 system('v.category input=watercourse_100mseg_pre1 option=add layer=2 output=watercourse_100mseg
        # v.category input=watercourse_100mseg option=report
        # v.db.connect -p map=watercourse_100mseg
-       v.db.addtable watercourse_100mseg layer=2
+       v.db.addtable watercourse_100mseg layer=2 key="rank" columns="vhas_code int"
        # v.db.connect -p map=watercourse_100mseg
        # v.info -c watercourse_100mseg layer=2
        # v.info -c watercourse_100mseg layer=1
-       v.db.addcolumn map=watercourse_100mseg layer=2 column="cat_group int"
-       v.to.db map=watercourse_100mseg layer=2 option=query query_layer=1 query_column=cat columns=cat_group --overwrite
+       v.to.db map=watercourse_100mseg layer=2 option=query query_layer=1 query_column=VHAS columns=vhas_code --overwrite
        # v.db.select map=watercourse_100mseg layer=2 | head
        ')
 ```
 
 <!-- Output from the v.to.db command: -->
 
-<!-- WARNING: Values in column <cat_group> will be overwritten -->
+<!-- WARNING: Values in column <vhas_code> will be overwritten -->
 <!-- Reading features... -->
 <!--  100% -->
 <!-- Querying database... -->
@@ -134,7 +133,7 @@ system('v.category input=watercourse_100mseg_pre1 option=add layer=2 output=wate
 <!-- v.db.connect -p map=watercourse_100mseg -->
 <!-- Vector map <watercourse_100mseg> is connected by: -->
 <!-- layer <1/watercourse_segments> table <watercourse_100mseg> in database <(...)/n2khab-preprocessing/src/generate_watercourse_100mseg/data/grass_watercourses/PERMANENT/sqlite/sqlite.db> through driver <sqlite> with key <cat> -->
-<!-- layer <2/watercourse_100mseg_2> table <watercourse_100mseg_2> in database <(...)/n2khab-preprocessing/src/generate_watercourse_100mseg/data/grass_watercourses/PERMANENT/sqlite/sqlite.db> through driver <sqlite> with key <cat> -->
+<!-- layer <2/watercourse_100mseg_2> table <watercourse_100mseg_2> in database <(...)/n2khab-preprocessing/src/generate_watercourse_100mseg/data/grass_watercourses/PERMANENT/sqlite/sqlite.db> through driver <sqlite> with key <rank> -->
 
 ### Generate `watercourse_100msegpoints` in GRASS
 
