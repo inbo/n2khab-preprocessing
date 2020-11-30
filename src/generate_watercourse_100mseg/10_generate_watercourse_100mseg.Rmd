@@ -5,7 +5,7 @@ We will create a master dataset of watercourse segments of 100 m (`watercourse_1
 It is a processed data source, derived from the raw data source `watercourse_segments` (version `watercourse_segments_20180601`).
 The segments will have a 100 m length, except at the end of the linestrings of `watercourse_segments`.
 
-Further we derive a second data source `watercourse_100msegpoints` which represent the endpoints of the 100 m segments.
+Further we will also derive a second layer which represent the _endpoints_ of the 100 m segments.
 
 ```{r}
 local_root <- find_root(has_file("generate_watercourse_100mseg.Rproj"))
@@ -73,6 +73,8 @@ execGRASS("v.in.ogr",
 ### Generate `watercourse_100mseg` in GRASS
 
 To do this, we use the `v.split` command.
+It will take each linestring of the raw `watercourse_segments` data source and split it into segments of 100 m length.
+This generally results in one segment (for each original linestring) that is shorter than 100 m!
 
 <!-- g.manual v.split -->
 
@@ -135,6 +137,7 @@ system('v.category input=watercourse_100mseg_pre1 option=add layer=2 output=wate
 ### Generate `watercourse_100msegpoints` in GRASS
 
 To do this, we use the `v.to.points` command.
+We create one point per 100 m segment, notably the _endpoint_.
 
 <!-- g.manual v.to.points -->
 
