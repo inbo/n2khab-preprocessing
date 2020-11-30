@@ -234,19 +234,34 @@ execGRASS("v.out.ogr",
 
 # Checks on the data source
 
+```{r}
+filepath <- file.path(finalpath, "watercourse_100mseg.gpkg")
+```
+
+Checksums:
+
+```{r}
+file(filepath) %>% 
+  openssl::md5() %>% 
+  str_c(collapse = '') %>% 
+  `names<-`("md5sum")
+file(filepath) %>% 
+  openssl::sha256() %>% 
+  str_c(collapse = '') %>% 
+  `names<-`("sha256sum")
+```
+
 We best set the crs explicitly: while the WKT from the gpkg (exported from GRASS using GDAL/OGR) is correct (parameters identical to the ones of `watercourse_segments`), it lost a few names and would otherwise be displayed as 'unknown'.
 
 ```{r paged.print=FALSE, warning=FALSE}
-(seg <- read_sf(file.path(finalpath, 
-                          "watercourse_100mseg.gpkg"), 
+(seg <- read_sf(filepath, 
                 layer = "watercourse_100mseg_lines",
                 crs = 31370)
 )
 ```
 
 ```{r paged.print=FALSE, warning=FALSE}
-(pts <- read_sf(file.path(finalpath, 
-                          "watercourse_100mseg.gpkg"), 
+(pts <- read_sf(filepath, 
                 layer = "watercourse_100mseg_points",
                 crs = 31370))
 ```
