@@ -123,10 +123,19 @@ For more tedious geoprocessing we can use [GRASS](https://grass.osgeo.org/), thr
 
 ```{r results="hide"}
 # Set up a temporary GRASS project:
-link2GI::linkGRASS7(one_multiline, # sets the CRS etc.
-                    search_path = if (.Platform$OS.type == "unix") {
-                      "/usr/bin"} else NULL,
-                    use_home = TRUE)
+gisBase <- 
+  if (.Platform$OS.type == "windows" && nchar(Sys.getenv("OSGEO4W_ROOT")) > 0) {
+    # needed only until https://github.com/r-spatial/link2GI/issues/48 is fixed
+  "C:/OSGeo4W64/apps/grass/grass78"
+} else {
+  link2GI::findGRASS()[1, 1]
+}
+initGRASS(gisBase = gisBase,
+          home = tempdir(),
+          mapset = "PERMANENT", 
+          override = TRUE)
+execGRASS("g.proj", c("c", "quiet"), 
+          georef = file.path("test_vector.gpkg"))
 use_sf()
 ```
 
