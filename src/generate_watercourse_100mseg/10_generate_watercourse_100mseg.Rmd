@@ -52,6 +52,19 @@ initGRASS(gisBase = if (interactive()) gisbase_grass else params$gisbase_grass,
           mapset = "PERMANENT", override = TRUE)
 ```
 
+Cross-platform function to pass full GRASS command syntax as a string from R:
+
+```{r}
+execshell <- function(commandstring, intern = FALSE) {
+  if (.Platform$OS.type == "windows") {
+    res <- shell(commandstring, intern = TRUE)
+  } else {
+    res <- system(commandstring, intern = TRUE)
+  }
+  if (!intern) cat(res, sep = "\n") else return(res)
+}
+```
+
 
 ```{r eval=!grassdbase_exists}
 # setting CRS and extent of the GRASS location, based on 'watercourses'
@@ -90,7 +103,7 @@ execGRASS("v.split",
 ```
 
 ```{r}
-system("v.category input=watercourse_100mseg_pre1 option=report")
+execshell("v.category input=watercourse_100mseg_pre1 option=report")
 ```
 
 As seen from the above output, in accordance with the `v.split` manual, the categories and the attribute table of the original vector map are simply copied over.
@@ -101,10 +114,10 @@ Next, we copy the category of layer 1 as a mere attribute into a second column i
 In order to execute the below three GRASS commands (not the outcommented ones), it may be necessary to break them down into separate `execGRASS()` statements.^[
 This depends on the availability of the GRASS executables in the shell PATH, which should have been set by `initGRASS()`.
 ]
-The `system()` command directly sends the below commands to the shell as one script for execution by GRASS.
+The `execshell()` command directly sends the below commands to the shell as one script for execution by GRASS.
 
 ```{r eval=!grassdbase_exists}
-system('v.category input=watercourse_100mseg_pre1 option=add layer=2 output=watercourse_100mseg
+execshell('v.category input=watercourse_100mseg_pre1 option=add layer=2 output=watercourse_100mseg
        # v.category input=watercourse_100mseg option=report
        # v.db.connect -p map=watercourse_100mseg
        v.db.addtable watercourse_100mseg layer=2 key="rank" columns="vhag_code int"
