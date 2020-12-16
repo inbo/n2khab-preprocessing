@@ -31,7 +31,7 @@ if (.Platform$OS.type == "unix") {
 
 ## Geoprocessing steps in GRASS
 
-Read the `watercourses` data source (this step still needs reproducibility).
+Read the `watercourses` data source.
 
 ```{r paged.print=FALSE}
 watercourses <- read_sf(file.path(n2khab_datapath, "10_raw/watercourses"))
@@ -109,7 +109,7 @@ execshell("v.category input=watercourse_100mseg_pre1 option=report")
 As seen from the above output, in accordance with the `v.split` manual, the categories and the attribute table of the original vector map are simply copied over.
 This means that the individual 100 m segments have no unique category, i.e. they don't have their own rows (with ID) in another attribute table.
 To get that, as explained in the documentation, we define a second layer^[To do that, the vector map `watercourse_100mseg_pre1` is copied, including layers & the link to the same attribute table.] with a unique category per feature (100 m segment) and create a new attribute table that links to the new layer (an attribute table always has exactly 1 row for each category and uses 1 layer to take categories from).
-Next, we copy the category of layer 1 as a mere attribute into a second column in the new attribute table (which is linked to layer 2), in order to define the link between the grouped category `cat_group` (categories of `watercourses_segements`) and the unique category `cat`.
+Next, we copy the category of layer 1 as a mere attribute into a second column in the new attribute table (which is linked to layer 2), in order to define the link between the grouped category `cat_group` (categories of `watercourses`) and the unique category `cat`.
 
 In order to execute the below three GRASS commands (not the outcommented ones), it may be necessary to break them down into separate `execGRASS()` statements.^[
 This depends on the availability of the GRASS executables in the shell PATH, which should have been set by `initGRASS()`.
@@ -258,7 +258,7 @@ Both layers in the GPKG file have exactly the same attribute variables:
 - `rank`: a unique integer increment (1-2-3-4-5-...).
 It is to be used in a _relative_ way: it ranks the 100 m segments / points along each original linestring in the raw data source.
 - `vhag_code`: the unique VHAG code of the original linestring in the raw data source.
-It is common to all segments / points in the processed data source that belong to the same original watercourse segment.
+It is common to all segments / points in the processed data source that belong to the same original watercourse.
 
 To obtain other attributes, one can make a join on the VHAG code column of the raw data source.
 
