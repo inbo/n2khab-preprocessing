@@ -243,6 +243,7 @@ execGRASS("v.out.ogr",
 # There must be some bug in the export procedure 
 # (after all, the data are simpler than previous one).
 execGRASS("v.out.ogr",
+          "a",
           input = "watercourse_100msegpoints",
           layer = "1",
           output = file.path(finalpath, "watercourse_100mseg.gpkg"),
