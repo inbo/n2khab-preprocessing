@@ -88,18 +88,17 @@ execGRASS("v.in.ogr",
 
 ### Generate `watercourse_100mseg` in GRASS
 
-To do this, we use the `v.split` command.
+To do this, we first use the `v.edit` command to flip the direction of the linestrings, because the segments are to be generated from mouth to source, leaving segments of <100 m only at the source side.
+After that, we will use the `v.split` command.
 It will take each linestring of the raw `watercourses` data source and split it into segments of 100 m length.
 This generally results in one segment (for each original linestring) that is shorter than 100 m!
 
 <!-- g.manual v.split -->
 
 ```{r eval=!grassdbase_exists}
-execGRASS("v.split",
-          flags = c("f", "overwrite"),
-          input = "watercourses",
-          output = "watercourse_100mseg_pre1",
-          length = 100)
+execshell("g.copy vector=watercourses,watercourses_original")
+execshell("v.edit map=watercourses tool=flip where='1=1'")
+execshell("v.split -f --overwrite input=watercourses output=watercourse_100mseg_pre1 length=100")
 ```
 
 ```{r}
@@ -111,9 +110,6 @@ This means that the individual 100 m segments have no unique category, i.e. they
 To get that, as explained in the documentation, we define a second layer^[To do that, the vector map `watercourse_100mseg_pre1` is copied, including layers & the link to the same attribute table.] with a unique category per feature (100 m segment) and create a new attribute table that links to the new layer (an attribute table always has exactly 1 row for each category and uses 1 layer to take categories from).
 Next, we copy the category of layer 1 as a mere attribute into a second column in the new attribute table (which is linked to layer 2), in order to define the link between the grouped category `cat_group` (categories of `watercourses`) and the unique category `cat`.
 
-In order to execute the below three GRASS commands (not the outcommented ones), it may be necessary to break them down into separate `execGRASS()` statements.^[
-This depends on the availability of the GRASS executables in the shell PATH, which should have been set by `initGRASS()`.
-]
 The `execshell()` command directly sends the below commands to the shell as one script for execution by GRASS.
 
 ```{r eval=!grassdbase_exists}
@@ -138,10 +134,10 @@ execshell('v.category input=watercourse_100mseg_pre1 option=add layer=2 output=w
 <!--  100% -->
 <!-- Updating database... -->
 <!--  100% -->
-<!-- 263871 categories read from vector map (layer 2) -->
-<!-- 263871 records selected from table (layer 1) -->
-<!-- 263871 categories read from vector map exist in selection from table -->
-<!-- 263871 records updated/inserted (layer 2) -->
+<!-- 271676 categories read from vector map (layer 2) -->
+<!-- 271676 records selected from table (layer 1) -->
+<!-- 271676 categories read from vector map exist in selection from table -->
+<!-- 271676 records updated/inserted (layer 2) -->
 
 
 
@@ -153,7 +149,9 @@ execshell('v.category input=watercourse_100mseg_pre1 option=add layer=2 output=w
 ### Generate `watercourse_100msegpoints` in GRASS
 
 To do this, we use the `v.to.points` command.
-We create one point per 100 m segment, notably the _endpoint_.
+We want each point at the downstream side of its corresponding segment.
+We create one point per 100 m segment.
+As we flipped the direction of the watercourse lines, we want the _startpoint_ of each segment.
 
 <!-- g.manual v.to.points -->
 
@@ -163,66 +161,77 @@ execGRASS("v.to.points",
           input = "watercourse_100mseg",
           layer = "2",
           output = "watercourse_100msegpoints",
-          use = "end")
+          use = "start")
 ```
 
+<!--  100% -->
+<!-- Building topology for vector map <watercourse_100msegpoints@PERMANENT>... -->
+<!-- Registering primitives... -->
+<!--     270000 -->
+<!-- v.to.points complete. 271676 points written to output vector map. -->
+
+
 <!-- v.info watercourse_100msegpoints layer=1 -->
-<!--  +----------------------------------------------------------------------------+ -->
-<!--  | Name:            watercourse_100msegpoints                                 | -->
-<!--  | Mapset:          PERMANENT                                                 | -->
-<!--  | Location:        grass_watercourses                                        | -->
-<!--  | Database:        (...)                                                     | -->
-<!--  | Title:                                                                     | -->
-<!--  | Map scale:       1:1                                                       | -->
-<!--  | Name of creator: floris                                                    | -->
-<!--  | Organization:                                                              | -->
-<!--  | Source date:     Fri Nov 27 16:14:43 2020                                  | -->
-<!--  | Timestamp (first layer): none                                              | -->
-<!--  |----------------------------------------------------------------------------| -->
-<!--  | Map format:      native                                                    | -->
-<!--  |----------------------------------------------------------------------------| -->
-<!--  |   Type of map: vector (level: 2)                                           | -->
-<!--  |                                                                            | -->
-<!--  |   Number of points:       263871          Number of centroids:  0          | -->
-<!--  |   Number of lines:        0               Number of boundaries: 0          | -->
-<!--  |   Number of areas:        0               Number of islands:    0          | -->
-<!--  |                                                                            | -->
-<!--  |   Map is 3D:              No                                               | -->
-<!--  |   Number of dblinks:      2                                                | -->
-<!--  |                                                                            | -->
-<!--  |   Projection: Belge 1972 / Belgian Lambert 72                              | -->
-<!--  |                                                                            | -->
-<!--  |               N:       244044.9074    S:   153062.38093558                 | -->
-<!--  |               E:       258444.2968    W:    23006.85298789                 | -->
-<!--  |                                                                            | -->
-<!--  |   Digitization threshold: 0                                                | -->
-<!--  |   Comment:                                                                 | -->
-<!--  |                                                                            | -->
-<!--  +----------------------------------------------------------------------------+ -->
+ <!-- +----------------------------------------------------------------------------+ -->
+ <!-- | Name:            watercourse_100msegpoints                                 | -->
+ <!-- | Mapset:          PERMANENT                                                 | -->
+ <!-- | Location:        grass_watercourses                                        | -->
+ <!-- | Database:        /media/floris/DATA/PROJECTS/09685_NatuurlijkMilieu/160 Be | -->
+ <!-- | Title:                                                                     | -->
+ <!-- | Map scale:       1:1                                                       | -->
+ <!-- | Name of creator: floris                                                    | -->
+ <!-- | Organization:                                                              | -->
+ <!-- | Source date:     Wed Dec 16 16:54:35 2020                                  | -->
+ <!-- | Timestamp (first layer): none                                              | -->
+ <!-- |----------------------------------------------------------------------------| -->
+ <!-- | Map format:      native                                                    | -->
+ <!-- |----------------------------------------------------------------------------| -->
+ <!-- |   Type of map: vector (level: 2)                                           | -->
+ <!-- |                                                                            | -->
+ <!-- |   Number of points:       271676          Number of centroids:  0          | -->
+ <!-- |   Number of lines:        0               Number of boundaries: 0          | -->
+ <!-- |   Number of areas:        0               Number of islands:    0          | -->
+ <!-- |                                                                            | -->
+ <!-- |   Map is 3D:              No                                               | -->
+ <!-- |   Number of dblinks:      2                                                | -->
+ <!-- |                                                                            | -->
+ <!-- |   Projection: Belge 1972 / Belgian Lambert 72                              | -->
+ <!-- |                                                                            | -->
+ <!-- |               N:       243962.6791    S:   153064.35460326                 | -->
+ <!-- |               E:   258447.81310536    W:    22979.76203745                 | -->
+ <!-- |                                                                            | -->
+ <!-- |   Digitization threshold: 0                                                | -->
+ <!-- |   Comment:                                                                 | -->
+ <!-- |                                                                            | -->
+ <!-- +----------------------------------------------------------------------------+ -->
+
 
 <!-- v.category input=watercourse_100msegpoints option=report -->
 <!-- Layer/table: 1/watercourse_100msegpoints_1 -->
 <!-- type       count        min        max -->
-<!-- point     263871          1     263871 -->
+<!-- point     271676          1     271676 -->
 <!-- line           0          0          0 -->
 <!-- boundary       0          0          0 -->
 <!-- centroid       0          0          0 -->
 <!-- area           0          0          0 -->
 <!-- face           0          0          0 -->
 <!-- kernel         0          0          0 -->
-<!-- all       263871          1     263871 -->
+<!-- all       271676          1     271676 -->
 <!-- Layer/table: 2/watercourse_100msegpoints_2 -->
 <!-- type       count        min        max -->
-<!-- point     263871          1     263871 -->
+<!-- point     271676          1     271676 -->
 <!-- line           0          0          0 -->
 <!-- boundary       0          0          0 -->
 <!-- centroid       0          0          0 -->
 <!-- area           0          0          0 -->
 <!-- face           0          0          0 -->
 <!-- kernel         0          0          0 -->
-<!-- all       263871          1     263871 -->
+<!-- all       271676          1     271676 -->
 
-
+<!-- v.info -c watercourse_100msegpoints layer=1 -->
+<!-- Displaying column types/names for database connection of layer <1>: -->
+<!-- INTEGER|rank -->
+<!-- INTEGER|vhag_code -->
 
 ## Exporting resulting objects from GRASS
 
