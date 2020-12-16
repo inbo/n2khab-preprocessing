@@ -322,7 +322,7 @@ seg %>%
   ggplot() +
   geom_sf(colour = "grey50") +
   geom_sf(data = pts %>% filter(rank < 2e4), colour = "red", size = 0.5) +
-  lims(x = c(198e3, 204e3), y = c(183e3, 188e3)) +
+  lims(x = c(36e3, 40e3), y = c(184e3, 188e3)) +
   coord_sf(datum = 31370) +
   theme_bw()+
   theme(panel.grid = element_blank())
