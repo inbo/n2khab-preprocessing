@@ -369,6 +369,11 @@ mapview(segments,
         col.regions = "blue")
 ```
 
+We can see that the above implementation of `spsample()`::
+
+- does not implement fixed lengths of 100 m
+- adds no 'endpoint' at the linestring endings 
+- adds a non-useful point at the beginning of each linestring
 
 # Used environment
 
