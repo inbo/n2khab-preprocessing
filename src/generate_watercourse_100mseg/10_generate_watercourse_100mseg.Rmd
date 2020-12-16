@@ -2,8 +2,8 @@
 
 We will create a master dataset of watercourse segments of 100 m (`watercourse_100mseg`), in order to derive sampling frames of lotic types (3260 in particular).
 
-It is a processed data source, derived from the raw data source `watercourse_segments` (version `watercourse_segments_20180601`).
-The segments will have a 100 m length, except at the end of the linestrings of `watercourse_segments`.
+It is a processed data source, derived from the raw data source `watercourses` (version `watercourses_20180601`).
+The segments will have a 100 m length, except at the end of the linestrings of `watercourses`.
 
 Further we will also derive a second layer which represent the _endpoints_ of the 100 m segments.
 
@@ -29,10 +29,10 @@ if (.Platform$OS.type == "unix") {
 
 ## Geoprocessing steps in GRASS
 
-Read the `watercourse_segments` data source (this step still needs reproducibility).
+Read the `watercourses` data source (this step still needs reproducibility).
 
 ```{r paged.print=FALSE}
-watercourse_segments <- read_sf(file.path(datapath, "watercourse_segments"))
+watercourses <- read_sf(file.path(datapath, "watercourses"))
 ```
 
 Initialize GRASS projectfolder if non-existant, or link to the already existing one:
@@ -46,11 +46,11 @@ initGRASS(gisBase = link2GI::findGRASS()[1, 1],
 
 
 ```{r eval=!grassdbase_exists}
-# setting CRS and extent of the GRASS location, based on 'watercourse_segments'
+# setting CRS and extent of the GRASS location, based on 'watercourses'
 execGRASS("g.proj", flags = c("c", "quiet"), 
-          georef = file.path(datapath, "watercourse_segments"))
+          georef = file.path(datapath, "watercourses"))
   # note: setting the extent should only affect raster computations (so we don't need it)
-b_box <- st_bbox(watercourse_segments)
+b_box <- st_bbox(watercourses)
 execGRASS("g.region", flags = c("quiet"), 
           n = as.character(b_box["ymax"]), s = as.character(b_box["ymin"]), 
           e = as.character(b_box["xmax"]), w = as.character(b_box["xmin"]), 
@@ -62,18 +62,18 @@ execGRASS("g.region", flags = c("quiet"),
 use_sf()
 ```
 
-Add `watercourse_segments` data source to GRASS database:
+Add `watercourses` data source to GRASS database:
 
 ```{r eval=!grassdbase_exists}
 execGRASS("v.in.ogr",
-          input = file.path(datapath, "watercourse_segments"),
-          output = "watercourse_segments")
+          input = file.path(datapath, "watercourses"),
+          output = "watercourses")
 ```
 
 ### Generate `watercourse_100mseg` in GRASS
 
 To do this, we use the `v.split` command.
-It will take each linestring of the raw `watercourse_segments` data source and split it into segments of 100 m length.
+It will take each linestring of the raw `watercourses` data source and split it into segments of 100 m length.
 This generally results in one segment (for each original linestring) that is shorter than 100 m!
 
 <!-- g.manual v.split -->
@@ -81,7 +81,7 @@ This generally results in one segment (for each original linestring) that is sho
 ```{r eval=!grassdbase_exists}
 execGRASS("v.split",
           flags = c("f", "overwrite"),
-          input = "watercourse_segments",
+          input = "watercourses",
           output = "watercourse_100mseg_pre1",
           length = 100)
 ```
@@ -104,18 +104,18 @@ The `system()` command directly sends the below commands to the shell as one scr
 system('v.category input=watercourse_100mseg_pre1 option=add layer=2 output=watercourse_100mseg
        # v.category input=watercourse_100mseg option=report
        # v.db.connect -p map=watercourse_100mseg
-       v.db.addtable watercourse_100mseg layer=2 key="rank" columns="vhas_code int"
+       v.db.addtable watercourse_100mseg layer=2 key="rank" columns="vhag_code int"
        # v.db.connect -p map=watercourse_100mseg
        # v.info -c watercourse_100mseg layer=2
        # v.info -c watercourse_100mseg layer=1
-       v.to.db map=watercourse_100mseg layer=2 option=query query_layer=1 query_column=VHAS columns=vhas_code --overwrite
+       v.to.db map=watercourse_100mseg layer=2 option=query query_layer=1 query_column=VHAG columns=vhag_code --overwrite
        # v.db.select map=watercourse_100mseg layer=2 | head
        ')
 ```
 
 <!-- Output from the v.to.db command: -->
 
-<!-- WARNING: Values in column <vhas_code> will be overwritten -->
+<!-- WARNING: Values in column <vhag_code> will be overwritten -->
 <!-- Reading features... -->
 <!--  100% -->
 <!-- Querying database... -->
@@ -131,7 +131,7 @@ system('v.category input=watercourse_100mseg_pre1 option=add layer=2 output=wate
 
 <!-- v.db.connect -p map=watercourse_100mseg -->
 <!-- Vector map <watercourse_100mseg> is connected by: -->
-<!-- layer <1/watercourse_segments> table <watercourse_100mseg> in database <(...)/n2khab-preprocessing/src/generate_watercourse_100mseg/data/grass_watercourses/PERMANENT/sqlite/sqlite.db> through driver <sqlite> with key <cat> -->
+<!-- layer <1/watercourses> table <watercourse_100mseg> in database <(...)/n2khab-preprocessing/src/generate_watercourse_100mseg/data/grass_watercourses/PERMANENT/sqlite/sqlite.db> through driver <sqlite> with key <cat> -->
 <!-- layer <2/watercourse_100mseg_2> table <watercourse_100mseg_2> in database <(...)/n2khab-preprocessing/src/generate_watercourse_100mseg/data/grass_watercourses/PERMANENT/sqlite/sqlite.db> through driver <sqlite> with key <rank> -->
 
 ### Generate `watercourse_100msegpoints` in GRASS
@@ -240,10 +240,10 @@ Both layers in the GPKG file have exactly the same attribute variables:
 
 - `rank`: a unique integer increment (1-2-3-4-5-...).
 It is to be used in a _relative_ way: it ranks the 100 m segments / points along each original linestring in the raw data source.
-- `vhas_code`: the unique VHAS code of the original linestring in the raw data source.
+- `vhag_code`: the unique VHAG code of the original linestring in the raw data source.
 It is common to all segments / points in the processed data source that belong to the same original watercourse segment.
 
-To obtain other attributes, one can make a join on the VHAS code column of the raw data source.
+To obtain other attributes, one can make a join on the VHAG code column of the raw data source.
 
 
 # Checks on the data source
@@ -265,7 +265,7 @@ file(filepath) %>%
   `names<-`("sha256sum")
 ```
 
-We best set the crs explicitly: while the WKT from the gpkg (exported from GRASS using GDAL/OGR) is correct (parameters identical to the ones of `watercourse_segments`), it lost a few names and would otherwise be displayed as 'unknown'.
+We best set the crs explicitly: while the WKT from the gpkg (exported from GRASS using GDAL/OGR) is correct (parameters identical to the ones of `watercourses`), it lost a few names and would otherwise be displayed as 'unknown'.
 
 ```{r paged.print=FALSE, warning=FALSE}
 (seg <- read_sf(filepath, 
@@ -285,11 +285,11 @@ all.equal(seg$rank, pts$rank)
 ```
 
 ```{r}
-all.equal(seg$vhas_code, pts$vhas_code)
+all.equal(seg$vhag_code, pts$vhag_code)
 ```
 
 ```{r}
-all.equal(unique(seg$vhas_code), unique(watercourse_segments$VHAS))
+all.equal(unique(seg$vhag_code), unique(watercourses$VHAG))
 ```
 
 Cartographic display of a row selection:
