@@ -291,19 +291,15 @@ file(filepath) %>%
   `names<-`("sha256sum")
 ```
 
-We best set the crs explicitly: while the WKT from the gpkg (exported from GRASS using GDAL/OGR) is correct (parameters identical to the ones of `watercourses`), it lost a few names and would otherwise be displayed as 'unknown'.
 
 ```{r paged.print=FALSE, warning=FALSE}
 (seg <- read_sf(filepath, 
-                layer = "watercourse_100mseg_lines",
-                crs = 31370)
-)
+                layer = "watercourse_100mseg_lines"))
 ```
 
 ```{r paged.print=FALSE, warning=FALSE}
 (pts <- read_sf(filepath, 
-                layer = "watercourse_100mseg_points",
-                crs = 31370))
+                layer = "watercourse_100mseg_points"))
 ```
 
 ```{r}
