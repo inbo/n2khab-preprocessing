@@ -442,15 +442,15 @@
     },
     "link2GI": {
       "Package": "link2GI",
-      "Version": "0.4.4",
+      "Version": "0.4-6",
       "Source": "GitHub",
       "RemoteType": "github",
       "RemoteHost": "api.github.com",
-      "RemoteRepo": "link2GI",
       "RemoteUsername": "r-spatial",
-      "RemoteRef": "7cbcbdb",
-      "RemoteSha": "7cbcbdb378f3e532d315447a02411c0e7bc60642",
-      "Hash": "2ea4b88dc3afa1528c7969b2a015a047"
+      "RemoteRepo": "link2GI",
+      "RemoteRef": "master",
+      "RemoteSha": "c4dd503747c9e75b8ea0053b2ef52296d830df7f",
+      "Hash": "2d6a2a532cccd84f05b5d72a07ec57ee"
     },
     "lubridate": {
       "Package": "lubridate",
@@ -636,10 +636,15 @@
     },
     "rgrass7": {
       "Package": "rgrass7",
-      "Version": "0.2-1",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "ab882a7c47c336643f251e1a91696ae9"
+      "Version": "0.2-3",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "rsbivand",
+      "RemoteRepo": "rgrass7",
+      "RemoteRef": "master",
+      "RemoteSha": "d726641b58219dc6b6d45cab46c1fd10d6d3346b",
+      "Hash": "f1b247f18e3cbefa4078a5ba7c8bac32"
     },
     "rlang": {
       "Package": "rlang",

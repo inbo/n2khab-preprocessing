@@ -40,7 +40,13 @@ watercourses <- read_sf(file.path(n2khab_datapath, "10_raw/watercourses"))
 Initialize GRASS projectfolder if non-existant, or link to the already existing one:
 
 ```{r}
-initGRASS(gisBase = link2GI::findGRASS()[1, 1],
+if (interactive()) {
+gisbase_grass <- 
+  if (.Platform$OS.type == "windows") link2GI::paramGRASSw()$gisbase_GRASS[1] else {
+    link2GI::paramGRASSx()$gisbase_GRASS[1]
+  }
+}
+initGRASS(gisBase = if (interactive()) gisbase_grass else params$gisbase_grass,
           home = tempdir(),
           gisDbase = datapath, location = "grass_watercourses", 
           mapset = "PERMANENT", override = TRUE)

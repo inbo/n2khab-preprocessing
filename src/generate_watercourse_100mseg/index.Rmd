@@ -12,6 +12,7 @@ fontsize: 11pt
 documentclass: "article"
 params:
   grass_reexport: FALSE
+  gisbase_grass: !r if (.Platform$OS.type == "windows") link2GI::paramGRASSw()$gisbase_GRASS[1] else link2GI::paramGRASSx()$gisbase_GRASS[1]
 # csl: ../inbo.csl
 # bibliography: ../references.bib
 site: bookdown::bookdown_site
