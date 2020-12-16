@@ -1,6 +1,8 @@
 ---
 title: "Exploration of generating line segments with GRASS"
 date: '`r paste("Version",lubridate::now())`'
+params:
+  gisbase_grass: !r if (.Platform$OS.type == "windows") link2GI::paramGRASSw()$gisbase_GRASS[1] else link2GI::paramGRASSx()$gisbase_GRASS[1]
 output:
   html_document:
     number_sections: yes
@@ -119,18 +121,22 @@ linestrings %>%
 
 ## GRASS temporary project setup & data import in GRASS database
 
-For more tedious geoprocessing we can use [GRASS](https://grass.osgeo.org/), through the packages `link2GI` en `rgrass7`.
+For more tedious geoprocessing we can use [GRASS](https://grass.osgeo.org/), using the package `rgrass7`.
 
 ```{r results="hide"}
 # Set up a temporary GRASS project:
-gisBase <- 
+if (interactive()) {
+gisbase_grass <- 
   if (.Platform$OS.type == "windows" && nchar(Sys.getenv("OSGEO4W_ROOT")) > 0) {
     # needed only until https://github.com/r-spatial/link2GI/issues/48 is fixed
   "C:/OSGeo4W64/apps/grass/grass78"
 } else {
-  link2GI::findGRASS()[1, 1]
+  if (.Platform$OS.type == "windows") link2GI::paramGRASSw()$gisbase_GRASS[1] else {
+    link2GI::paramGRASSx()$gisbase_GRASS[1]
+  }
 }
-initGRASS(gisBase = gisBase,
+}
+initGRASS(gisBase = if (interactive()) gisbase_grass else params$gisbase_grass,
           home = tempdir(),
           mapset = "PERMANENT", 
           override = TRUE)
