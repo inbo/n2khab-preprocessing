@@ -10,6 +10,8 @@ Further we will also derive a second layer which represent the _endpoints_ of th
 ```{r}
 local_root <- find_root(has_file("generate_watercourse_100mseg.Rproj"))
 datapath <- file.path(local_root, "data")
+n2khab_datapath <- find_root_file("n2khab_data",
+                                  criterion = has_dir("n2khab_data"))
 if (!dir.exists(datapath)) dir.create(datapath)
 finalpath <- find_root_file("n2khab_data/20_processed/watercourse_100mseg", 
                             criterion = has_dir("n2khab_data"))
@@ -32,7 +34,7 @@ if (.Platform$OS.type == "unix") {
 Read the `watercourses` data source (this step still needs reproducibility).
 
 ```{r paged.print=FALSE}
-watercourses <- read_sf(file.path(datapath, "watercourses"))
+watercourses <- read_sf(file.path(n2khab_datapath, "10_raw/watercourses"))
 ```
 
 Initialize GRASS projectfolder if non-existant, or link to the already existing one:
@@ -66,7 +68,7 @@ Add `watercourses` data source to GRASS database:
 
 ```{r eval=!grassdbase_exists}
 execGRASS("v.in.ogr",
-          input = file.path(datapath, "watercourses"),
+          input = file.path(n2khab_datapath, "10_raw/watercourses"),
           output = "watercourses")
 ```
 
