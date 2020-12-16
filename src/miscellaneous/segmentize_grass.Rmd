@@ -209,10 +209,11 @@ system(paste0("gnome-terminal --working-directory=",
 )
 ```
 
-Read manual for `v.split`:
+Read manual for `v.split` and `v.edit`:
 
 ```{r eval=FALSE}
-execshell("g.manual v.split")
+execshell("g.manual v.split
+           g.manual v.edit")
 ```
 
 
@@ -239,7 +240,12 @@ split1 %>% as_tibble() %>% st_as_sf()
 
 ### linestrings
 
-Now using the rgrass7 function:
+We will also flip the linestring direction before splitting (so that shorter segments occur at the original beginnings, not at the original ends).
+
+```{r}
+execshell("v.edit map=linestrings tool=flip where='1=1'")
+```
+
 
 ```{r}
 execGRASS("v.split",
@@ -249,14 +255,15 @@ execGRASS("v.split",
           length = 100)
 ```
 
-Also generate points at the segment ends:
+Also generate points at the original segment 'ends'.
+Because we flipped direction we should make startpoints:
 
 ```{r}
 execGRASS("v.to.points",
           flags = c("overwrite"),
           input = "split2",
           output = "split2points",
-          use = "end")
+          use = "start")
 ```
 
 
