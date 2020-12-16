@@ -2,7 +2,7 @@
 
 We will create a master dataset of watercourse segments of 100 m (`watercourse_100mseg`), in order to derive sampling frames of lotic types (3260 in particular).
 
-It is a processed data source, derived from the raw data source `watercourses` (version `watercourses_20180601`).
+It is a processed data source, derived from the raw data source `watercourses` (version `watercourses_20200807`).
 The segments will have a 100 m length, except at the end of the linestrings of `watercourses`.
 
 Further we will also derive a second layer which represent the _endpoints_ of the 100 m segments.
