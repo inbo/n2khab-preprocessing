@@ -56,13 +56,7 @@ initGRASS(gisBase = if (interactive()) gisbase_grass else params$gisbase_grass,
 ```{r eval=!grassdbase_exists}
 # setting CRS and extent of the GRASS location, based on 'watercourses'
 execGRASS("g.proj", flags = c("c", "quiet"), 
-          georef = file.path(datapath, "watercourses"))
-  # note: setting the extent should only affect raster computations (so we don't need it)
-b_box <- st_bbox(watercourses)
-execGRASS("g.region", flags = c("quiet"), 
-          n = as.character(b_box["ymax"]), s = as.character(b_box["ymin"]), 
-          e = as.character(b_box["xmax"]), w = as.character(b_box["xmin"]), 
-          res = "1")
+          epsg = 31370)
 ```
 
 
@@ -74,6 +68,7 @@ Add `watercourses` data source to GRASS database:
 
 ```{r eval=!grassdbase_exists}
 execGRASS("v.in.ogr",
+          "o",
           input = file.path(n2khab_datapath, "10_raw/watercourses"),
           output = "watercourses")
 ```
