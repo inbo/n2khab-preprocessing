@@ -1,0 +1,331 @@
+# Making the data source
+
+We will create a master dataset of watercourse segments of 100 m (`watercourse_100mseg`), in order to derive sampling frames of lotic types (3260 in particular).
+
+It is a processed data source, derived from the raw data source `watercourses` (version `watercourses_20200807`).
+The segments will have a 100 m length, except at the end of the linestrings of `watercourses`.
+
+Further we will also derive a second layer which represent the _endpoints_ of the 100 m segments.
+
+```{r}
+local_root <- find_root(has_file("generate_watercourse_100mseg.Rproj"))
+datapath <- file.path(local_root, "data")
+n2khab_datapath <- find_root_file("n2khab_data",
+                                  criterion = has_dir("n2khab_data"))
+if (!dir.exists(datapath)) dir.create(datapath)
+finalpath <- find_root_file("n2khab_data/20_processed/watercourse_100mseg", 
+                            criterion = has_dir("n2khab_data"))
+if (!dir.exists(finalpath)) dir.create(finalpath)
+```
+
+```{r}
+grass_location <- file.path(datapath, "grass_watercourses")
+if (!dir.exists(grass_location)) dir.create(file.path(grass_location, "PERMANENT"),
+                                            recursive = TRUE)
+grassdbase_exists <- file.exists(file.path(grass_location, "PERMANENT/PROJ_INFO"))
+if (.Platform$OS.type == "unix") {
+  Sys.setenv(GRASS_PYTHON = system("which python3", intern = TRUE))
+}
+```
+
+
+## Geoprocessing steps in GRASS
+
+Read the `watercourses` data source.
+
+```{r paged.print=FALSE}
+watercourses <- read_sf(file.path(n2khab_datapath, "10_raw/watercourses"))
+```
+
+Initialize GRASS projectfolder if non-existant, or link to the already existing one:
+
+```{r}
+if (interactive()) {
+gisbase_grass <- 
+  if (.Platform$OS.type == "windows") link2GI::paramGRASSw()$gisbase_GRASS[1] else {
+    link2GI::paramGRASSx()$gisbase_GRASS[1]
+  }
+}
+initGRASS(gisBase = if (interactive()) gisbase_grass else params$gisbase_grass,
+          home = tempdir(),
+          gisDbase = datapath, location = "grass_watercourses", 
+          mapset = "PERMANENT", override = TRUE)
+```
+
+Cross-platform function to pass full GRASS command syntax as a string from R:
+
+```{r}
+execshell <- function(commandstring, intern = FALSE) {
+  if (.Platform$OS.type == "windows") {
+    res <- shell(commandstring, intern = TRUE)
+  } else {
+    res <- system(commandstring, intern = TRUE)
+  }
+  if (!intern) cat(res, sep = "\n") else return(res)
+}
+```
+
+
+```{r eval=!grassdbase_exists}
+# setting CRS and extent of the GRASS location, based on 'watercourses'
+execGRASS("g.proj", flags = c("c", "quiet"), 
+          epsg = 31370)
+```
+
+
+```{r}
+use_sf()
+```
+
+Add `watercourses` data source to GRASS database:
+
+```{r eval=!grassdbase_exists}
+execGRASS("v.in.ogr",
+          "o",
+          input = file.path(n2khab_datapath, "10_raw/watercourses"),
+          output = "watercourses")
+```
+
+### Generate `watercourse_100mseg` in GRASS
+
+To do this, we first use the `v.edit` command to flip the direction of the linestrings, because the segments are to be generated from mouth to source, leaving segments of <100 m only at the source side.
+After that, we will use the `v.split` command.
+It will take each linestring of the raw `watercourses` data source and split it into segments of 100 m length.
+This generally results in one segment (for each original linestring) that is shorter than 100 m!
+
+<!-- g.manual v.split -->
+
+```{r eval=!grassdbase_exists}
+execshell("g.copy vector=watercourses,watercourses_original")
+execshell("v.edit map=watercourses tool=flip where='1=1'")
+execshell("v.split -f --overwrite input=watercourses output=watercourse_100mseg_pre1 length=100")
+```
+
+```{r}
+execshell("v.category input=watercourse_100mseg_pre1 option=report")
+```
+
+As seen from the above output, in accordance with the `v.split` manual, the categories and the attribute table of the original vector map are simply copied over.
+This means that the individual 100 m segments have no unique category, i.e. they don't have their own rows (with ID) in another attribute table.
+To get that, as explained in the documentation, we define a second layer^[To do that, the vector map `watercourse_100mseg_pre1` is copied, including layers & the link to the same attribute table.] with a unique category per feature (100 m segment) and create a new attribute table that links to the new layer (an attribute table always has exactly 1 row for each category and uses 1 layer to take categories from).
+Next, we copy the category of layer 1 as a mere attribute into a second column in the new attribute table (which is linked to layer 2), in order to define the link between the grouped category `cat_group` (categories of `watercourses`) and the unique category `cat`.
+
+The `execshell()` command directly sends the below commands to the shell as one script for execution by GRASS.
+
+```{r eval=!grassdbase_exists}
+execshell('v.category input=watercourse_100mseg_pre1 option=add layer=2 output=watercourse_100mseg
+       # v.category input=watercourse_100mseg option=report
+       # v.db.connect -p map=watercourse_100mseg
+       v.db.addtable watercourse_100mseg layer=2 key="rank" columns="vhag_code int"
+       # v.db.connect -p map=watercourse_100mseg
+       # v.info -c watercourse_100mseg layer=2
+       # v.info -c watercourse_100mseg layer=1
+       v.to.db map=watercourse_100mseg layer=2 option=query query_layer=1 query_column=VHAG columns=vhag_code --overwrite
+       # v.db.select map=watercourse_100mseg layer=2 | head
+       ')
+```
+
+<!-- Output from the v.to.db command: -->
+
+<!-- WARNING: Values in column <vhag_code> will be overwritten -->
+<!-- Reading features... -->
+<!--  100% -->
+<!-- Querying database... -->
+<!--  100% -->
+<!-- Updating database... -->
+<!--  100% -->
+<!-- 271676 categories read from vector map (layer 2) -->
+<!-- 271676 records selected from table (layer 1) -->
+<!-- 271676 categories read from vector map exist in selection from table -->
+<!-- 271676 records updated/inserted (layer 2) -->
+
+
+
+<!-- v.db.connect -p map=watercourse_100mseg -->
+<!-- Vector map <watercourse_100mseg> is connected by: -->
+<!-- layer <1/watercourses> table <watercourse_100mseg> in database <(...)/n2khab-preprocessing/src/generate_watercourse_100mseg/data/grass_watercourses/PERMANENT/sqlite/sqlite.db> through driver <sqlite> with key <cat> -->
+<!-- layer <2/watercourse_100mseg_2> table <watercourse_100mseg_2> in database <(...)/n2khab-preprocessing/src/generate_watercourse_100mseg/data/grass_watercourses/PERMANENT/sqlite/sqlite.db> through driver <sqlite> with key <rank> -->
+
+### Generate `watercourse_100msegpoints` in GRASS
+
+To do this, we use the `v.to.points` command.
+We want each point at the downstream side of its corresponding segment.
+We create one point per 100 m segment.
+As we flipped the direction of the watercourse lines, we want the _startpoint_ of each segment.
+
+<!-- g.manual v.to.points -->
+
+```{r eval=!grassdbase_exists}
+execGRASS("v.to.points",
+          flags = c("overwrite"),
+          input = "watercourse_100mseg",
+          layer = "2",
+          output = "watercourse_100msegpoints",
+          use = "start")
+```
+
+<!--  100% -->
+<!-- Building topology for vector map <watercourse_100msegpoints@PERMANENT>... -->
+<!-- Registering primitives... -->
+<!--     270000 -->
+<!-- v.to.points complete. 271676 points written to output vector map. -->
+
+
+<!-- v.info watercourse_100msegpoints layer=1 -->
+ <!-- +----------------------------------------------------------------------------+ -->
+ <!-- | Name:            watercourse_100msegpoints                                 | -->
+ <!-- | Mapset:          PERMANENT                                                 | -->
+ <!-- | Location:        grass_watercourses                                        | -->
+ <!-- | Database:        /media/floris/DATA/PROJECTS/09685_NatuurlijkMilieu/160 Be | -->
+ <!-- | Title:                                                                     | -->
+ <!-- | Map scale:       1:1                                                       | -->
+ <!-- | Name of creator: floris                                                    | -->
+ <!-- | Organization:                                                              | -->
+ <!-- | Source date:     Wed Dec 16 16:54:35 2020                                  | -->
+ <!-- | Timestamp (first layer): none                                              | -->
+ <!-- |----------------------------------------------------------------------------| -->
+ <!-- | Map format:      native                                                    | -->
+ <!-- |----------------------------------------------------------------------------| -->
+ <!-- |   Type of map: vector (level: 2)                                           | -->
+ <!-- |                                                                            | -->
+ <!-- |   Number of points:       271676          Number of centroids:  0          | -->
+ <!-- |   Number of lines:        0               Number of boundaries: 0          | -->
+ <!-- |   Number of areas:        0               Number of islands:    0          | -->
+ <!-- |                                                                            | -->
+ <!-- |   Map is 3D:              No                                               | -->
+ <!-- |   Number of dblinks:      2                                                | -->
+ <!-- |                                                                            | -->
+ <!-- |   Projection: Belge 1972 / Belgian Lambert 72                              | -->
+ <!-- |                                                                            | -->
+ <!-- |               N:       243962.6791    S:   153064.35460326                 | -->
+ <!-- |               E:   258447.81310536    W:    22979.76203745                 | -->
+ <!-- |                                                                            | -->
+ <!-- |   Digitization threshold: 0                                                | -->
+ <!-- |   Comment:                                                                 | -->
+ <!-- |                                                                            | -->
+ <!-- +----------------------------------------------------------------------------+ -->
+
+
+<!-- v.category input=watercourse_100msegpoints option=report -->
+<!-- Layer/table: 1/watercourse_100msegpoints_1 -->
+<!-- type       count        min        max -->
+<!-- point     271676          1     271676 -->
+<!-- line           0          0          0 -->
+<!-- boundary       0          0          0 -->
+<!-- centroid       0          0          0 -->
+<!-- area           0          0          0 -->
+<!-- face           0          0          0 -->
+<!-- kernel         0          0          0 -->
+<!-- all       271676          1     271676 -->
+<!-- Layer/table: 2/watercourse_100msegpoints_2 -->
+<!-- type       count        min        max -->
+<!-- point     271676          1     271676 -->
+<!-- line           0          0          0 -->
+<!-- boundary       0          0          0 -->
+<!-- centroid       0          0          0 -->
+<!-- area           0          0          0 -->
+<!-- face           0          0          0 -->
+<!-- kernel         0          0          0 -->
+<!-- all       271676          1     271676 -->
+
+<!-- v.info -c watercourse_100msegpoints layer=1 -->
+<!-- Displaying column types/names for database connection of layer <1>: -->
+<!-- INTEGER|rank -->
+<!-- INTEGER|vhag_code -->
+
+## Exporting resulting objects from GRASS
+
+We already took care of standardized column names within GRASS; so no further changes are needed when exporting the data from GRASS.
+We do it this way in order to minimize the number of times the data need to be written forth and back to a geopackage, which takes extra time (> 250e3 features) and file organization.
+
+```{r eval=params$grass_reexport}
+execGRASS("v.out.ogr",
+          flags = "overwrite",
+          input = "watercourse_100mseg",
+          layer = "2",
+          output = file.path(finalpath, "watercourse_100mseg.gpkg"),
+          output_layer = "watercourse_100mseg_lines")
+```
+
+```{r eval=params$grass_reexport}
+# This export takes a very long time (> 60 min).
+# There must be some bug in the export procedure 
+# (after all, the data are simpler than previous one).
+execGRASS("v.out.ogr",
+          "a",
+          input = "watercourse_100msegpoints",
+          layer = "1",
+          output = file.path(finalpath, "watercourse_100mseg.gpkg"),
+          output_layer = "watercourse_100mseg_points")
+```
+
+
+# Attribute variables of the processed data source: explanation
+
+Both layers in the GPKG file have exactly the same attribute variables:
+
+- `rank`: a unique integer increment (1-2-3-4-5-...).
+It is to be used in a _relative_ way: it ranks the 100 m segments / points along each original linestring in the raw data source.
+- `vhag_code`: the unique VHAG code of the original linestring in the raw data source.
+It is common to all segments / points in the processed data source that belong to the same original watercourse.
+
+To obtain other attributes, one can make a join on the VHAG code column of the raw data source.
+
+
+# Checks on the data source
+
+```{r}
+filepath <- file.path(finalpath, "watercourse_100mseg.gpkg")
+```
+
+Checksums:
+
+```{r}
+file(filepath) %>% 
+  openssl::md5() %>% 
+  str_c(collapse = '') %>% 
+  `names<-`("md5sum")
+file(filepath) %>% 
+  openssl::sha256() %>% 
+  str_c(collapse = '') %>% 
+  `names<-`("sha256sum")
+```
+
+
+```{r paged.print=FALSE, warning=FALSE}
+(seg <- read_sf(filepath, 
+                layer = "watercourse_100mseg_lines"))
+```
+
+```{r paged.print=FALSE, warning=FALSE}
+(pts <- read_sf(filepath, 
+                layer = "watercourse_100mseg_points"))
+```
+
+```{r}
+all.equal(seg$rank, pts$rank)
+```
+
+```{r}
+all.equal(seg$vhag_code, pts$vhag_code)
+```
+
+```{r}
+all.equal(unique(seg$vhag_code), unique(watercourses$VHAG))
+```
+
+Cartographic display of a row selection:
+
+```{r}
+seg %>% 
+  filter(rank < 2e4) %>% 
+  ggplot() +
+  geom_sf(colour = "grey50") +
+  geom_sf(data = pts %>% filter(rank < 2e4), colour = "red", size = 0.5) +
+  lims(x = c(36e3, 40e3), y = c(184e3, 188e3)) +
+  coord_sf(datum = 31370) +
+  theme_bw()+
+  theme(panel.grid = element_blank())
+```
+
+

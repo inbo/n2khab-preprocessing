@@ -19,3 +19,5 @@ src/private_code.R
 *.qgs
 *.bak
 *.qgz
+grass_*/
+watercourse_segments/
