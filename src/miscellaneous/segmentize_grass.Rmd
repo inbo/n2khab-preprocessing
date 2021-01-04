@@ -1,6 +1,8 @@
 ---
 title: "Exploration of generating line segments with GRASS"
 date: '`r paste("Version",lubridate::now())`'
+params:
+  gisbase_grass: !r if (.Platform$OS.type == "windows") link2GI::paramGRASSw()$gisbase_GRASS[1] else link2GI::paramGRASSx()$gisbase_GRASS[1]
 output:
   html_document:
     number_sections: yes
@@ -22,6 +24,8 @@ library(sf)
 library(n2khab)
 library(rgrass7)
 library(knitr)
+library(mapview)
+mapviewOptions(fgb = FALSE)
 opts_chunk$set(
   echo = TRUE,
   dpi = 300
@@ -29,7 +33,7 @@ opts_chunk$set(
 if (.Platform$OS.type == "unix") {
   Sys.setenv(GRASS_PYTHON = system("which python3", intern = TRUE))
 }
-mapview::mapviewOptions(fgb = FALSE)
+
 ```
 
 ## A simple multilinestring
@@ -117,22 +121,49 @@ linestrings %>%
 
 ## GRASS temporary project setup & data import in GRASS database
 
-For more tedious geoprocessing we can use [GRASS](https://grass.osgeo.org/), through the packages `link2GI` en `rgrass7`.
+For more tedious geoprocessing we can use [GRASS](https://grass.osgeo.org/), using the package `rgrass7`.
 
 ```{r results="hide"}
 # Set up a temporary GRASS project:
-link2GI::linkGRASS7(one_multiline, # sets the CRS etc.
-                    search_path = if (.Platform$OS.type == "unix") {
-                      "/usr/bin"} else NULL,
-                    use_home = TRUE)
+if (interactive()) {
+gisbase_grass <- 
+  if (.Platform$OS.type == "windows" && nchar(Sys.getenv("OSGEO4W_ROOT")) > 0) {
+    # needed only until https://github.com/r-spatial/link2GI/issues/48 is fixed
+  "C:/OSGeo4W64/apps/grass/grass78"
+} else {
+  if (.Platform$OS.type == "windows") link2GI::paramGRASSw()$gisbase_GRASS[1] else {
+    link2GI::paramGRASSx()$gisbase_GRASS[1]
+  }
+}
+}
+initGRASS(gisBase = if (interactive()) gisbase_grass else params$gisbase_grass,
+          home = tempdir(),
+          mapset = "PERMANENT", 
+          override = TRUE)
+execGRASS("g.proj", c("c", "quiet"), 
+          georef = file.path("test_vector.gpkg"))
 use_sf()
 ```
+
+Wrapper function to pass full GRASS command syntax as a string from R:
+
+```{r}
+execshell <- function(commandstring, intern = FALSE) {
+  if (.Platform$OS.type == "windows") {
+    res <- shell(commandstring, intern = TRUE)
+  } else {
+    res <- system(commandstring, intern = TRUE)
+  }
+  if (!intern) cat(res, sep = "\n") else return(res)
+}
+```
+
 
 Some GRASS project metadata:
 
 ```{r}
-system("g.region -p
-        g.proj -w")
+execshell("g.region -p
+           g.proj -w")
 ```
 
 Note that there's also:
@@ -163,7 +194,7 @@ execGRASS("g.list", type = "vector", flags = "p")
 Launch the GUI:
 
 ```{r eval=FALSE}
-system("g.gui")
+execshell("g.gui")
 ```
 
 Launch the grass terminal from R (in Linux):
@@ -174,32 +205,26 @@ mapset_path <-
          intern = TRUE)
 system(paste0("gnome-terminal --working-directory=",
               mapset_path,
-              " -e 'grass --text .'")
+              " -- grass --text .")
 )
 ```
 
-Read manual for `v.split`:
+Read manual for `v.split` and `v.edit`:
 
 ```{r eval=FALSE}
-system("g.manual v.split")
-```
-
-That's the same as (potentially more generic):
-
-```{r eval=FALSE}
-execGRASS("g.manual",
-          entry = "v.split")
+execshell("g.manual v.split
+           g.manual v.edit")
 ```
 
 
 # Geoprocessing
 
-## v.split
+## GRASS: v.split + v.to.points
 
 ### one_multiline
 
 ```{r}
-system("v.split -f input=one_multiline output=split1 length=100")
+execshell("v.split -f input=one_multiline output=split1 length=100")
 ```
 
 ```{r}
@@ -215,7 +240,12 @@ split1 %>% as_tibble() %>% st_as_sf()
 
 ### linestrings
 
-Now using the rgrass7 function:
+We will also flip the linestring direction before splitting (so that shorter segments occur at the original beginnings, not at the original ends).
+
+```{r}
+execshell("v.edit map=linestrings tool=flip where='1=1'")
+```
+
 
 ```{r}
 execGRASS("v.split",
@@ -225,15 +255,40 @@ execGRASS("v.split",
           length = 100)
 ```
 
+Also generate points at the original segment 'ends'.
+Because we flipped direction we should make startpoints:
+
+```{r}
+execGRASS("v.to.points",
+          flags = c("overwrite"),
+          input = "split2",
+          output = "split2points",
+          use = "start")
+```
 
 
 ```{r out.width='800px', out.height='500px'}
 split2 <- readVECT("split2")
-split2 %>% 
+split2points <- readVECT("split2points")
+segments <- 
+  split2 %>% 
   cbind(col = factor(1:2)) %>% 
-  mapview::mapview(zcol = "col",
-                   color = c("green3", "purple"),
-                   lwd = 4)
+  mutate(segment_id = 1:nrow(.))
+endpoints <- 
+  split2points %>% 
+  cbind(col = factor(1:2)) %>% 
+  mutate(point_id = 1:nrow(.))
+mapview(segments,
+        zcol = "col",
+        label = "segment_id",
+        color = c("green3", "purple"),
+        lwd = 4) +
+  mapview(endpoints,
+        zcol = "col",
+        label = "point_id",
+        cex = 5,
+        col.regions = c("green3", "purple"),
+        color = c("green3", "purple"))
 ```
 
 ```{r paged.print=FALSE}
@@ -251,8 +306,74 @@ split2 %>%
   kable
 ```
 
+## Comparison with `sp::spsample()`
+
+We do this only for the `linestrings` object.
+
+We make a `pointsample1` and a `pointsample2` object.
+The difference is that `pointsample2` misses the watercourse where `OBJECTID==413`.
+In this way, stability of points can be verified toward changes in the dataset.
+
+```{r paged.print=FALSE, warning=FALSE}
+length_total <- 
+  linestrings %>% 
+  st_length() %>% 
+  sum %>% 
+  units::drop_units()
+pointsample1 <- 
+  sp::spsample(as_Spatial(linestrings),
+               n = ceiling(length_total/100),
+               type="regular",
+               cellsize=100,
+               offset=0) %>% 
+  st_as_sf
+```
+
+```{r paged.print=FALSE, warning=FALSE}
+length_total2 <- 
+  linestrings %>% 
+  filter(OBJECTID != 413) %>% 
+  st_length() %>% 
+  sum %>% 
+  units::drop_units()
+pointsample2 <- 
+  sp::spsample(as_Spatial(linestrings %>% 
+                            filter(OBJECTID != 413)),
+               n = ceiling(length_total2/100),
+               type="regular",
+               cellsize=100,
+               offset=0) %>% 
+  st_as_sf
+```
+
+Plot the points on top of the previous map:
 
 
+```{r out.width='800px', out.height='500px'}
+mapview(segments,
+        zcol = "col",
+        label = "segment_id",
+        color = c("green3", "purple"),
+        lwd = 4) +
+  mapview(endpoints,
+        zcol = "col",
+        label = "point_id",
+        cex = 5,
+        col.regions = c("green3", "purple"),
+        color = c("green3", "purple")) +
+  mapview(pointsample1,
+        cex = 5,
+        col.regions = "red") +
+  mapview(pointsample2,
+        cex = 5,
+        col.regions = "blue")
+```
+
+We can see that the above implementation of `spsample()`::
+
+- does not implement fixed lengths of 100 m
+- adds no 'endpoint' at the linestring endings 
+- adds a non-useful point at the beginning of each linestring
 
 # Used environment
 
@@ -260,8 +381,15 @@ split2 %>%
 si <- sessioninfo::session_info()
 p <- si$platform %>%
   do.call(what = "c")
-sprintf("- **%s**:\n %s\n", names(p), p) %>%
-  cat()
+if ("sf" %in% si$packages$package) {
+  p <- c(p, sf_extSoftVersion())
+  names(p)[names(p) == "proj.4"] <- "PROJ"
+}
+if ("rgrass7" %in% si$packages$package) {
+  p <- c(p, GRASS = link2GI::findGRASS()[1, "version"])
+}
+sprintf("- **%s**: %s\n", names(p), p) %>%
+  cat(sep = "")
 ```
 
 ```{r results = "asis", echo=FALSE}
