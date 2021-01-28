@@ -41,7 +41,7 @@ The below explorations are based on code of Ivy Jansen, but use the `DBI` librar
 
 
 ```{r}
-con <- inborutils::connect_inbo_dbase("W0002_00_Watina")
+con <- inbodb::connect_inbo_dbase("W0002_00_Watina")
 ```
 
 
@@ -49,12 +49,6 @@ con <- inborutils::connect_inbo_dbase("W0002_00_Watina")
 dbListTables(con) %>% sort %>%  View("tables")
 ```
 
-```{r}
-dbListTables(con) %>% 
-  sort %>% 
-  enframe() %>% 
-  
-```
 
 
 ```{r}
@@ -66,11 +60,10 @@ dbGetQuery(con, "SELECT * FROM ext.vwDocumentatie") %>%
 The above was the DWH (datawarehouse).
 What is in the database itself?
 
-```{r}
-con2 <- inborutils::connect_inbo_dbase("D0025_00_Watina")
+```{r eval=FALSE}
+con2 <- inbodb::connect_inbo_dbase("D0025_00_Watina")
 ```
 
-Aha.
 
 ## Locations and filters
 
@@ -185,7 +178,7 @@ gwfilters %>%
   collect
 ```
 
-Another way of obtaining this seems to be:
+A way to obtain unique values of `PeilpuntCode` seems to be:
 
 ```{r}
 gwfilters %>% 
@@ -193,10 +186,19 @@ gwfilters %>%
   count
 ```
 
-
 Info on an odd record (this seems a mistake):
 
-```{r paged.print = FALSE, message=FALSE}
+```{r paged.print=FALSE, message=FALSE}
+gwfilters %>% 
+  filter(PeilpuntOpenbaarheidTypeCode == "PLME", PeilpuntOpenbaarheidCode == "UNKWN") %>%
+  count(PeilpuntCode) %>% 
+  filter(n > 1) %>% 
+  inner_join(gwfilters)
+```
+
+Clearly, several values of `PeilpuntStatusCode` co-occur in some cases (below) which should not be a problem (we filter them), however after filtering for `PeilpuntStatusCode` we should drop the column and make everything unique.
+
+```{r message=FALSE}
 gwfilters %>% 
   distinct(PeilpuntCode,
            MeetpuntWID,
@@ -205,8 +207,69 @@ gwfilters %>%
            ReferentieNiveauMaaiveld) %>%
   count(PeilpuntCode) %>% 
   filter(n > 1) %>% 
-  inner_join(gwfilters)
+  inner_join(gwfilters %>% 
+               distinct(PeilpuntCode,
+                        MeetpuntWID,
+                        PeilpuntStatusCode,
+                        PeilbuisLengte,
+                        ReferentieNiveauMaaiveld)) %>% 
+  arrange(PeilpuntCode)
 ```
+
+Further, note that adding `PeilpuntToestandCode` and `PeilpuntToestandNaam` does not matter:
+
+```{r}
+gwfilters %>% 
+  distinct(PeilpuntCode,
+           MeetpuntWID,
+           PeilpuntStatusCode,
+           PeilpuntToestandCode, 
+           PeilpuntToestandNaam,
+           PeilbuisLengte,
+           ReferentieNiveauMaaiveld) %>% 
+  count
+```
+
+```{r}
+gwfilters %>% 
+  distinct(PeilpuntCode,
+           PeilpuntVersie,
+           MeetpuntWID,
+           # PeilpuntStatusCode,
+           PeilpuntToestandCode, 
+           PeilpuntToestandNaam,
+           PeilbuisLengte,
+           ReferentieNiveauMaaiveld) %>% 
+  count
+```
+
+
+Variability of `PeilpuntToestandCode`:
+
+```{r}
+gwfilters %>% 
+  filter(PeilpuntStatusCode %in% c("VLD","ENT","CLD")) %>% 
+  count(PeilpuntToestandCode, PeilpuntToestandNaam)
+```
+
+Adding `ReferentieNiveauTAW` does add one row, which points at a mistake:
+
+```{r}
+gwfilters %>% 
+  distinct(PeilpuntCode,
+           PeilpuntVersie,
+           MeetpuntWID,
+           # PeilpuntStatusCode,
+           PeilpuntToestandCode, 
+           PeilpuntToestandNaam,
+           PeilbuisLengte,
+           ReferentieNiveauMaaiveld,
+           ReferentieNiveauTAW
+  ) %>% head(100) %>% collect %>%  View
+  count
+```
+
+
 
 Different available combinations:
 
@@ -242,7 +305,7 @@ The table `vwDimPeilpunt` will be needed to select the shallow groundwater filte
 Let's explore that a little more:
 
 ```{r}
-gwfilters <- 
+gwfilters_distinct <- 
   gwfilters %>% 
   filter(PeilpuntStatusCode %in% c("VLD","ENT","CLD")) %>% 
   distinct(PeilpuntCode,
@@ -254,19 +317,19 @@ gwfilters <-
 
 
 ```{r}
-gwfilters %>% 
+gwfilters_distinct %>% 
   dbplot_histogram(ReferentieNiveauMaaiveld)
 ```
 
 ```{r}
-gwfilters %>% 
+gwfilters_distinct %>% 
   filter(is.na(ReferentieNiveauMaaiveld)) %>% 
   collect %>% 
   nrow
 ```
 
 ```{r}
-gwfilters %>% 
+gwfilters_distinct %>% 
   select(1) %>% 
   collect %>% 
   nrow
@@ -274,7 +337,7 @@ gwfilters %>%
 
 
 ```{r}
-gwfilters %>% 
+gwfilters_distinct %>% 
     mutate(filterbase = -(PeilbuisLengte - ReferentieNiveauMaaiveld)) %>% 
     ggplot(aes(x = filterbase)) + 
     geom_histogram(colour = "grey90") +
@@ -283,7 +346,7 @@ gwfilters %>%
 ```
 
 ```{r}
-gwfilters %>% 
+gwfilters_distinct %>% 
     collect %>%
     mutate(filterbase = -(PeilbuisLengte - ReferentieNiveauMaaiveld),
            shallow = filterbase > -3) %>% 
@@ -295,7 +358,7 @@ gwfilters %>%
 ```
 
 ```{r}
-gwfilters %>% 
+gwfilters_distinct %>% 
     mutate(filterbase = -(PeilbuisLengte - ReferentieNiveauMaaiveld)) %>% 
     filter(filterbase == -3) %>% 
     select(PeilpuntCode) %>% 
@@ -306,7 +369,7 @@ gwfilters %>%
 Just including the filterdepths of exactly 3 meters deep would however add 129 filters, so let's include that one as well (it probably has to do with rounding effects):
 
 ```{r}
-gwfilters %>% 
+gwfilters_distinct %>% 
     collect %>%
     mutate(filterbase = -(PeilbuisLengte - ReferentieNiveauMaaiveld),
            shallow = filterbase >= -3) %>% 
@@ -318,13 +381,201 @@ gwfilters %>%
 ```
 
 ```{r}
-gwfilters %>% 
+gwfilters_distinct %>% 
     mutate(filterbase = -(PeilbuisLengte - ReferentieNiveauMaaiveld)) %>% 
     filter(filterbase >= -3) %>% 
     select(PeilpuntCode) %>% 
     collect %>% 
     nrow
 ```
+
+
+### Exploring well clusters
+
+#### Choosing a default value of max_dist argument in `cluster_locs()`
+
+```{r}
+library(watina)
+watina <- connect_watina()
+```
+
+
+```{r}
+locs_terr <- get_locs(watina, 
+                     loc_type = "P", 
+                     loc_validity = c("VLD", "ENT"),
+                     collect = TRUE)
+clus1 <- 
+  locs_terr %>% 
+  cluster_locs(max_dist = 1) %>% 
+  group_by(cluster) %>% 
+  mutate(n1 = n()) %>% 
+  ungroup %>% 
+  select(-cluster)
+clus2 <- 
+  locs_terr %>% 
+  cluster_locs(max_dist = 2) %>% 
+  group_by(cluster) %>% 
+  mutate(n2 = n()) %>% 
+  ungroup %>% 
+  select(-cluster)
+clus1 %>% 
+  inner_join(clus2 %>% select(loc_code, n2), 
+             by = "loc_code") %>% 
+  mutate(clustermove = ifelse(n1 == 1 & n2 > 1,
+                              "changed_cluster",
+                              ifelse(n1 > 1 & n2 > 1,
+                              "cluster",
+                              "single"))
+         ) %>% 
+  as_points %>% 
+  arrange(desc(clustermove)) %>% 
+  mapview::mapview(zcol = "clustermove", 
+                   col.regions = c("red", "blue", "grey"))
+                   # map.types = "Wikimedia")
+
+locs_terr %>% 
+  cluster_locs(max_dist = 2) %>% 
+  count(cluster) %>% 
+  pull(n) %>% table
+```
+
+Based on this, we choose `max_dist = 2`.
+
+#### Comparing with the piezometer groups from Watina DWH.
+
+Taking the piezometer groups from Watina DWH:
+
+```{r}
+mpg <- 
+    tbl(watina, "vwDimMeetpunt") %>% 
+    inner_join(tbl(watina, "m2mMeetpuntGroep") %>% 
+                   select(MeetpuntWID, MeetpuntGroepWID), by = "MeetpuntWID") %>% 
+    inner_join(tbl(watina, "vwDimMeetpuntGroep"), by = "MeetpuntGroepWID") %>% 
+    collect %>% 
+    filter(str_detect(MeetpuntGroepCode, "Gr_....+"))
+```
+
+Frequency of piezometers per group:
+
+```{r}
+mpg %>% 
+  count(MeetpuntGroepCode) %>% 
+  pull(n) %>% 
+  table
+```
+
+Note that there are some single-piezometer groups.
+
+```{r}
+mpg %>% nrow
+```
+
+
+Comparing this with cluster result:
+
+```{r}
+result <- 
+    tbl(watina, "vwDimMeetpunt") %>% 
+    collect %>% 
+    rename(x = MeetpuntXCoordinaat,
+           y = MeetpuntYCoordinaat) %>% 
+    cluster_locs %>% 
+    select(MeetpuntCode, x, y, cluster_id) %>% 
+    group_by(cluster_id) %>% 
+    mutate(cluster_size = n()) %>% 
+    ungroup %>% 
+    filter(cluster_size > 1) %>% 
+    full_join(mpg %>% select(MeetpuntCode, MeetpuntGroepCode, contains("Coord")),
+              by = "MeetpuntCode")
+```
+
+
+```{r}
+result$MeetpuntGroepCode %>% is.na %>% sum
+```
+
+This result says that > 1000 piezometers, clustered by `cluster_locs()` (within distance of 2 m), are not defined by groups in Watina.
+
+On a map:
+
+```{r out.width='1600px', out.height='500px'}
+result %>% 
+    filter(is.na(MeetpuntGroepCode)) %>% 
+    as_points() %>% 
+    mapview::mapview(zcol = "cluster_id")
+```
+
+Inspecting cluster-piezometers from Watina, not clustered by `cluster_loc()`:
+
+```{r}
+result$cluster_id %>%  is.na %>% sum
+```
+
+
+```{r out.width='1600px', out.height='500px'}
+result %>% 
+    filter(is.na(cluster_id)) %>% 
+    as_points(xvar = "MeetpuntXCoordinaat",
+              yvar = "MeetpuntYCoordinaat") %>% 
+    mapview::mapview(zcol = "MeetpuntGroepCode")
+```
+
+Some of these have no coordinates:
+
+```{r}
+result %>% 
+    filter(is.na(cluster_id),
+           is.na(MeetpuntXCoordinaat) | is.na(MeetpuntYCoordinaat)) %>% 
+    nrow
+```
+
+36 groups have one remaining piezometer.
+So part of the clusters were actually clustered by `cluster_loc()`.
+
+```{r}
+result %>% 
+    filter(is.na(cluster_id)) %>% 
+    count(MeetpuntGroepCode) %>% 
+    pull(n) %>% 
+    table
+```
+
+Histogram of within-cluster distances (for groups with at least one not-yet clustered piezometer):
+
+```{r warning=FALSE}
+distances_unclustered <- 
+  result %>% 
+  filter(is.na(cluster_id)) %>% 
+  semi_join(result, ., by = "MeetpuntGroepCode") %>% 
+  filter(!is.na(MeetpuntXCoordinaat),
+         !is.na(MeetpuntYCoordinaat)) %>% 
+    group_by(MeetpuntGroepCode) %>% 
+    summarise(maxdist = dist(data.frame(MeetpuntXCoordinaat, 
+                                        MeetpuntYCoordinaat)) %>% max)
+p <- 
+  distances_unclustered %>% 
+    ggplot(aes(x = maxdist))
+p + geom_histogram(binwidth = 5, fill = "white", colour = "grey70")
+```
+
+Zooming in below 20 m:
+
+```{r warning=FALSE}
+p + 
+  geom_histogram(binwidth = 1, fill = "white", colour = "grey70") +
+  xlim(0, 20)
+```
+
+Looking at percentiles:
+
+```{r}
+distances_unclustered %>% 
+  filter(is.finite(maxdist)) %>% 
+  pull(maxdist) %>% 
+  quantile(seq(0,1,0.1))
+```
+
 
 
 ## Groundwater levels: XG3
@@ -577,5 +828,7 @@ chem_measurements %>%
 ```{r}
 dbDisconnect(con)
 ```
+
+
 
 
