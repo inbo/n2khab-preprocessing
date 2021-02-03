@@ -132,6 +132,34 @@ habmap_long <- habmap_longHAB %>%
 
 ```
 
+In some cases you get two records for the same type, one certain and one uncertain, within the same habitatmap polygon. See for example the case below where you get two phab values for type 3150 within the same polygon. Furthermore the sum of the phab values within the polygon is higher than 100. Therefore we will distribute teh phab value for uncetain types equally over the two possible types (in this case phab = 20 for type 3150 and phab = 20 for type rbbmr). Next we sum the phab values over the types within the same polygon. 
+
+```{r}
+habmap_long %>%
+  filter(polygon_id == "357179_v2020")
+```
+
+
+```{r}
+habmap_long <- habmap_long %>%
+  group_by(polygon_id, code) %>%
+      mutate(n = n()) %>%
+    ungroup() %>%
+    group_by(polygon_id, type) %>%
+     summarise(phab = sum(phab/n),
+              code_orig = str_c(code, collapse = "; "),
+              certain = all(certain)) %>%
+    ungroup() 
+```
+In this example we will get phab = 80 for 3150 and phab 20 for rbbmr as can be seen below. 
+
+```{r}
+habmap_long %>%
+  filter(polygon_id == "357179_v2020")
+```
+
+
+
 ## Select vegetation types that belong to the standard list of habitat and rbb types  
 
 Table \@ref(tab:select_types) shows the records with habitat types that do not belong to the standard list of habitat and rbb types. These records are filtered out. 
@@ -146,7 +174,7 @@ habmap_long <- habmap_long %>%
 
 habmap_types <- habmap_long %>%
   filter(!is.na(typelevel)) %>%
-   select(polygon_id, code_orig = code, phab, certain, type) %>%
+   select(polygon_id, code_orig, phab, certain, type) %>%
   mutate(type = factor(type,
                        levels = levels(types$type)
                        )
@@ -157,11 +185,12 @@ habmap_other_type <- habmap_long %>%
   filter(is.na(typelevel))
 
 habmap_other_type %>%
-  select(polygon_id, code, phab, certain, type) %>%
+  select(polygon_id, code_orig, phab, certain, type) %>%
   kable() %>%
   kable_styling()
 
 ```
+
 
 ## Select features that contain habitat or rbb types
 
