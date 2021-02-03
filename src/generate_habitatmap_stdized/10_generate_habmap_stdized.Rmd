@@ -1,7 +1,7 @@
 # Generate standardized habitatmap
 
 ## Data source
-The shapefile of the BWK and Natura 2000 habitat map of Flanders can be downloaded here[http://www.geopunt.be/download?container=bwk2%5C2018&title=Biologische%20waarderingskaart%20-%20Natura%202000%20Habitatkaart].
+The shapefile of the BWK and Natura 2000 habitat map of Flanders can be downloaded here[https://zenodo.org/record/4428002#.YBqzu-hKigY].
 
 ```{r read_raw_data}
 
@@ -31,6 +31,26 @@ write_vc(habmap_correction,  "habmap_correction/habmap_correction",
 
 ```
 
+
+```{r, eval = FALSE}
+
+upgrade_data("habmap_correction/habmap_correction")
+
+habmap_correction <- read_vc("habmap_correction/habmap_correction")
+
+add_habmap_correction <- data.frame(code = "3140_rbbmr",
+                                    code_corrected = "3140,rbbmr"
+)
+
+habmap_correction <- bind_rows(add_habmap_correction,
+                               habmap_correction)
+
+write_vc(habmap_correction,  "habmap_correction/habmap_correction",
+         sorting = "code")
+
+```
+
+
 ```{r code_corrected}
 
 habmap_correction <- read_vc("habmap_correction/habmap_correction")
@@ -52,7 +72,7 @@ In some cases, the vegetation type is uncertain, and 2 or 3 possible vegetation 
 
 ```{r select_polygons}
 
-habmap_sf <- habmap_sf %>%
+habmap_sf <- habitatmap_sf %>%
             filter(!(HAB1 == "gh" & PHAB1 == 100)) %>%
             mutate(polygon_id = TAG, # unieke id
                    description_orig = str_c(PHAB1, "% ", HAB1,
@@ -114,7 +134,7 @@ habmap_long <- habmap_longHAB %>%
 
 ## Select vegetation types that belong to the standard list of habitat and rbb types  
 
-Table \@ref(tab:select_types) shows the records with habitat types that do not belong to the standar list of habitat and rbb types. These records are filtered out. 
+Table \@ref(tab:select_types) shows the records with habitat types that do not belong to the standard list of habitat and rbb types. These records are filtered out. 
 
 ```{r select_types}
 
@@ -157,7 +177,7 @@ habmap_types_sf <- habmap_sf %>%
 
 ```{r}
 
-st_write(habmap_types_sf, file.path(path,"20_processed/habitatmap_stdized/habitatmap_stdized.gpkg"), layer = "habitatmap_polygons", driver = "GPKG")
+st_write(habmap_types_sf, file.path(path,"20_processed/habitatmap_stdized/habitatmap_stdized.gpkg"), layer = "habitatmap_polygons", driver = "GPKG", delete_dsn = TRUE)
 
 con = dbConnect(RSQLite::SQLite(),
                 dbname = file.path(path,"20_processed/habitatmap_stdized/habitatmap_stdized.gpkg"))
