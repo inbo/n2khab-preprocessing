@@ -15,7 +15,6 @@ si$packages %>%
 pander::pandoc.table(caption = "(\\#tab:sessioninfo)Loaded R packages",
                      split.table = Inf)
 
-inborutils::write_sessioninfo("sessioninfo.txt")
 ```
 
 
