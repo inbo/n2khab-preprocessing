@@ -49,9 +49,8 @@ library(stringr)
 library(knitr)
 library(n2khab)
 library(git2rdata)
-library(googlesheets)
 library(kableExtra)
-library(DBI) 
+library(openssl)
 
 opts_chunk$set(
   echo = TRUE,
