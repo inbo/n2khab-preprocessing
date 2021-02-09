@@ -24,28 +24,106 @@ Startingpoint for the interpretation is the standardized version of the shapefil
 
 ### Standardized version
 
+To be sure we will use the correct version of the data source (habitatmap_stdized_2020_v1), we will derive the md5 and sha256 file hashes and compare it to the file hashes in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
+
+```{r}
+
+path <- fileman_up("n2khab_data")
+file <- "20_processed/habitatmap_stdized"
+
+mypath <- file.path(path, file)
+
+hashes <-
+    tibble(filepath = str_c(mypath, "/",
+        list.files(path = mypath,
+            recursive = TRUE)
+      )) %>%
+    mutate(filename = str_match(filepath, "(.+\\/)*(.+)")[,3],
+           md5 = map(filepath, function(x) {
+                           file(x) %>% md5 %>% str_c(collapse = '')
+                         }) %>% as.character,
+           sha256 = map(filepath, function(x) {
+                          file(x) %>% sha256 %>% str_c(collapse = '')
+                          }) %>% as.character,
+           md5_ref = c("ca5724ba6749a77f93bf5167fd02c47c"),
+           sha256_ref = c("a466ca91896d5354636e23fff83c9b1df603b1d0f3b0ed45f15ea10af7da0181"),
+           match = md5 == md5_ref & sha256 == sha256_ref) %>%
+    select(filename,
+           md5,
+           sha256,
+           md5_ref,
+           sha256_ref,
+           match)
+
+kable(hashes) %>%
+  kable_styling()
+```
+
+
 ```{r read_processed_data}
 
 # habfile <- "20_processed/habitatmap_stdized/habitatmap_stdized.gpkg"
-datapath <- fileman_up("n2khab_data")
 
 habmap_stdized <- read_habitatmap_stdized()
 
 habmap_polygons <- habmap_stdized$habitatmap_polygons
 
 # following requires at least n2khab 0.0.3.9037 and 
-# data source version habitatmap_stdized_2018_v2:
+# data source version habitatmap_stdized_2020:
 habmap_types <- habmap_stdized$habitatmap_types 
 
 ```
 
 ### Source version
 
-In some cases we'll need to refer to the source-map (from [Geopunt](http://www.geopunt.be/download?container=bwk2%5C2018&title=Biologische%20waarderingskaart%20-%20Natura%202000%20Habitatkaart))
+In some cases we'll need to refer to the source-map (from [Zenodo](https://zenodo.org/record/4428002#.YBqzu-hKigY)).
+
+Again we wil check if it is the correct version (habitatmap_2020).
+
+```{r}
+path <- fileman_up("n2khab_data")
+file <- "10_raw/habitatmap"
+
+mypath <- file.path(path, file)
+
+hashes <-
+    tibble(filepath = str_c(mypath, "/",
+        list.files(path = mypath,
+            recursive = TRUE)
+      )) %>%
+    mutate(filename = str_match(filepath, "(.+\\/)*(.+)")[,3],
+           md5 = map(filepath, function(x) {
+                           file(x) %>% md5 %>% str_c(collapse = '')
+                         }) %>% as.character,
+           sha256 = map(filepath, function(x) {
+                          file(x) %>% sha256 %>% str_c(collapse = '')
+                          }) %>% as.character,
+           md5_ref = c("f767a12540b2bde435c6709c9c9675ad",
+                      "358ff672c2fae48eba5bd09f8a671675",
+                      "f881f61a6c07741b58cb618d8bbb0b99",
+                      "1da89a5dc267bbd427c8c07fcf63f344",
+                      "79ae8b4b3c6d970a1f10e78f3eca9ef7"),
+           sha256_ref = c("c76819ecf3f1276caea9ff8514b4c0f2d201a12e4b13dabd70dd7c42bc05318a",
+                         "be029dba3d7ff730407842eee3b43bbec8b2536701ccf7e54c114ba6ee8ac6f4",
+                         "a8225ebf83d19412567ce9b909f03631626eec43dffb1f067c7edf3d59ab3aa4",
+                         "c457ab6ae5728b4c0da79793a6d328806aeca13234a76b7d41b1cf8c50b78a19",
+                         "5f717cd7393869e396ddb174a618bbf615521968fad6af605ed5586d250768cd"),
+           match = md5 == md5_ref & sha256 == sha256_ref) %>%
+    select(filename,
+           md5,
+           sha256,
+           md5_ref,
+           sha256_ref,
+           match)
+
+kable(hashes) %>%
+  kable_styling()
+
+```
+
 
 ```{r read_raw_data, message=FALSE}
-habmap_sf <- st_read(file.path(datapath, "10_raw/habitatmap"), 
-                     "habitatmap", crs = 31370, quiet =  TRUE)
+habmap_sf <- read_habitatmap()
 ```
 
 # Interpretations
@@ -58,16 +136,16 @@ Rbbhfl is a code which needs interpretation from BWK + habitatmap, in order to m
 
 #filter hfl-types from bwk units
 habmap_hfl <- habmap_sf  %>% 
-    inner_join(habmap_types, by = c("TAG" = "polygon_id")) %>% 
-    mutate(rbbhfl = str_detect(BWKLABEL, "hfl")) %>% 
-    select(TAG, BWKLABEL, rbbhfl, type, code_orig) %>% 
+    inner_join(habmap_types, by = c("polygon_id")) %>% 
+    mutate(rbbhfl = str_detect(bwk_label, "hfl")) %>% 
+    select(polygon_id, bwk_label, rbbhfl, type, code_orig) %>% 
     filter(rbbhfl == TRUE & type == "rbbhf") 
 
 #update habmap_polygons -> habmap_polygons_interpreted
 habmap_polygons_interpreted <- habmap_polygons %>% 
     left_join(habmap_hfl %>% 
-                  select(TAG, rbbhfl) %>% 
-                   st_drop_geometry(), by = c("polygon_id" = "TAG")) %>% 
+                  select(polygon_id, rbbhfl) %>% 
+                   st_drop_geometry(), by = c("polygon_id")) %>% 
     mutate(description = ifelse(is.na(rbbhfl), description_orig, str_replace_all(description_orig, "rbbhf", "rbbhfl")),
            source = ifelse(is.na(rbbhfl), "habitatmap_stdized", "habitatmap_stdized + interpretation")) %>% 
     select(-rbbhfl)
@@ -75,8 +153,8 @@ habmap_polygons_interpreted <- habmap_polygons %>%
 #update habmap_types -> habmap_types_interpreted
 habmap_types_interpreted <- habmap_types %>% 
     left_join(habmap_hfl %>% 
-                  select(TAG, rbbhfl) %>% 
-                   st_drop_geometry(), by = c("polygon_id" = "TAG")) %>% 
+                  select(polygon_id, rbbhfl) %>% 
+                   st_drop_geometry(), by = c("polygon_id")) %>% 
     mutate(type = ifelse(is.na(rbbhfl) | type != "rbbhf", as.character(type), str_replace_all(type, "rbbhf", "rbbhfl")),
            source = ifelse(is.na(rbbhfl) | type != "rbbhfl", "habitatmap_stdized", "habitatmap_stdized + interpretation")) %>% 
     select(-rbbhfl) 
@@ -99,16 +177,16 @@ It's possible that a watersurface is being mapped together with other biotopes. 
 
 ```{r detect dune water}
 habmap_dunewater <- habmap_sf %>% 
-    inner_join(habmap_types_interpreted, by = c("TAG" = "polygon_id")) %>% 
-    mutate(dunewater = str_detect(EENH1, c("ae|kn"))) %>% 
-    select(TAG, BWKLABEL, dunewater, type, code_orig) %>% 
+    inner_join(habmap_types_interpreted, by = c("polygon_id")) %>% 
+    mutate(dunewater = str_detect(eenh1, c("ae|kn"))) %>% 
+    select(polygon_id, bwk_label, dunewater, type, code_orig) %>% 
     filter(dunewater == TRUE & type == "2190") 
 
 #update habmap_polygons -> habmap_polygons_interpreted
 habmap_polygons_interpreted <- habmap_polygons_interpreted %>% 
     left_join(habmap_dunewater %>% 
-                  select(TAG, dunewater) %>% 
-                   st_drop_geometry(), by = c("polygon_id" = "TAG")) %>% 
+                  select(polygon_id, dunewater) %>% 
+                   st_drop_geometry(), by = c("polygon_id")) %>% 
     mutate(description = ifelse(is.na(dunewater),
                                 str_replace_all(description, "2190_","2191_"),
                                 description_orig)) %>% 
@@ -124,8 +202,8 @@ habmap_polygons_interpreted <- habmap_polygons_interpreted %>%
 #update habmap_types -> habmap_types_interpreted
 habmap_types_interpreted <- habmap_types_interpreted %>% 
     left_join(habmap_dunewater %>% 
-                  select(TAG, dunewater) %>% 
-                   st_drop_geometry(), by = c("polygon_id" = "TAG")) %>% 
+                  select(polygon_id, dunewater) %>% 
+                   st_drop_geometry(), by = c("polygon_id")) %>% 
     mutate(type = str_replace_all(type, "2190_", "2191_")) %>% # mark mappings on subtype-level
     mutate(type = case_when(
                     is.na(dunewater) & str_detect(type, "2190") ~ "2190_overig", 
@@ -267,24 +345,22 @@ habmap_types_interpreted <- habmap_types_interpreted %>%
 ## Write results into a geopackage
 
 ```{r}
-dir.create(file.path(datapath, "20_processed/habitatmap_terr"), recursive = TRUE)
+dir.create(file.path(path, "20_processed/habitatmap_terr"), recursive = TRUE)
 ```
 
 ```{r}
 st_write(habmap_polygons_interpreted,
-         file.path(datapath, 
+         file.path(path, 
                    "20_processed/habitatmap_terr/habitatmap_terr.gpkg"), 
          layer = "habitatmap_terr_polygons", 
          driver = "GPKG",
          delete_dsn = TRUE)
 
-con = dbConnect(RSQLite::SQLite(),
-                dbname = file.path(
-                  datapath, 
-                  "20_processed/habitatmap_terr/habitatmap_terr.gpkg")
-                )
+st_write(habmap_types_interpreted,
+         file.path(path, 
+                   "20_processed/habitatmap_terr/habitatmap_terr.gpkg"),
+         layer = "habitatmap_terr_types", 
+         driver = "GPKG",
+         append = TRUE)
 
-dbWriteTable(con, "habitatmap_terr_types", habmap_types_interpreted)
-
-dbDisconnect(con)
 ```
