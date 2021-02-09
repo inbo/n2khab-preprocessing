@@ -37,9 +37,12 @@ output:
 ---
 
 ```{r setup, include=FALSE}
+
 options(stringsAsFactors = FALSE,
         scipen = 999, 
         digits = 15)
+
+renv::restore()
 library(sf)
 library(tidyverse)
 library(stringr)
