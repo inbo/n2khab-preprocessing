@@ -1,73 +1,69 @@
 # Generate standardized habitatmap
 
 ## Data source
-The shapefile of the BWK and Natura 2000 habitat map of Flanders can be downloaded here[https://zenodo.org/record/4428002#.YBqzu-hKigY].
 
-```{r read_raw_data}
+The shapefile of the BWK and Natura 2000 habitat map of Flanders can be downloaded [here](https://zenodo.org/record/4428002#.YBqzu-hKigY).
+
+To be sure we will use the correct version of the data source (habitatmap_2020), we will derive the md5 and sha256 file hashes and compare it to the file hashes in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
+
+```{r}
 
 path <- fileman_up("n2khab_data")
 file <- "10_raw/habitatmap"
+
+mypath <- file.path(path, file)
+
+hashes <-
+    tibble(filepath = str_c(mypath, "/",
+        list.files(path = mypath,
+            recursive = TRUE)
+      )) %>%
+    mutate(filename = str_match(filepath, "(.+\\/)*(.+)")[,3],
+           md5 = map(filepath, function(x) {
+                           file(x) %>% md5 %>% str_c(collapse = '')
+                         }) %>% as.character,
+           sha256 = map(filepath, function(x) {
+                          file(x) %>% sha256 %>% str_c(collapse = '')
+                          }) %>% as.character,
+           md5_ref = c("f767a12540b2bde435c6709c9c9675ad",
+                      "358ff672c2fae48eba5bd09f8a671675",
+                      "f881f61a6c07741b58cb618d8bbb0b99",
+                      "1da89a5dc267bbd427c8c07fcf63f344",
+                      "79ae8b4b3c6d970a1f10e78f3eca9ef7"),
+           sha256_ref = c("c76819ecf3f1276caea9ff8514b4c0f2d201a12e4b13dabd70dd7c42bc05318a",
+                         "be029dba3d7ff730407842eee3b43bbec8b2536701ccf7e54c114ba6ee8ac6f4",
+                         "a8225ebf83d19412567ce9b909f03631626eec43dffb1f067c7edf3d59ab3aa4",
+                         "c457ab6ae5728b4c0da79793a6d328806aeca13234a76b7d41b1cf8c50b78a19",
+                         "5f717cd7393869e396ddb174a618bbf615521968fad6af605ed5586d250768cd"),
+           match = md5 == md5_ref & sha256 == sha256_ref) %>%
+    select(filename,
+           md5,
+           sha256,
+           md5_ref,
+           sha256_ref,
+           match)
+
+
+
+kable(hashes) %>%
+  kable_styling()
+
+```
+
+
+```{r read_raw_data}
 
 habitatmap_sf <- st_read(file.path(path, file),
                   layer = "habitatmap")
 ```
 
-## Correction of some of the codes in the Habitat map
 
-For some polygons in the habitat map the vegetation type is not certain. When 
-this is the case, the code contains the possible vegetation types separated with
-a ','. However, in some cases this way of coding is not used. In that case we
-change the code according to the general coding rules (for example 3130_rbbmr is
-changed to 3130,rbbmr). This makes processing of the habitat map more 
-straightforward. Table \@ref(tab:code_corrected) shows the corrected codes.
-
-```{r, eval = FALSE}
-
-habmap_correction <-  gs_key("1PU9MDyJKZz2DOrKqb-SIIVmSaR1mh4Ke6v0WCqhr8t4") %>%
-  gs_read(ws = 3)
-
-write_vc(habmap_correction,  "habmap_correction/habmap_correction",
-         sorting = "code")
-
-```
-
-
-```{r, eval = FALSE}
-
-upgrade_data("habmap_correction/habmap_correction")
-
-habmap_correction <- read_vc("habmap_correction/habmap_correction")
-
-add_habmap_correction <- data.frame(code = "3140_rbbmr",
-                                    code_corrected = "3140,rbbmr"
-)
-
-habmap_correction <- bind_rows(add_habmap_correction,
-                               habmap_correction)
-
-write_vc(habmap_correction,  "habmap_correction/habmap_correction",
-         sorting = "code")
-
-```
-
-
-```{r code_corrected}
-
-habmap_correction <- read_vc("habmap_correction/habmap_correction")
-
-habmap_correction %>%
-  kable(caption = "Corrected codes in habitat map") %>%
-  kable_styling()
-
-```
 
 ## Processing of the attribute table
 
 Every polygon in the habitat map can consist of maximum 5 different vegetation types. This information is stored in the columns 'HAB1', 'HAB2',..., 'HAB5' of the attribute table. The estimated fraction of each vegetation type within the polygons is stored in the columns 'PHAB1', 'PHAB2', ..., 'PHAB5'.
 
 We will convert the attribute table to a long format, so that every row contains one vegetation type.
-
-In some cases, the vegetation type is uncertain, and 2 or 3 possible vegetation types are provided, separated with a ','. We will split the different possible vegetation types and create one row for each of them. An additional variable 'certain' will be FALSE if the orginal habitatmap code consists of 2 or 3 possible vegetation types, and TRUE if only one vegetation type is provided.
 
 
 ```{r select_polygons}
@@ -101,6 +97,38 @@ habmap_longHAB <- habmap_sf %>%
     filter(!is.na(code)) %>%
     filter(! code %in% c("gh", "x"))
 
+```
+
+## Correction of some of the codes in the Habitat map
+
+For some polygons in the habitat map the vegetation type is not certain. When 
+this is the case, the code contains the possible vegetation types separated with
+a ','. However, in some cases this way of coding is not used. In that case we
+change the code according to the general coding rules (for example 3130_rbbmr is
+changed to 3130,rbbmr). This makes processing of the habitat map more 
+straightforward. Table \@ref(tab:codeCorrected) shows the corrected codes and the number of polygons for which the correction is applied.
+
+
+```{r }
+
+habmap_correction <- read_vc("habmap_correction/habmap_correction")
+
+overview_habmap_correction <- habmap_longHAB %>%
+  inner_join(habmap_correction, by = "code") %>%
+  group_by(code, code_corrected) %>%
+  summarise(n_polygons = n()) %>%
+  ungroup()
+
+```
+
+
+```{r codeCorrected}
+overview_habmap_correction %>%
+  kable(caption = "Corrected codes in habitat map") %>%
+  kable_styling()
+```
+
+```{r}
 if(sum(habmap_correction$code %in% habmap_longHAB$code) > 0){
 
     habmap_longHAB <- habmap_longHAB %>%
@@ -116,6 +144,16 @@ if(sum(habmap_correction$code %in% habmap_longHAB$code) > 0){
       habmap_longHAB <- habmap_longHAB %>%
         mutate(code_orig = code)
 }
+```
+
+
+## Splitting uncertain types
+
+When the vegetation type is uncertain, and 2 or 3 possible vegetation types are provided, separated with a ','. 
+We will split the different possible vegetation types and create one row for each of them. 
+An additional variable 'certain' will be FALSE if the orginal habitatmap code consists of 2 or 3 possible vegetation types, and TRUE if only one vegetation type is provided.
+
+```{r}
 
 habmap_long <- habmap_longHAB %>%
     left_join(habmap_longPHAB, by = c("polygon_id", "patch_id")) %>%
@@ -129,10 +167,15 @@ habmap_long <- habmap_longHAB %>%
     filter(!(type %in% c("gh", "bos"))) %>%
     select(-patch_id)
 
-
 ```
 
-In some cases you get two records for the same type, one certain and one uncertain, within the same habitatmap polygon. See for example the case below where you get two phab values for type 3150 within the same polygon. Furthermore the sum of the phab values within the polygon is higher than 100. Therefore we will distribute teh phab value for uncetain types equally over the two possible types (in this case phab = 20 for type 3150 and phab = 20 for type rbbmr). Next we sum the phab values over the types within the same polygon. 
+
+
+In some cases you get two records for the same type, one certain and one uncertain, within the same habitatmap polygon. 
+See for example the case below where you get two phab values for type 3150 within the same polygon. 
+Furthermore the sum of the phab values within the polygon is higher than 100. 
+Therefore we will distribute teh phab value for uncetain types equally over the two possible types (in this case phab = 20 for type 3150 and phab = 20 for type rbbmr). 
+Next we sum the phab values over the types within the same polygon. 
 
 ```{r}
 habmap_long %>%
@@ -162,9 +205,9 @@ habmap_long %>%
 
 ## Select vegetation types that belong to the standard list of habitat and rbb types  
 
-Table \@ref(tab:select_types) shows the records with habitat types that do not belong to the standard list of habitat and rbb types. These records are filtered out. 
+Table \@ref(tab:selectTypes) shows the records with habitat types that do not belong to the standard list of habitat and rbb types. These records are filtered out. 
 
-```{r select_types}
+```{r selectTypes}
 
 types <- read_types() %>%
   select(type, typelevel, main_type, typeclass)
@@ -186,7 +229,7 @@ habmap_other_type <- habmap_long %>%
 
 habmap_other_type %>%
   select(polygon_id, code_orig, phab, certain, type) %>%
-  kable() %>%
+  kable(caption = "Polygons with types that do not coorspond with the standard list of types and rbb") %>%
   kable_styling()
 
 ```
@@ -208,11 +251,6 @@ habmap_types_sf <- habmap_sf %>%
 
 st_write(habmap_types_sf, file.path(path,"20_processed/habitatmap_stdized/habitatmap_stdized.gpkg"), layer = "habitatmap_polygons", driver = "GPKG", delete_dsn = TRUE)
 
-con = dbConnect(RSQLite::SQLite(),
-                dbname = file.path(path,"20_processed/habitatmap_stdized/habitatmap_stdized.gpkg"))
-
-dbWriteTable(con, "habitatmap_types", habmap_types)
-
-dbDisconnect(con)
+st_write(habmap_types, file.path(path,"20_processed/habitatmap_stdized/habitatmap_stdized.gpkg"), layer = "habitatmap_types", driver = "GPKG", append = TRUE)
 
 ```
