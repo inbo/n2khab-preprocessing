@@ -57,6 +57,11 @@ hashes <-
 
 kable(hashes) %>%
   kable_styling()
+
+
+if (!all.equal(hashes$md5, hashes$md5_ref) == TRUE | !all.equal(hashes$sha256, hashes$sha256_ref) == TRUE) {
+    stop(cat("The standardized version is NOT up to date ! Please check  the datasource. "))
+}
 ```
 
 
@@ -118,6 +123,10 @@ hashes <-
 
 kable(hashes) %>%
   kable_styling()
+
+if (!all.equal(hashes$md5, hashes$md5_ref) == TRUE | !all.equal(hashes$sha256, hashes$sha256_ref) == TRUE) {
+    stop(cat("The source map is NOT up to date ! Please check  the datasource. "))
+}
 
 ```
 
