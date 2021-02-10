@@ -48,6 +48,9 @@ hashes <-
 kable(hashes) %>%
   kable_styling()
 
+if (!all.equal(hashes$md5, hashes$md5_ref) == TRUE | !all.equal(hashes$sha256, hashes$sha256_ref) == TRUE) {
+    stop(cat("Habitatkaart is NIET up to date ! Check a.u.b. de datasource. "))
+}
 ```
 
 
@@ -174,7 +177,7 @@ habmap_long <- habmap_longHAB %>%
 In some cases you get two records for the same type, one certain and one uncertain, within the same habitatmap polygon. 
 See for example the case below where you get two phab values for type 3150 within the same polygon. 
 Furthermore the sum of the phab values within the polygon is higher than 100. 
-Therefore we will distribute teh phab value for uncetain types equally over the two possible types (in this case phab = 20 for type 3150 and phab = 20 for type rbbmr). 
+Therefore we will distribute the phab value for uncertain types equally over the two possible types (in this case phab = 20 for type 3150 and phab = 20 for type rbbmr). 
 Next we sum the phab values over the types within the same polygon. 
 
 ```{r}
