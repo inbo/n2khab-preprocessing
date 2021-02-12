@@ -29,14 +29,17 @@ opts_chunk$set(
 # A few checks of the habitatmap_stdized data source
 
 ```{r}
-result <- read_habitatmap_stdized()
+filepath <- file.path(fileman_up("n2khab_data"),
+                      "20_processed/habitatmap_stdized/habitatmap_stdized.gpkg")
+habitatmap_polygons <- st_read(filepath, layer = "habitatmap_polygons")
+habitatmap_types <- st_read(filepath, layer = "habitatmap_types")
 ```
 
 
 Do all polygons from the sf object have a unique ID?
 
 ```{r}
-result$habitatmap_polygons %>% 
+habitatmap_polygons %>% 
   st_drop_geometry %>% 
   count(polygon_id) %>% 
   filter(n > 1) %>% 
@@ -46,23 +49,23 @@ result$habitatmap_polygons %>%
 Is the number of unique IDs in the dataframe the same as the number of polygons in the sf object?
 
 ```{r}
-result$habitatmap_types %>% 
+habitatmap_types %>% 
   distinct(polygon_id) %>% 
-  nrow == nrow(result$habitatmap_polygons)
+  nrow == nrow(habitatmap_polygons)
 ```
 
 Do all polygon IDs from the dataframe coincide with those of the sf object?
 
 ```{r message=FALSE}
-result$habitatmap_types %>% 
-  inner_join(result$habitatmap_polygons) %>% 
-  nrow == nrow(result$habitatmap_types)
+habitatmap_types %>% 
+  inner_join(habitatmap_polygons) %>% 
+  nrow == nrow(habitatmap_types)
 ```
 
 Number of polygons with phab = 0:
 
 ```{r}
-result$habitatmap_types %>% 
+habitatmap_types %>% 
   filter(phab == 0) %>% 
   nrow()
 ```
