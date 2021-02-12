@@ -33,10 +33,11 @@ result <- read_habitatmap_stdized()
 ```
 
 
-Do all polygons from the sf object have a unique ID? (Beware, this calculation takes approx. 2-3 minutes; it has been disabled)
+Do all polygons from the sf object have a unique ID?
 
-```{r eval=FALSE}
+```{r}
 result$habitatmap_polygons %>% 
+  st_drop_geometry %>% 
   count(polygon_id) %>% 
   filter(n > 1) %>% 
   nrow == 0
