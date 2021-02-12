@@ -15,16 +15,9 @@ output:
 
 ```{r setup, message=FALSE, echo=FALSE}
 options(stringsAsFactors = FALSE)
-# library(sp)
 library(sf)
-library(raster)
-library(tidyverse)
+library(dplyr)
 library(n2khab)
-# # library(plotly)
-# library(rasterVis)
-# library(stars)
-# library(units)
-# library(tmap)
 library(knitr)
 opts_chunk$set(
   echo = TRUE,
