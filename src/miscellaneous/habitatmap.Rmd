@@ -35,6 +35,19 @@ habitatmap_polygons <- st_read(filepath, layer = "habitatmap_polygons")
 habitatmap_types <- st_read(filepath, layer = "habitatmap_types")
 ```
 
+Checking the CRS stated in the file as "`r st_crs(habitatmap_polygons)$input`": does it actually conform to the EPSG standard (in order to prevent CRS clashes in workflows)?
+
+- can the EPSG code be exported?
+
+```{r}
+!is.na(st_crs(habitatmap_polygons)$epsg)
+```
+
+- does it conform to EPSG:31370?
+
+```{r}
+st_crs(habitatmap_polygons) == st_crs(31370)
+```
 
 Do all polygons from the sf object have a unique ID?
 
