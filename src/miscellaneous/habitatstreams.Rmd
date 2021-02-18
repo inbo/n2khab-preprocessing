@@ -1,0 +1,136 @@
+---
+title: "Handling the map for habitat 3260 (habitatstreams)"
+date: '`r paste("Version",lubridate::now())`'
+output:
+  html_document:
+    toc: yes
+    df_print: paged
+  html_notebook:
+    number_sections: yes
+    code_folding: show
+    includes:
+      in_header: ../header.html
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: no
+---
+
+```{r setup, message=FALSE, echo=FALSE, warning=FALSE}
+options(stringsAsFactors = FALSE)
+library(sf)
+library(tidyverse)
+library(n2khab)
+
+# wfs:
+library(ows4R)
+library(httr)
+
+library(knitr)
+opts_chunk$set(
+  echo = TRUE,
+  dpi = 300
+)
+```
+
+
+# A few checks of the habitatstreams data source 
+
+We want to add a new version of habitatstreams (1.7) (10.5281/zenodo.4420858)
+
+## Compare version 1.6 and 1.7
+
+(outside R)
+
+- Both are shapefiles
+- same prj
+- same fieldnames and fieldtypes
+
+CONCLUSION: we can use the existing read_habitatstreams as a quick tool to explore the new version and compare it with version 1.6
+
+## Data exploration
+
+```{r data-import}
+
+# with version 1.7 in n2khab_data\10_raw\habitatstreams
+# load new version 1.7
+habitatstreams17 <- read_habitatstreams(source_text = TRUE)
+
+# manually change the current version in n2khab_data\10_raw\habitatstreams 
+# (because there is no management system for the versions yet)
+# load old version 1.6 (10.5281/zenodo.3386246)
+# habitatstreams16 <- read_habitatstreams()
+
+```
+
+**A quick look**
+
+```{r quick-look}
+habitatstreams17$lines %>%
+  st_drop_geometry %>% 
+  summary
+# there are some NA in the river_name (n= 26/561), but no NA in source_id and type
+# type is always 3260 as expected
+
+# habitatstreams16 %>% 
+#   st_drop_geometry %>% 
+#   summary # in version 1.6 there were 25 NA's in river_name 
+```
+There are some NA's for river_name: 26 in version 1.7 versus 25 in version 1.6. This difference seems consistent.
+
+**Look for inconsistencies in source_id**
+
+```{r data-exploration}
+# we check the source_ids
+habitatstreams17$lines %>%
+  count(source_id) # seems ok, no NA, names seems fine
+```
+
+**Let's plot the streams as a map**
+
+```{r plot}
+
+# plot habitatstreams 1.7
+ p <- ggplot() +
+  geom_sf(data = habitatstreams17$lines, aes(), color = "blue")
+
+# wfs Flanders
+wfs_vrbg <- "https://geoservices.informatievlaanderen.be/overdrachtdiensten/VRBG/wfs"
+
+sf_vl <- wfs_vrbg %>% 
+  parse_url() %>% 
+  list_merge(query = list(service = "wfs",
+                          #version = "1.1.0", # optional
+                          request = "GetFeature",
+                          typeName = "VRBG:Refgew",
+                          srsName = "EPSG:31370")) %>% 
+  build_url() %>% 
+  read_sf(crs = 31370)%>% 
+  st_cast(to = "GEOMETRYCOLLECTION")
+
+p <- p + 
+  geom_sf(data = sf_vl, fill = NA)
+
+print(p)
+
+```
+
+**Are all the streams in Flanders?**
+
+```{r streams-in-fl}
+in_vl <- st_contains(x = sf_vl, y = habitatstreams17$lines)# patience
+
+not_contained <- habitatstreams17$lines %>% 
+  st_drop_geometry() %>% 
+  mutate(orig_rowname = rownames(.)) %>% 
+  filter(!rownames(.) %in% in_vl[[1]])
+
+# 32 streams (segments)
+print(not_contained %>% nrow())
+
+not_contained %>% 
+  distinct(river_name) %>% # suggestion for An: homogeneous lettercase?
+arrange(river_name)
+```
+32 stream sections are not 'contained' within the polygon for Flanders (see list above)
+These 7 rivers are close to a boundary with another region, it seems plausible.
