@@ -90,7 +90,7 @@ habitatstreams17$lines %>%
 
 ```{r plot}
 
-# plot waterstreams 1.7
+# plot habitatstreams 1.7
  p <- ggplot() +
   geom_sf(data = habitatstreams17$lines, aes(), color = "blue")
 
@@ -134,4 +134,3 @@ arrange(river_name)
 ```
 32 stream sections are not 'contained' within the polygon for Flanders (see list above)
 These 7 rivers are close to a boundary with another region, it seems plausible.
-
