@@ -36,8 +36,14 @@ opts_chunk$set(
 # Exploring the watersurfaces data source
 
 ```{r}
-ws <- read_sf(file.path(fileman_up("n2khab_data"), "10_raw/watersurfaces"),
+ws_10 <- read_sf(file.path(fileman_up("n2khab_data"), "10_raw/watersurfaces"),
                    stringsAsFactors = TRUE) # for exploring unique values
+
+ws_11 <- read_sf(file.path(fileman_up("n2khab_data"), "10_raw/watersurfaces/watersurfaces.gpkg"),
+                   stringsAsFactors = TRUE) 
+
+
+
 ```
 
 
