@@ -42,7 +42,7 @@ hashes <-
            md5 = map(filepath, function(x) {
                            file(x) %>% md5 %>% str_c(collapse = '')
                          }) %>% as.character,
-           md5_ref = c("e79aebaa7f100deff66f5610715cb2f3"),
+           md5_ref = c("ef111e4088a90d13a80e3de14c395b9c"),
            match = md5 == md5_ref) %>%
     select(filename,
            md5,
@@ -341,7 +341,7 @@ habmap_types_interpreted <- habmap_types_interpreted %>%
 dir.create(file.path(path, "20_processed/habitatmap_terr"), recursive = TRUE)
 ```
 
-```{r}
+```{r, eval = FALSE}
 st_write(habmap_polygons_interpreted,
          file.path(path, 
                    "20_processed/habitatmap_terr/habitatmap_terr.gpkg"), 
