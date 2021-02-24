@@ -144,7 +144,7 @@ We will split the different possible vegetation types and create one row for eac
 An additional variable 'certain' will be FALSE if the orginal habitatmap code consists of 2 or 3 possible vegetation types, and TRUE if only one vegetation type is provided.
 An exception to this rule are following codes: `3130,rbbmr`, `3140,rbbmr`, `3150,rbbmr` and `3160,rbbmr`.
 These are standing water bodies that contain both `rbbmr` and the habitat type.
-Therfore certain will be set to TRUE for both types included in the code.
+Therefore `certain` will be set to `TRUE` for both types included in `code`.
 
 ```{r}
 
@@ -163,38 +163,59 @@ habmap_long <- habmap_longHAB %>%
 
 ```
 
+Sometimes you get two records for the same type within the same habitatmap polygon.
+We distinguish two cases: 
 
-
-In some cases you get two records for the same type, one certain and one uncertain, within the same habitatmap polygon. 
-See for example the case below where you get two phab values for type 3150 within the same polygon. 
-Furthermore the sum of the phab values within the polygon is higher than 100. 
-Therefore we will distribute the phab value for uncertain types equally over the two possible types (in this case phab = 20 for type 3150 and phab = 20 for type rbbmr). 
-Next we sum the phab values over the types within the same polygon. 
++ two certain records of the same type, for example:
 
 ```{r}
 habmap_long %>%
   filter(polygon_id == "357179_v2020")
 ```
 
+In this case we will sum the phab-values and create one record for each type.
+
++ a certain and an uncertain record of the same type, for example:
 
 ```{r}
-habmap_long <- habmap_long %>%
-  group_by(polygon_id, code) %>%
-      mutate(n = n()) %>%
-    ungroup() %>%
-    group_by(polygon_id, type) %>%
-     summarise(phab = sum(phab/n),
+habmap_long %>%
+  filter(polygon_id == "639375_v2014")
+```
+
+We will not aggregate the certain and uncertain record, because we will loose some information used to create `habitatmap_terr`. It is some of the uncertain records (such as `9120, gh`) are eliminated when processing `habitatmap_terr`. 
+
+```{r}
+check_double_type <- habmap_long %>%
+  group_by(polygon_id, type) %>%
+  mutate(n_type = n()) %>%
+  ungroup() %>%
+  filter(n_type > 1)
+  
+```
+
+
+```{r}
+habmap_long_aggr <- habmap_long %>%
+  # group_by(polygon_id, code) %>%
+  #     mutate(n = n()) %>%
+  #   ungroup() %>%
+    group_by(polygon_id, type, certain) %>%
+     summarise(phab = sum(phab),
               code_orig = str_c(code, collapse = "; "),
               certain = all(certain)) %>%
     ungroup() 
 ```
-In this example we will get phab = 80 for 3150 and phab 20 for rbbmr as can be seen below. 
+See below the result of the aggregation for both examples. 
 
 ```{r}
-habmap_long %>%
+habmap_long_aggr %>%
   filter(polygon_id == "357179_v2020")
 ```
 
+```{r}
+habmap_long_aggr %>%
+  filter(polygon_id == "639375_v2014")
+```
 
 
 ## Select vegetation types that belong to the standard list of habitat and rbb types  
@@ -206,10 +227,10 @@ Table \@ref(tab:selectTypes) shows the records with habitat types that do not be
 types <- read_types() %>%
   select(type, typelevel, main_type, typeclass)
 
-habmap_long <- habmap_long %>%
+habmap_long_aggr <- habmap_long_aggr %>%
   left_join(types, by = "type")
 
-habmap_types <- habmap_long %>%
+habmap_types <- habmap_long_aggr %>%
   filter(!is.na(typelevel)) %>%
    select(polygon_id, code_orig, phab, certain, type) %>%
   mutate(type = factor(type,
@@ -218,7 +239,7 @@ habmap_types <- habmap_long %>%
          ) %>%
   arrange(polygon_id, desc(phab))
   
-habmap_other_type <- habmap_long %>%
+habmap_other_type <- habmap_long_aggr %>%
   filter(is.na(typelevel))
 
 habmap_other_type %>%
