@@ -75,7 +75,7 @@ habmap_types <- habmap_stdized$habitatmap_types
 
 ### Source version
 
-In some cases we'll need to refer to the source-map (from [Zenodo](https://zenodo.org/record/4428002#.YBqzu-hKigY)).
+In some cases we'll need to refer to the source-map (from [Zenodo](https://doi.org/10.5281/zenodo.4428002))).
 
 Again we will check if it is the correct version (habitatmap_2020).
 
