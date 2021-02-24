@@ -1,0 +1,41 @@
+## Checks on the data source
+
+```{r}
+filepath <- file.path(path,"20_processed/habitatmap_stdized/habitatmap_stdized.gpkg")
+```
+
+Checksums:
+
+```{r}
+file(filepath) %>% 
+  openssl::md5() %>% 
+  str_c(collapse = '') %>% 
+  `names<-`("md5sum")
+
+```
+
+
+```{r paged.print=FALSE, warning=FALSE}
+(pol <- read_sf(filepath, 
+                layer = "habitatmap_polygons"))
+```
+
+```{r paged.print=FALSE, warning=FALSE}
+(types <- read_sf(filepath, 
+                layer = "habitatmap_types"))
+```
+
+```{r}
+check_polygon_id_types <- types %>%
+  anti_join(pol, by = "polygon_id")
+
+nrow(check_polygon_id_types) == 0
+```
+
+```{r}
+check_polygon_id_polygons <- pol %>%
+  st_drop_geometry() %>%
+  anti_join(types, by = "polygon_id")
+
+nrow(check_polygon_id_polygons) == 0
+```
