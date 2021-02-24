@@ -49,7 +49,6 @@ habitatmap_sf <- st_read(file.path(path, file),
 ```
 
 
-
 ## Processing of the attribute table
 
 Every polygon in the habitat map can consist of maximum 5 different vegetation types. This information is stored in the columns 'HAB1', 'HAB2',..., 'HAB5' of the attribute table. The estimated fraction of each vegetation type within the polygons is stored in the columns 'PHAB1', 'PHAB2', ..., 'PHAB5'.
@@ -143,12 +142,16 @@ if(sum(habmap_correction$code %in% habmap_longHAB$code) > 0){
 When the vegetation type is uncertain, and 2 or 3 possible vegetation types are provided, separated with a ','. 
 We will split the different possible vegetation types and create one row for each of them. 
 An additional variable 'certain' will be FALSE if the orginal habitatmap code consists of 2 or 3 possible vegetation types, and TRUE if only one vegetation type is provided.
+An exception to this rule are following codes: `3130,rbbmr`, `3140,rbbmr`, `3150,rbbmr` and `3160,rbbmr`.
+These are standing water bodies that contain both `rbbmr` and the habitat type.
+Therfore certain will be set to TRUE for both types included in the code.
 
 ```{r}
 
 habmap_long <- habmap_longHAB %>%
     left_join(habmap_longPHAB, by = c("polygon_id", "patch_id")) %>%
-    mutate(certain = !str_detect(code, ",")) %>%
+    mutate(certain = !str_detect(code, ","),
+           certain = ifelse(code %in% c("3130,rbbmr", "3140,rbbmr", "3150,rbbmr", "3160,rbbmr"), TRUE, certain)) %>%
     separate(code,
              into = c("type1", "type2", "type3"),
              sep = ",",
