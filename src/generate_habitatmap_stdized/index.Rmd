@@ -58,7 +58,7 @@ opts_chunk$set(
 )
 ```
 
-**Note: this is a bookdown project, supposed to be run from within the `src/process_habitatmap` subfolder. You can use the `process_habitatmap.Rproj` RStudio project file in this subfolder to run it.**
+**Note: this is a bookdown project, supposed to be run from within the `src/generate_habitatmap_stdized` subfolder. You can use the `generate_habitatmap_stdized.Rproj` RStudio project file in this subfolder to run it.**
 
 
 
