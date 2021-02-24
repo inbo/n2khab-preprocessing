@@ -45,7 +45,7 @@ if (!all.equal(hashes$md5, hashes$md5_ref)) {
 ```{r read_raw_data}
 
 habitatmap_sf <- st_read(file.path(path, file),
-                  layer = "habitatmap")
+                  layer = "habitatmap", crs = 31370)
 ```
 
 
