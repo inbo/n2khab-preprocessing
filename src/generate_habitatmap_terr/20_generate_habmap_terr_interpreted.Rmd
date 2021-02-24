@@ -42,24 +42,18 @@ hashes <-
            md5 = map(filepath, function(x) {
                            file(x) %>% md5 %>% str_c(collapse = '')
                          }) %>% as.character,
-           sha256 = map(filepath, function(x) {
-                          file(x) %>% sha256 %>% str_c(collapse = '')
-                          }) %>% as.character,
-           md5_ref = c("ca5724ba6749a77f93bf5167fd02c47c"),
-           sha256_ref = c("a466ca91896d5354636e23fff83c9b1df603b1d0f3b0ed45f15ea10af7da0181"),
-           match = md5 == md5_ref & sha256 == sha256_ref) %>%
+           md5_ref = c("e79aebaa7f100deff66f5610715cb2f3"),
+           match = md5 == md5_ref) %>%
     select(filename,
            md5,
-           sha256,
            md5_ref,
-           sha256_ref,
            match)
 
 kable(hashes) %>%
   kable_styling()
 
 
-if (!all.equal(hashes$md5, hashes$md5_ref) == TRUE | !all.equal(hashes$sha256, hashes$sha256_ref) == TRUE) {
+if (!all.equal(hashes$md5, hashes$md5_ref)) {
     stop(cat("The standardized version is NOT up to date ! Please check  the datasource. "))
 }
 ```
@@ -74,7 +68,7 @@ habmap_stdized <- read_habitatmap_stdized()
 habmap_polygons <- habmap_stdized$habitatmap_polygons
 
 # following requires at least n2khab 0.0.3.9037 and 
-# data source version habitatmap_stdized_2020:
+# data source version habitatmap_stdized_2020_v1:
 habmap_types <- habmap_stdized$habitatmap_types 
 
 ```
@@ -83,7 +77,7 @@ habmap_types <- habmap_stdized$habitatmap_types
 
 In some cases we'll need to refer to the source-map (from [Zenodo](https://zenodo.org/record/4428002#.YBqzu-hKigY)).
 
-Again we wil check if it is the correct version (habitatmap_2020).
+Again we will check if it is the correct version (habitatmap_2020).
 
 ```{r}
 path <- fileman_up("n2khab_data")
@@ -100,31 +94,21 @@ hashes <-
            md5 = map(filepath, function(x) {
                            file(x) %>% md5 %>% str_c(collapse = '')
                          }) %>% as.character,
-           sha256 = map(filepath, function(x) {
-                          file(x) %>% sha256 %>% str_c(collapse = '')
-                          }) %>% as.character,
            md5_ref = c("f767a12540b2bde435c6709c9c9675ad",
                       "358ff672c2fae48eba5bd09f8a671675",
                       "f881f61a6c07741b58cb618d8bbb0b99",
                       "1da89a5dc267bbd427c8c07fcf63f344",
                       "79ae8b4b3c6d970a1f10e78f3eca9ef7"),
-           sha256_ref = c("c76819ecf3f1276caea9ff8514b4c0f2d201a12e4b13dabd70dd7c42bc05318a",
-                         "be029dba3d7ff730407842eee3b43bbec8b2536701ccf7e54c114ba6ee8ac6f4",
-                         "a8225ebf83d19412567ce9b909f03631626eec43dffb1f067c7edf3d59ab3aa4",
-                         "c457ab6ae5728b4c0da79793a6d328806aeca13234a76b7d41b1cf8c50b78a19",
-                         "5f717cd7393869e396ddb174a618bbf615521968fad6af605ed5586d250768cd"),
-           match = md5 == md5_ref & sha256 == sha256_ref) %>%
+           match = md5 == md5_ref) %>%
     select(filename,
            md5,
-           sha256,
            md5_ref,
-           sha256_ref,
            match)
 
 kable(hashes) %>%
   kable_styling()
 
-if (!all.equal(hashes$md5, hashes$md5_ref) == TRUE | !all.equal(hashes$sha256, hashes$sha256_ref) == TRUE) {
+if (!all.equal(hashes$md5, hashes$md5_ref)) {
     stop(cat("The source map is NOT up to date ! Please check  the datasource. "))
 }
 
