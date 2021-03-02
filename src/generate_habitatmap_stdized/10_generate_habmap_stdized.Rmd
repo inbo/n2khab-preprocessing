@@ -262,6 +262,10 @@ habmap_types_sf <- habmap_sf %>%
 
 ## Write results into a geopackage
 
+```{r}
+filepath <- file.path(path,"20_processed/habitatmap_stdized/habitatmap_stdized.gpkg")
+```
+
 ```{r, eval = FALSE}
 
 st_write(habmap_types_sf, file.path(path,"20_processed/habitatmap_stdized/habitatmap_stdized.gpkg"), layer = "habitatmap_polygons", driver = "GPKG", delete_dsn = TRUE)

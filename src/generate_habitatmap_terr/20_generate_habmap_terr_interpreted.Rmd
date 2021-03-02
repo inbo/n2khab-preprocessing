@@ -339,6 +339,7 @@ habmap_types_interpreted <- habmap_types_interpreted %>%
 
 ```{r}
 dir.create(file.path(path, "20_processed/habitatmap_terr"), recursive = TRUE)
+filepath <- file.path(path,"20_processed/habitatmap_terr/habitatmap_terr.gpkg")
 ```
 
 ```{r, eval = FALSE}

@@ -1,9 +1,5 @@
 # Check results
 
-```{r}
-filepath <- file.path(path,"20_processed/habitatmap_terr/habitatmap_terr.gpkg")
-```
-
 Checksums:
 
 ```{r}
