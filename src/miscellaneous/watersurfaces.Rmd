@@ -41,8 +41,8 @@ The previous version was 1.0 (10.5281/zenodo.3386859), we want to explore the ch
 
 ```{r}
 # manually adapt the path
-ws_10 <- read_sf(file.path(fileman_up("n2khab_data"), "10_raw/watersurfaces/versies/v1.0"),
-                   stringsAsFactors = TRUE) # n = 86026
+# ws_10 <- read_sf(file.path(fileman_up("n2khab_data"), "10_raw/watersurfaces/versies/v1.0"),
+#                    stringsAsFactors = TRUE) # n = 86026
 
 ws_11 <- read_sf(file.path(fileman_up("n2khab_data"), "10_raw/watersurfaces/watersurfaces.gpkg"),
                    stringsAsFactors = TRUE)  # n = 88713
@@ -134,7 +134,8 @@ levels(ws_11$KRWTYPE)
 ```{r}
 levels(ws_11$KRWTYPES)
 ```
-**DIEPKL**: there is an extra code in the dataset ("> 6 m") and the ordering of the levels could be more logical
+**DIEPKL**: there is an extra code in the dataset ("> 6 m") and the ordering of 
+the levels could be more logical
 
 ```{r}
 levels(ws_11$DIEPKL)
@@ -147,7 +148,8 @@ levels(ws_11$DIEPKL)
 ```{r}
 levels(ws_11$CONNECT)
 ```
-**FUNCTIE**: the code "veedrenk" is not mentioned in the report and there are many more codes in the report than in the dataset
+**FUNCTIE**: the code "veedrenk" is not mentioned in the report and there are 
+many more codes in the report than in the dataset
 
 ```{r}
 levels(ws_11$FUNCTIE)
@@ -159,7 +161,8 @@ levels(ws_11$FUNCTIE)
 - `KRWTYPE`, `FUNCTIE`: more levels in the metadata report (Leyssen et al. 2020) than in the dataset 
 - `DIEPKL`, `FUNCTIE`: extra code in the dataset that is not present in Leyssen et al. 2020
 
-These aspects will ± be taken care of by `read_watersurfaces()`.
+The problem with `HYLAC` = 0 will be taken care of by `read_watersurfaces()`. 
+The extra codes will be discussed with the authors of the layers.
 
 
 ## Let's plot the watersurfaces as a map
@@ -218,13 +221,44 @@ data source variable          data frame variable
 `CONNECT`                     `connectivity`
 `FUNCTIE`                     `usage`
 
-Other considerations for the R object returned by `read_watersurfaces()`:
+**Other considerations for the R object returned by `read_watersurfaces()`**:
 
 - not uptaking `OPPWVL` & `OMTWVL` (area & perimeter are easily calculated etc) -- OK
-- sort by `polygon_id` -- OK
-- add translations to long text for `wfd_type `,
-`connectivity` and `usage`? -- OK, but not by default
 - converting 0 values in `HYLAC` to `NA` -- OK
+- sort by `polygon_id` -- OK
+- add translations to long text for `wfd_type ` and `connectivity`  -- OK but not by default
+- add translations to long text for  `usage`? -- for a later version (as more codes will be used)
 
+Here are the categories for:
 
+`CONNECT`
+
+- geïsoleerd: niet verbonden met een waterloop 
+- permanent: het watervlak staat permanent in verbinding met minstens één
+waterloop 
+- periodiek: het watervlak staat tijdelijk (door peilbeheer of droogte) in verbinding
+met minstens één waterloop
+
+`FUNCTIE`
+
+functie                       toewijzing
+----------------------        ---------------------
+natuur                        doelstelling natuurbehoud
+hengelintensief               intensief hengelen (met infrastructuur, bepoting of gebruikt voor wedstrijdhengelen)
+hengelextensief               extensief hengelen (geen infrastructuur, bepoting of wedstrijdhengelen)
+jacht                         jagen
+tuin/park                     esthetisch (verblijfsrecreatie, tuin- en parkvijvers)
+vogel                         waterpartij voor gedomesticeerde watervogels
+viskweek                      opkweken van vis
+zwemmen                       zwemmen
+duiken                        duiken
+zachterecreatie               niet gemotoriseerde watersport
+motorrecreatie                gemotoriseerde watersport
+berging                       waterberging ten behoeve van overstromings- of peilbeheer
+opslag                        reservoir voor water (industrie, landbouw, bluswater, waterkracht…)
+drinkwater                    drinkwaterwinning
+zuivering                     (kleinschalige) waterzuivering, infiltratie
+bezinking                     bezinking van proceswater
+drinkplaats                   watervoorziening voor vee
+geen                          geen specifieke functie
 
