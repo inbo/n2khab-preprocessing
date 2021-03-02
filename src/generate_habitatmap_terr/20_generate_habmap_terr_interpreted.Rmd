@@ -344,17 +344,22 @@ filepath <- file.path(path,"20_processed/habitatmap_terr/habitatmap_terr.gpkg")
 
 ```{r, eval = FALSE}
 st_write(habmap_polygons_interpreted,
-         file.path(path, 
-                   "20_processed/habitatmap_terr/habitatmap_terr.gpkg"), 
+         filepath, 
          layer = "habitatmap_terr_polygons", 
          driver = "GPKG",
          delete_dsn = TRUE)
 
 st_write(habmap_types_interpreted,
-         file.path(path, 
-                   "20_processed/habitatmap_terr/habitatmap_terr.gpkg"),
+         filepath,
          layer = "habitatmap_terr_types", 
          driver = "GPKG",
          append = TRUE)
 
+con <- DBI::dbConnect(SQLite(), filepath)
+updatequery <- sprintf("UPDATE gpkg_contents SET last_change = '%s'",
+                       gpkg_timestamp)
+dbExecute(con, updatequery) %>% 
+  message(" rows of the gpkg_contents table have been set with timestamp ",
+          gpkg_timestamp)
+DBI::dbDisconnect(con)
 ```
