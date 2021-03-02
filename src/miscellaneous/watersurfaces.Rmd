@@ -1,7 +1,10 @@
 ---
 title: "Handling the watersurfaces data source"
-date: '`r paste("Version",lubridate::now())`'
-output:
+date: "`r paste("Version",lubridate::now())`"
+  output:
+  html_document:
+    toc: yes
+    df_print: paged
   html_notebook:
     number_sections: yes
     code_folding: hide
@@ -32,64 +35,179 @@ opts_chunk$set(
 )
 ```
 
-
 # Exploring the watersurfaces data source
 
+The previous version was 1.0 (10.5281/zenodo.3386859), we want to explore the changes in the most recent version: v 1.1 (10.5281/zenodo.4117543)
+
 ```{r}
-ws_10 <- read_sf(file.path(fileman_up("n2khab_data"), "10_raw/watersurfaces"),
-                   stringsAsFactors = TRUE) # for exploring unique values
+# manually adapt the path
+ws_10 <- read_sf(file.path(fileman_up("n2khab_data"), "10_raw/watersurfaces/versies/v1.0"),
+                   stringsAsFactors = TRUE) # n = 86026
 
 ws_11 <- read_sf(file.path(fileman_up("n2khab_data"), "10_raw/watersurfaces/watersurfaces.gpkg"),
-                   stringsAsFactors = TRUE) 
-
-
+                   stringsAsFactors = TRUE)  # n = 88713
 
 ```
 
 
 ```{r}
-ws %>% 
+# ws_10 %>% 
+#   st_drop_geometry %>% 
+#   summary
+```
+```{r}
+ws_11 %>% 
   st_drop_geometry %>% 
   summary
+```
+Let us look for a few typical errors more systematically in the new version 1.1
+
+### Are there `NA` values?
+
+There are plenty of NA's but only in fields where we expect them.
+
+```{r}
+sapply(ws_11, function(x) sum(is.na(x)))
+
+```
+
+### Are there `<Null>` values?
+
+Corrected since v1.0: no  `<Null>` values anymore in `WTRLICHC` or `NAAM` or any of the fields
+
+```{r}
+# slow - 25 sec
+sapply(ws_11, function(x) sum(as.character(x) == '<Null>', na.rm = TRUE))
+```
+
+### Are there Zero (0) values?
+
+Really plenty of zeroes for `HYLAC`
+
+```{r}
+# slow - 25 sec
+sapply(ws_11, function(x) sum(as.character(x) == '0', na.rm = TRUE))
 ```
 
 Number of unique values of numeric variable `HYLAC`:
 
 ```{r}
-ws$HYLAC %>% unique %>% length
+ws_11$HYLAC %>% unique %>% length
 ```
 
 ```{r eval=FALSE}
 ul <- function(x) x %>% unique %>% length
-list(ws$HYLAC) %>% 
+list(ws_11$HYLAC) %>% 
   lapply(ul)
 ```
 
 How many `NA` values for numeric variable `HYLAC`?
 
+None!
+
 ```{r}
-ws$HYLAC %>% is.na %>% sum
+ws_11$HYLAC %>% is.na %>% sum
+```
+### Are WVLC codes unique?
+
+Yes. It was not the case in version 1.0, but it has been corrected in v1.1
+
+```{r}
+ws_11$WVLC %>% unique %>% length
 ```
 
-Potential issues:
 
-- `WTRLICHC`: 10 `<Null>` values which should be `NA`
+### Levels for each factor
+
+We can compare the levels for each factor variable with the information given in 
+[Leyssen et al. 2020](https://pureportal.inbo.be/nl/publications/watervlakken-versie-11-polygonenkaart-van-stilstaand-water-in-vla)
+
+I do not check `NAAM` and `GEBIED` since there are many possible options.
+
+**KRWTYPE**: the codes are correct but there are more codes mentioned in the metadata report
+
+```{r}
+levels(ws_11$KRWTYPE)
+```
+**KRWTYPES** (status): the codes are correct
+
+```{r}
+levels(ws_11$KRWTYPES)
+```
+**DIEPKL**: there is an extra code in the dataset ("> 6 m") and the ordering of the levels could be more logical
+
+```{r}
+levels(ws_11$DIEPKL)
+```
+
+(please note "≥" are rendered as "=" in the html output)
+
+**CONNECT**: the codes are correct
+
+```{r}
+levels(ws_11$CONNECT)
+```
+**FUNCTIE**: the code "veedrenk" is not mentioned in the report and there are many more codes in the report than in the dataset
+
+```{r}
+levels(ws_11$FUNCTIE)
+```
+## Potential issues:
+
+- (`PEILBEHEER`: mentioned in report Leyssen et al. 2020 but not available in the dataset)
 - `HYLAC`: `0` values should be `NA` (empty values, i.e. no code available)
-- `NAAM`: 5 `<Null>` values which should be `NA`
-- `CONNECT`, `KRWTYPES`: levels in the dataset do not yet conform to the codes in the metadata report (Packet et al 2018)
-- There seems to be a mistake in the (explanation of) classes of `CONNECT` in the metadata report (Packet et al 2018): 'inzonder' vs. 'uitmet'
+- `KRWTYPE`, `FUNCTIE`: more levels in the metadata report (Leyssen et al. 2020) than in the dataset 
+- `DIEPKL`, `FUNCTIE`: extra code in the dataset that is not present in Leyssen et al. 2020
 
 These aspects will ± be taken care of by `read_watersurfaces()`.
+
+
+## Let's plot the watersurfaces as a map
+
+```{r plot}
+
+# plot watersurfaces v1.1
+ p <- ggplot() +
+  geom_sf(data = ws_11, aes(), color = "blue")
+
+# Flanders
+sf_vl <- read_admin_areas()
+
+p <- p + 
+  geom_sf(data = sf_vl, fill = NA)
+
+print(p)
+
+```
+
+<!-- ### Are all the watersurfaces in Flanders? -->
+
+<!-- ```{r streams-in-fl} -->
+<!-- in_vl <- st_contains(x = sf_vl, y = ws_11) -->
+
+<!-- not_contained <- ws_11 %>%  -->
+<!--   st_drop_geometry() %>%  -->
+<!--   mutate(orig_rowname = rownames(.)) %>%  -->
+<!--   filter(!rownames(.) %in% in_vl[[1]]) -->
+
+<!-- # 61 watersurfaces -->
+<!-- print(not_contained %>% nrow()) -->
+
+<!-- not_contained %>%  -->
+<!--   distinct(WVLC, NAAM) %>%  -->
+<!--   kable() -->
+<!-- ``` -->
+<!-- 61 watersurfaces are not 'contained' within the polygon for Flanders (see list above) -->
 
 # Tidyverse-styled, internationalized column names when using the data source in R
 
 ```{r eval = FALSE}
-ws %>% colnames %>% cat(sep = "\n")
+ws_11 %>% colnames %>% cat(sep = "\n")
 ```
 
 data source variable          data frame variable
 ----------------------        ---------------------
-`WVLC`                        `polygon_id` -- note: these are currently not unique [^note]
+`WVLC`                        `polygon_id` 
 `WTRLICHC`                    `wfd_code`
 `HYLAC`                       `hyla_code`
 `NAAM`                        `name`
@@ -106,11 +224,7 @@ Other considerations for the R object returned by `read_watersurfaces()`:
 - sort by `polygon_id` -- OK
 - add translations to long text for `wfd_type `,
 `connectivity` and `usage`? -- OK, but not by default
-- converting null / 0 values to `NA` -- OK
-- combining polygons with same `WVLC` value into a multipolygon -- no (see note with `polygon_id`)
+- converting 0 values in `HYLAC` to `NA` -- OK
 
-[^note]: A new version of the data source is now underway and will effectively 
-provide unique codes.
-So while it is not unique in the current version, we will apply this variable name anyway.
 
 
