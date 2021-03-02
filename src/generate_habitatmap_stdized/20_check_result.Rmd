@@ -11,7 +11,10 @@ file(filepath) %>%
   openssl::md5() %>% 
   str_c(collapse = '') %>% 
   `names<-`("md5sum")
-
+file(filepath) %>% 
+  openssl::sha256() %>% 
+  str_c(collapse = '') %>% 
+  `names<-`("sha256sum")
 ```
 
 
