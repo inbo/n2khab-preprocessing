@@ -281,11 +281,11 @@ st_write(habmap_types,
          driver = "GPKG", 
          append = TRUE)
 
-con <- DBI::dbConnect(SQLite(), filepath)
+con <- dbConnect(SQLite(), filepath)
 updatequery <- sprintf("UPDATE gpkg_contents SET last_change = '%s'",
                        gpkg_timestamp)
 dbExecute(con, updatequery) %>% 
   message(" rows of the gpkg_contents table have been set with timestamp ",
           gpkg_timestamp)
-DBI::dbDisconnect(con)
+dbDisconnect(con)
 ```
