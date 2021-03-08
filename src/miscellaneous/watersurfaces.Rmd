@@ -75,11 +75,14 @@ ws_connect <- read_sf(filepath_11, stringsAsFactors = TRUE, layer = "LktCONNECT"
 
 ```
 
-### Encoding problems (still to do) 
+### Encoding problems (Windows only)
 
-We will need to correct some encoding problems, as shown in the examples hereunder:
+For Windows users, we will need to correct some encoding problems, as shown in the examples hereunder:
 
 ```{r encoding-problems}
+osVersion
+sessionInfo()$R.version$version.string
+sessionInfo()$R.version$platform
 
 ws_diepkl
 
@@ -93,26 +96,26 @@ ws_connect
 
 
 # as imported by default:
-ws_11 %>% 
-  filter( WVLC =="ANTMOL0152")
+ws_11 %>% st_drop_geometry %>% 
+  filter( WVLC =="ANTMOL0152") %>% select(WVLC, DIEPKL, CONNECT)
 
 #conversion latin1 - UTF-8
 ws_11_2 <- n2khab:::convertdf_enc(ws_11 , from = "UTF-8", to = "latin1")
-ws_11_2 %>% 
-  filter( WVLC =="ANTMOL0152")
+ws_11_2 %>% st_drop_geometry %>% 
+  filter( WVLC =="ANTMOL0152") %>% select(WVLC, DIEPKL, CONNECT)
 
 ws_11_3 <- n2khab:::convertdf_enc(ws_11 , from = "latin1", to = "UTF-8")
-ws_11_3 %>% 
-  filter( WVLC =="ANTMOL0152")
+ws_11_3 %>% st_drop_geometry %>% 
+  filter( WVLC =="ANTMOL0152") %>% select(WVLC, DIEPKL, CONNECT)
 
 #conversion WINDOWS-1252 - UTF-8
 ws_11_4 <- n2khab:::convertdf_enc(ws_11 , from = "UTF-8", to = "WINDOWS-1252")
-ws_11_4 %>% 
-  filter( WVLC =="ANTMOL0152")
+ws_11_4 %>% st_drop_geometry %>% 
+  filter( WVLC =="ANTMOL0152") %>% select(WVLC, DIEPKL, CONNECT)
 
 ws_11_5 <- n2khab:::convertdf_enc(ws_11 , from = "WINDOWS-1252", to = "UTF-8")
-ws_11_5 %>% 
-  filter( WVLC =="ANTMOL0152")
+ws_11_5 %>% st_drop_geometry %>% 
+  filter( WVLC =="ANTMOL0152") %>% select(WVLC, DIEPKL, CONNECT)
 
 # 2) non geometrical layers:
 
@@ -134,6 +137,40 @@ print(n2khab:::convertdf_enc(read_sf(filepath_11, layer = "LktDIEPKL"), from = "
    
 ```
 
+This is a Windows-related problem, so we can add a condition `if (.Platform$OS.type == "windows") { }` to deal with it.
+
+```{r correct-encoding-windows}
+if (.Platform$OS.type == "windows") {
+  
+# only really needed for CONNECT + a correction for the >= <= in DIEPKL
+  
+# ws_peilbeheer <- n2khab:::convertdf_enc(ws_peilbeheer, from = "UTF-8", to = "latin1")
+# ws_krwtypes <- n2khab:::convertdf_enc(ws_krwtypes, from = "UTF-8", to = "latin1")
+# ws_krwtype <- n2khab:::convertdf_enc(ws_krwtype, from = "UTF-8", to = "latin1")
+# ws_functie <- n2khab:::convertdf_enc(ws_functie, from = "UTF-8", to = "latin1")
+  ws_connect <- n2khab:::convertdf_enc(ws_connect, from = "UTF-8", to = "latin1")
+
+ws_diepkl <- ws_diepkl %>% 
+  mutate(Omschr = case_when(
+    Code == "2 - 4 m" ~ ">= 2 - < 4 m",
+    Code == "4 - 6 m" ~ ">= 4 - < 6 m",
+   # Code == "> 6 m" ~ as.character(expression("\u2265 6 m")),
+  # Code == "> 6 m" ~ "\u2265 6 m",
+   Code == "> 6 m" ~ ">= 6 m",
+    TRUE ~ Omschr
+  )) 
+
+# How does this look like in html?
+# Using one of the following options 
+# Code == "> 6 m" ~ as.character(expression("\u2265 6 m")),
+# Code == "> 6 m" ~ "\u2265 6 m",
+# would look like a "=" in html, so we might be better using an alternative such as ">="
+
+# We will have to do the same for ws_11 (see below)
+
+  }
+```
+
 ### A summary of the geometrical table for version 1.1
 
 ```{r}
@@ -141,6 +178,7 @@ print(n2khab:::convertdf_enc(read_sf(filepath_11, layer = "LktDIEPKL"), from = "
 #   st_drop_geometry %>% 
 #   summary
 ```
+
 ```{r}
 ws_11 %>% 
   st_drop_geometry %>% 
@@ -232,9 +270,21 @@ levels(ws_11$DIEPKL)
 
 ws_diepkl
 
+# for Windows users we will recode the levels with => instead of ≥/\u2265 :
+# (otherwise "≥" in ws_11$DIEPKL are rendered as "=" in the html output) 
+
+if (.Platform$OS.type == "windows") {
+  
+  levels(ws_11$DIEPKL) <- gsub(pattern = "\u2265", ">=", levels(ws_11$DIEPKL))
+  
+  # ws_11$DIEPKL <- ordered(ws_11$DIEPKL, levels = c("0 - < 2 m", "0 - 2 m", ">= 2 - < 4 m", ">= 4 - < 6 m", ">= 6 m", "> 6 m"))
+  
+levels(ws_11$DIEPKL)
+  }
+
 ```
 
-(please note "≥" in ws_11$DIEPKL are rendered as "=" in the html output) 
+
 
 **CONNECT**: the codes are correct
 
@@ -243,6 +293,15 @@ levels(ws_11$CONNECT)
 
 ws_connect 
 ```
+
+And here are the categories in the metadata report for `CONNECT`
+
+- geïsoleerd: niet verbonden met een waterloop 
+- permanent: het watervlak staat permanent in verbinding met minstens één
+waterloop 
+- periodiek: het watervlak staat tijdelijk (door peilbeheer of droogte) in verbinding
+met minstens één waterloop
+
 **FUNCTIE**: the code "veedrenk" is not mentioned in the metadata report and 
 there are many more codes in the report and layer of the geopackage than in the 
 dataset
@@ -252,6 +311,30 @@ levels(ws_11$FUNCTIE)
 
 ws_functie
 ```
+
+And here are the categories in the metadata report for `FUNCTIE`:
+
+functie                       toewijzing
+----------------------        ---------------------
+natuur                        doelstelling natuurbehoud
+hengelintensief               intensief hengelen (met infrastructuur, bepoting of gebruikt voor wedstrijdhengelen)
+hengelextensief               extensief hengelen (geen infrastructuur, bepoting of wedstrijdhengelen)
+jacht                         jagen
+tuin/park                     esthetisch (verblijfsrecreatie, tuin- en parkvijvers)
+vogel                         waterpartij voor gedomesticeerde watervogels
+viskweek                      opkweken van vis
+zwemmen                       zwemmen
+duiken                        duiken
+zachterecreatie               niet gemotoriseerde watersport
+motorrecreatie                gemotoriseerde watersport
+berging                       waterberging ten behoeve van overstromings- of peilbeheer
+opslag                        reservoir voor water (industrie, landbouw, bluswater, waterkracht…)
+drinkwater                    drinkwaterwinning
+zuivering                     (kleinschalige) waterzuivering, infiltratie
+bezinking                     bezinking van proceswater
+drinkplaats                   watervoorziening voor vee
+geen                          geen specifieke functie
+
 ## Potential issues:
 
 - (`PEILBEHEER`: mentioned in report Leyssen et al. 2020 but not available in the dataset)
@@ -329,35 +412,3 @@ data source variable          data frame variable
 - add translations to long text for  `usage`? -- for a later version (as more 
 codes will be used)
 
-Here are the categories (source: metadata report) for:
-
-`CONNECT`
-
-- geïsoleerd: niet verbonden met een waterloop 
-- permanent: het watervlak staat permanent in verbinding met minstens één
-waterloop 
-- periodiek: het watervlak staat tijdelijk (door peilbeheer of droogte) in verbinding
-met minstens één waterloop
-
-`FUNCTIE`
-
-functie                       toewijzing
-----------------------        ---------------------
-natuur                        doelstelling natuurbehoud
-hengelintensief               intensief hengelen (met infrastructuur, bepoting of gebruikt voor wedstrijdhengelen)
-hengelextensief               extensief hengelen (geen infrastructuur, bepoting of wedstrijdhengelen)
-jacht                         jagen
-tuin/park                     esthetisch (verblijfsrecreatie, tuin- en parkvijvers)
-vogel                         waterpartij voor gedomesticeerde watervogels
-viskweek                      opkweken van vis
-zwemmen                       zwemmen
-duiken                        duiken
-zachterecreatie               niet gemotoriseerde watersport
-motorrecreatie                gemotoriseerde watersport
-berging                       waterberging ten behoeve van overstromings- of peilbeheer
-opslag                        reservoir voor water (industrie, landbouw, bluswater, waterkracht…)
-drinkwater                    drinkwaterwinning
-zuivering                     (kleinschalige) waterzuivering, infiltratie
-bezinking                     bezinking van proceswater
-drinkplaats                   watervoorziening voor vee
-geen                          geen specifieke functie
