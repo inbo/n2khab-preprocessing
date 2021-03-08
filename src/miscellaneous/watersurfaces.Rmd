@@ -39,16 +39,43 @@ opts_chunk$set(
 
 The previous version was 1.0 (10.5281/zenodo.3386859), we want to explore the changes in the most recent version: v 1.1 (10.5281/zenodo.4117543)
 
-```{r}
+Import the geometrical layer:
+
+```{r geometrical-layer-v10}
 # manually adapt the path
 # ws_10 <- read_sf(file.path(fileman_up("n2khab_data"), "10_raw/watersurfaces/versies/v1.0"),
 #                    stringsAsFactors = TRUE) # n = 86026
 
-ws_11 <- read_sf(file.path(fileman_up("n2khab_data"), "10_raw/watersurfaces/watersurfaces.gpkg"),
-                   stringsAsFactors = TRUE, layer = "Watervlakken")  # n = 88713
+```
+
+```{r v11}
+
+filepath_11 <- file.path(fileman_up("n2khab_data"), "10_raw/watersurfaces/watersurfaces.gpkg")
+
+st_layers(filepath_11)
+
+```
+```{r geometrical-layer-v11}
+
+ws_11 <- read_sf(filepath_11, stringsAsFactors = TRUE, layer = "Watervlakken")  # n = 88713
 
 ```
 
+The other (non geometrical) layers:
+
+```{r non-geometrical-layers}
+# only available in version 1.1
+
+ws_peilbeheer <- read_sf(filepath_11, stringsAsFactors = TRUE, layer = "LktPEILBEHEER") 
+ws_krwtypes <- read_sf(filepath_11, stringsAsFactors = TRUE, layer = "LktKRWTYPES")
+ws_krwtype <- read_sf(filepath_11, stringsAsFactors = TRUE, layer = "LktKRWTYPE")
+ws_functie <- read_sf(filepath_11, stringsAsFactors = TRUE, layer = "LktFUNCTIE")
+ws_diepkl <- read_sf(filepath_11, stringsAsFactors = TRUE, layer = "LktDIEPKL")
+ws_connect <- read_sf(filepath_11, stringsAsFactors = TRUE, layer = "LktCONNECT")
+
+```
+
+### A summary of the geometrical table for version 1.1
 
 ```{r}
 # ws_10 %>% 
@@ -60,7 +87,7 @@ ws_11 %>%
   st_drop_geometry %>% 
   summary
 ```
-Let us look for a few typical errors more systematically in the new version 1.1
+Let us look for a few typical errors more systematically in the new version 1.1 (geometrical layer)
 
 ### Are there `NA` values?
 
@@ -120,45 +147,58 @@ ws_11$WVLC %>% unique %>% length
 ### Levels for each factor
 
 We can compare the levels for each factor variable with the information given in 
-[Leyssen et al. 2020](https://pureportal.inbo.be/nl/publications/watervlakken-versie-11-polygonenkaart-van-stilstaand-water-in-vla)
+[Leyssen et al. 2020](https://pureportal.inbo.be/nl/publications/watervlakken-versie-11-polygonenkaart-van-stilstaand-water-in-vla) and with the extra layers in the geopackage.
 
 I do not check `NAAM` and `GEBIED` since there are many possible options.
 
-**KRWTYPE**: the codes are correct but there are more codes mentioned in the metadata report
+**KRWTYPE**: the codes are correct but there are more codes mentioned in the metadata report and in the geopackage (layer LktKRWTYPE)
 
 ```{r}
 levels(ws_11$KRWTYPE)
+
+ws_krwtype 
 ```
-**KRWTYPES** (status): the codes are correct
+**KRWTYPES** (status): the codes in the geometrical layer are the same as in the metadata report but not as in the geopackage (layer LktKRWTYPES)
 
 ```{r}
 levels(ws_11$KRWTYPES)
+
+ws_krwtypes 
 ```
-**DIEPKL**: there is an extra code in the dataset ("> 6 m") and the ordering of 
-the levels could be more logical
+**DIEPKL**: there are extra codes in the dataset ("> 6 m" and "0 - 2 m") and the ordering of 
+the levels could be more logical. 
 
 ```{r}
 levels(ws_11$DIEPKL)
+
+ws_diepkl
+
 ```
 
-(please note "≥" are rendered as "=" in the html output)
+(please note "≥" in ws_11$DIEPKL are rendered as "=" in the html output) 
 
 **CONNECT**: the codes are correct
 
 ```{r}
 levels(ws_11$CONNECT)
+
+ws_connect 
 ```
-**FUNCTIE**: the code "veedrenk" is not mentioned in the report and there are 
-many more codes in the report than in the dataset
+**FUNCTIE**: the code "veedrenk" is not mentioned in the metadata report and 
+there are many more codes in the report and layer of the geopackage than in the 
+dataset
 
 ```{r}
 levels(ws_11$FUNCTIE)
+
+ws_functie
 ```
 ## Potential issues:
 
 - (`PEILBEHEER`: mentioned in report Leyssen et al. 2020 but not available in the dataset)
 - `HYLAC`: `0` values should be `NA` (empty values, i.e. no code available)
 - `KRWTYPE`, `FUNCTIE`: more levels in the metadata report (Leyssen et al. 2020) than in the dataset 
+- `KRWTYPES`: can not use the corresponding layer LktKRWTYPES because the codes are not the same
 - `DIEPKL`, `FUNCTIE`: extra code in the dataset that is not present in Leyssen et al. 2020
 
 The problem with `HYLAC` = 0 will be taken care of by `read_watersurfaces()`. 
@@ -227,9 +267,10 @@ data source variable          data frame variable
 - converting 0 values in `HYLAC` to `NA` -- OK
 - sort by `polygon_id` -- OK
 - add translations to long text for `wfd_type ` and `connectivity`  -- OK but not by default
-- add translations to long text for  `usage`? -- for a later version (as more codes will be used)
+- add translations to long text for  `usage`? -- for a later version (as more 
+codes will be used)
 
-Here are the categories for:
+Here are the categories (source: metadata report) for:
 
 `CONNECT`
 
