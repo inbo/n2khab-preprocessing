@@ -45,7 +45,7 @@ The previous version was 1.0 (10.5281/zenodo.3386859), we want to explore the ch
 #                    stringsAsFactors = TRUE) # n = 86026
 
 ws_11 <- read_sf(file.path(fileman_up("n2khab_data"), "10_raw/watersurfaces/watersurfaces.gpkg"),
-                   stringsAsFactors = TRUE)  # n = 88713
+                   stringsAsFactors = TRUE, layer = "Watervlakken")  # n = 88713
 
 ```
 
@@ -261,4 +261,3 @@ zuivering                     (kleinschalige) waterzuivering, infiltratie
 bezinking                     bezinking van proceswater
 drinkplaats                   watervoorziening voor vee
 geen                          geen specifieke functie
-
