@@ -75,6 +75,65 @@ ws_connect <- read_sf(filepath_11, stringsAsFactors = TRUE, layer = "LktCONNECT"
 
 ```
 
+### Encoding problems (still to do) 
+
+We will need to correct some encoding problems, as shown in the examples hereunder:
+
+```{r encoding-problems}
+
+ws_diepkl
+
+ws_connect
+
+# 1) geometrical layer:
+
+# sf_utf8 <- sf::st_read(filepath_11, stringsAsFactors = TRUE, layer = "Watervlakken", options = "ENCODING=UTF-8")%>% 
+#   filter( WVLC =="ANTMOL0152")
+# options = "ENCODING=UTF-8" cannot be used with a geopackage
+
+
+# as imported by default:
+ws_11 %>% 
+  filter( WVLC =="ANTMOL0152")
+
+#conversion latin1 - UTF-8
+ws_11_2 <- n2khab:::convertdf_enc(ws_11 , from = "UTF-8", to = "latin1")
+ws_11_2 %>% 
+  filter( WVLC =="ANTMOL0152")
+
+ws_11_3 <- n2khab:::convertdf_enc(ws_11 , from = "latin1", to = "UTF-8")
+ws_11_3 %>% 
+  filter( WVLC =="ANTMOL0152")
+
+#conversion WINDOWS-1252 - UTF-8
+ws_11_4 <- n2khab:::convertdf_enc(ws_11 , from = "UTF-8", to = "WINDOWS-1252")
+ws_11_4 %>% 
+  filter( WVLC =="ANTMOL0152")
+
+ws_11_5 <- n2khab:::convertdf_enc(ws_11 , from = "WINDOWS-1252", to = "UTF-8")
+ws_11_5 %>% 
+  filter( WVLC =="ANTMOL0152")
+
+# 2) non geometrical layers:
+
+# latin1 to UTF-8: not OK:
+print(n2khab:::convertdf_enc(read_sf(filepath_11, layer = "LktCONNECT"), from =  "latin1", to ="UTF-8")) 
+print(n2khab:::convertdf_enc(read_sf(filepath_11, layer = "LktDIEPKL"), from =  "latin1", to ="UTF-8")) 
+
+# UTF-8 to latin1: 
+print(n2khab:::convertdf_enc(read_sf(filepath_11, layer = "LktCONNECT"), from = "UTF-8", to = "latin1"))
+print(n2khab:::convertdf_enc(read_sf(filepath_11, layer = "LktDIEPKL"), from = "UTF-8", to = "latin1"))
+
+# UTF-8 to WINDOWS-1252: 
+print(n2khab:::convertdf_enc(read_sf(filepath_11, layer = "LktCONNECT"), from = "UTF-8", to = "WINDOWS-1252"))
+print(n2khab:::convertdf_enc(read_sf(filepath_11, layer = "LktDIEPKL"), from = "UTF-8", to = "WINDOWS-1252"))
+  
+# UTF-8 to UTF-8: 
+print(n2khab:::convertdf_enc(read_sf(filepath_11, layer = "LktCONNECT"), from = "UTF-8", to = "UTF-8"))
+print(n2khab:::convertdf_enc(read_sf(filepath_11, layer = "LktDIEPKL"), from = "UTF-8", to = "UTF-8"))
+   
+```
+
 ### A summary of the geometrical table for version 1.1
 
 ```{r}
