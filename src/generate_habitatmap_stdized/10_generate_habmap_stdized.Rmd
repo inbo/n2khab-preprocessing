@@ -262,10 +262,22 @@ habmap_types_sf <- habmap_sf %>%
 
 ## Write results into a geopackage
 
+```{r}
+dir.create(file.path(path, "20_processed/habitatmap_stdized"), recursive = TRUE)
+filepath <- file.path(path,"20_processed/habitatmap_stdized/habitatmap_stdized.gpkg")
+```
+
 ```{r, eval = FALSE}
 
-st_write(habmap_types_sf, file.path(path,"20_processed/habitatmap_stdized/habitatmap_stdized.gpkg"), layer = "habitatmap_polygons", driver = "GPKG", delete_dsn = TRUE)
+st_write(habmap_types_sf, 
+         filepath, 
+         layer = "habitatmap_polygons", 
+         driver = "GPKG", 
+         delete_dsn = TRUE)
 
-st_write(habmap_types, file.path(path,"20_processed/habitatmap_stdized/habitatmap_stdized.gpkg"), layer = "habitatmap_types", driver = "GPKG", append = TRUE)
-
+st_write(habmap_types, 
+         filepath, 
+         layer = "habitatmap_types", 
+         driver = "GPKG", 
+         append = TRUE)
 ```

@@ -339,21 +339,19 @@ habmap_types_interpreted <- habmap_types_interpreted %>%
 
 ```{r}
 dir.create(file.path(path, "20_processed/habitatmap_terr"), recursive = TRUE)
+filepath <- file.path(path,"20_processed/habitatmap_terr/habitatmap_terr.gpkg")
 ```
 
 ```{r, eval = FALSE}
 st_write(habmap_polygons_interpreted,
-         file.path(path, 
-                   "20_processed/habitatmap_terr/habitatmap_terr.gpkg"), 
+         filepath, 
          layer = "habitatmap_terr_polygons", 
          driver = "GPKG",
          delete_dsn = TRUE)
 
 st_write(habmap_types_interpreted,
-         file.path(path, 
-                   "20_processed/habitatmap_terr/habitatmap_terr.gpkg"),
+         filepath,
          layer = "habitatmap_terr_types", 
          driver = "GPKG",
          append = TRUE)
-
 ```

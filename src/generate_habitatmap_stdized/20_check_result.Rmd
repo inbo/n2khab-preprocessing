@@ -1,9 +1,5 @@
 ## Checks on the data source
 
-```{r}
-filepath <- file.path(path,"20_processed/habitatmap_stdized/habitatmap_stdized.gpkg")
-```
-
 Checksums:
 
 ```{r}
@@ -11,7 +7,10 @@ file(filepath) %>%
   openssl::md5() %>% 
   str_c(collapse = '') %>% 
   `names<-`("md5sum")
-
+file(filepath) %>% 
+  openssl::sha256() %>% 
+  str_c(collapse = '') %>% 
+  `names<-`("sha256sum")
 ```
 
 
