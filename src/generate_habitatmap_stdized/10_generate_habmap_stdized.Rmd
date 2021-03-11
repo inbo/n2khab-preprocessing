@@ -91,12 +91,9 @@ habmap_longHAB <- habmap_sf %>%
 
 ## Correction of some of the codes in the Habitat map
 
-For some polygons in the habitat map the vegetation type is not certain. When 
-this is the case, the code contains the possible vegetation types separated with
-a ','. However, in some cases this way of coding is not used. In that case we
-change the code according to the general coding rules (for example 3130_rbbmr is
-changed to 3130,rbbmr). This makes processing of the habitat map more 
-straightforward. Table \@ref(tab:codeCorrected) shows the corrected codes and the number of polygons for which the correction is applied.
+Some polygons in the habitat map contain codes that do not correspond with the standardized list of habitat types. 
+We correct these codes to make processing of the habitat map more straightforward.
+Table \@ref(tab:codeCorrected) shows the corrected codes and the number of polygons for which the correction is applied.
 
 
 ```{r }
@@ -137,9 +134,9 @@ if(sum(habmap_correction$code %in% habmap_longHAB$code) > 0){
 ```
 
 
-## Splitting uncertain types
+## Splitting codes that contain different types
 
-When the vegetation type is uncertain, and 2 or 3 possible vegetation types are provided, separated with a ','. 
+In several cases the code contains 2 or 3 possible vegetation types which are separated with a ','. 
 We will split the different possible vegetation types and create one row for each of them. 
 An additional variable 'certain' will be FALSE if the orginal habitatmap code consists of 2 or 3 possible vegetation types, and TRUE if only one vegetation type is provided.
 An exception to this rule are following codes: `3130,rbbmr`, `3140,rbbmr`, `3150,rbbmr` and `3160,rbbmr`.
@@ -151,7 +148,7 @@ Therefore `certain` will be set to `TRUE` for both types included in `code`.
 habmap_long <- habmap_longHAB %>%
     left_join(habmap_longPHAB, by = c("polygon_id", "patch_id")) %>%
     mutate(certain = !str_detect(code, ","),
-           certain = ifelse(code %in% c("3130,rbbmr", "3140,rbbmr", "3150,rbbmr", "3160,rbbmr"), TRUE, certain)) %>%
+           certain = ifelse(code_orig %in% c("3130_rbbmr", "3140_rbbmr", "3150_rbbmr", "3160_rbbmr"), TRUE, certain)) %>%
     separate(code,
              into = c("type1", "type2", "type3"),
              sep = ",",
@@ -267,7 +264,7 @@ dir.create(file.path(path, "20_processed/habitatmap_stdized"), recursive = TRUE)
 filepath <- file.path(path,"20_processed/habitatmap_stdized/habitatmap_stdized.gpkg")
 ```
 
-```{r, eval = FALSE}
+```{r}
 
 st_write(habmap_types_sf, 
          filepath, 
