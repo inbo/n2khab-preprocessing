@@ -42,7 +42,7 @@ hashes <-
            md5 = map(filepath, function(x) {
                            file(x) %>% md5 %>% str_c(collapse = '')
                          }) %>% as.character,
-           md5_ref = c("ef111e4088a90d13a80e3de14c395b9c"),
+           md5_ref = c("b0fadef56807b82efaed41506b97b966"),
            match = md5 == md5_ref) %>%
     select(filename,
            md5,
