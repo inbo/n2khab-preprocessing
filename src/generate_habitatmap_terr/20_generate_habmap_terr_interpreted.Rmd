@@ -342,7 +342,7 @@ dir.create(file.path(path, "20_processed/habitatmap_terr"), recursive = TRUE)
 filepath <- file.path(path,"20_processed/habitatmap_terr/habitatmap_terr.gpkg")
 ```
 
-```{r, eval = FALSE}
+```{r}
 st_write(habmap_polygons_interpreted,
          filepath, 
          layer = "habitatmap_terr_polygons", 
