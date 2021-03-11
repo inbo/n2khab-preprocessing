@@ -24,12 +24,17 @@ file(filepath) %>%
                 layer = "habitatmap_terr_types"))
 ```
 
+
+- Do all records in the habitatmap_terr_types table have a corresponding spatial feature in the habitatmap_terr_polygons layer?
+
 ```{r}
 check_polygon_id_types <- types %>%
   anti_join(pol, by = "polygon_id")
 
 nrow(check_polygon_id_types) == 0
 ```
+
+- Do all spatial features in the habitatmap_terr_polygons layer have a corresponding record in the habitatmap_terr_types table?
 
 ```{r}
 check_polygon_id_polygons <- pol %>%
@@ -39,3 +44,16 @@ check_polygon_id_polygons <- pol %>%
 nrow(check_polygon_id_polygons) == 0
 ```
 
+- Is the number of unique IDs in the dataframe the same as the number of polygons in the sf object? 
+  
+```{r} 
+ types %>%  
+   distinct(polygon_id) %>%  
+   nrow == nrow(pol) 
+``` 
+
+- Is the CRS conform EPSG:31370?
+
+```{r} 
+ st_crs(pol) == st_crs(31370) 
+```
