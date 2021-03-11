@@ -198,7 +198,7 @@ habmap_long_aggr <- habmap_long %>%
   #   ungroup() %>%
     group_by(polygon_id, type, certain) %>%
      summarise(phab = sum(phab),
-              code_orig = str_c(code, collapse = "; "),
+              code_orig = str_c(code_orig, collapse = "; "),
               certain = all(certain)) %>%
     ungroup() 
 ```
