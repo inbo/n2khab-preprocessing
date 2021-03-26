@@ -8,8 +8,40 @@ We will create a map with watersurfaces that contain aquatic habitat and rib. Th
 
 * The water surfaces map of Flanders
 
+To be sure we will use the correct version of the data sources (version 2020 for the processed habitatmap and version 1.1 for watersurfaces), we will first derive the xxh64 file hashes and compare them to the file hashes in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853) and [here](https://github.com/inbo/n2khab/pull/122#issuecomment-805940739)
+
+### Processed habitatmap
+
+Control the file hashes and read habitatmap_stdized.
 
 ```{r read processed habmap}
+path <- fileman_up("n2khab_data")
+file <- "20_processed/habitatmap_stdized"
+filepath <- str_c(file.path(path, file), "/",
+        # list.files(path = file.path(path, file), recursive = TRUE)
+        setdiff(list.files(path = file.path(path, file)), 
+                list.dirs(path = file.path(path, file), full.names = FALSE))
+      )
+
+hashes <-
+    tibble(filepath) %>%
+    mutate(filename = str_match(filepath, "(.+\\/)*(.+)")[,3],
+           xxh64 = map(filepath, function(x) {
+                           x %>% xxh64sum() %>% str_c(collapse = '')
+                         }) %>% as.character) %>% 
+           mutate(xxh64_ref = c("3109c26f0a27a0f3"),
+           match = xxh64 == xxh64_ref) %>%
+    select(filename,
+           xxh64,
+           xxh64_ref,
+           match)
+
+kable(hashes) %>%
+  kable_styling()
+
+if (!all.equal(hashes$xxh64, hashes$xxh64_ref)) {
+    stop(cat("The source map is NOT up to date ! Please check the datasource. "))
+}
 
 habmap <- read_habitatmap_stdized() 
 
@@ -20,10 +52,37 @@ The watersurface map does not have an attribute that contains a unique id. We cr
 ```{r read watersurfaces map}
 
 path <- fileman_up("n2khab_data")
-file <- "10_raw/watersurfaces"
+file <- "10_raw/watersurfaces" 
+filepath <- str_c(file.path(path, file), "/",
+        # list.files(path = file.path(path, file), recursive = TRUE)
+        setdiff(list.files(path = file.path(path, file)), 
+                list.dirs(path = file.path(path, file), full.names = FALSE))
+      )
+
+hashes <-
+    tibble(filepath) %>%
+    mutate(filename = str_match(filepath, "(.+\\/)*(.+)")[,3],
+           xxh64 = map(filepath, function(x) {
+                           x %>% xxh64sum() %>% str_c(collapse = '')
+                         }) %>% as.character) %>% 
+           mutate(xxh64_ref = c("8a21a68a3f4d225f"), # version 1.1
+           match = xxh64 == xxh64_ref) %>%
+    select(filename,
+           xxh64,
+           xxh64_ref,
+           match)
+
+kable(hashes) %>%
+  kable_styling()
 
 watersurfaces <- st_read(file.path(path, file),
                   layer = "watersurfaces",
+if (!all.equal(hashes$xxh64, hashes$xxh64_ref)) {
+    stop(cat("The source map is NOT up to date ! Please check the datasource. "))
+}
+
+watersurfaces <- st_read(filepath,
+                  layer = "Watervlakken",
                   crs = 31370)
 
 unique_id <- nrow(watersurfaces) == n_distinct(watersurfaces$WVLC)
