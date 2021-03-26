@@ -342,15 +342,21 @@ if(!dir.exists(file.path(path, "20_processed/watersurfaces_hab"))){
 ```
 
 
-```{r, eval = FALSE}
+```
 
-st_write(watersurfaces_hab_polygons, file.path(path, "20_processed/watersurfaces_hab/watersurfaces_hab.gpkg"), layer = "watersurfaces_hab_polygons", driver = "GPKG")
 
-con = dbConnect(RSQLite::SQLite(),
-                dbname = file.path(path, "20_processed/watersurfaces_hab/watersurfaces_hab.gpkg"))
+```{r, eval = TRUE}
 
-dbWriteTable(con, "watersurfaces_hab_types", watersurfaces_hab_types)
+st_write(watersurfaces_hab_polygons, 
+         filepath, 
+         layer = "watersurfaces_hab_polygons", 
+         driver = "GPKG", 
+         delete_dsn = TRUE)
 
-dbDisconnect(con)
+st_write(watersurfaces_hab_types, 
+         filepath, 
+         layer = "watersurfaces_hab_types", 
+         driver = "GPKG", 
+         append = TRUE)
 
 ```
