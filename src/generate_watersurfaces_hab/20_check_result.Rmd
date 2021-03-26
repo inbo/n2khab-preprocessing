@@ -1,0 +1,93 @@
+# Check results
+
+## Version 2020
+
+Checksums:
+
+```{r}
+filepath %>% 
+  n2khab::md5sum() %>% 
+  str_c(collapse = '') %>% 
+  `names<-`("md5sum")
+filepath %>% 
+  n2khab::sha256sum() %>% 
+  str_c(collapse = '') %>% 
+  `names<-`("sha256sum")
+filepath %>% 
+  n2khab::xxh64sum() %>% 
+  str_c(collapse = '') %>% 
+  `names<-`("xxh64sum")
+```
+
+Read file:
+
+```{r paged.print=FALSE, warning=FALSE}
+(pol <- read_sf(filepath, 
+                layer = "watersurfaces_hab_polygons"))
+```
+
+```{r paged.print=FALSE, warning=FALSE}
+(types <- read_sf(filepath, 
+                layer = "watersurfaces_hab_types"))
+```
+
+
+- Do all records in the watersurfaces_hab_types table have a corresponding spatial feature in the watersurfaces_hab_polygons layer?
+
+```{r}
+check_polygon_id_types <- types %>%
+  anti_join(pol, by = "polygon_id")
+nrow(check_polygon_id_types) == 0
+```
+
+- Do all spatial features in the watersurfaces_hab_polygons layer have a corresponding record in the watersurfaces_hab_types table?
+
+```{r}
+check_polygon_id_polygons <- pol %>%
+  st_drop_geometry() %>%
+  anti_join(types, by = "polygon_id")
+nrow(check_polygon_id_polygons) == 0
+```
+
+- Is the number of unique IDs in the dataframe the same as the number of polygons in the sf object? 
+  
+```{r} 
+ types %>%  
+   distinct(polygon_id) %>%  
+   nrow == nrow(pol) 
+``` 
+
+- Is the CRS conform EPSG:31370?
+
+```{r} 
+ st_crs(pol) == st_crs(31370) 
+```
+
+## Compare with the previous version (2018/2019)
+
+```{r paged.print=FALSE, warning=FALSE}
+filepath_2018 <-file.path(path,"20_processed/watersurfaces_hab/versies/v3_2019/watersurfaces_hab.gpkg")
+  
+(pol_2018 <- read_sf(filepath_2018, 
+                layer = "watersurfaces_hab_polygons"))
+(types_2018 <- read_sf(filepath_2018, 
+                layer = "watersurfaces_hab_types"))
+```
+
+```{r}
+check_polygon_id_2020_2018 <- pol %>%
+  st_drop_geometry() %>%
+  anti_join(pol_2018 %>%
+              st_drop_geometry(), 
+            by = "polygon_id") %>% 
+  filter(!str_detect(string = polygon_id_habitatmap, pattern = "v2020"))
+nrow(check_polygon_id_2020_2018) 
+
+check_polygon_id_2018_2020 <- pol_2018 %>%
+  st_drop_geometry() %>%
+  anti_join(pol %>%
+              st_drop_geometry(), 
+            by = "polygon_id")
+nrow(check_polygon_id_2018_2020) 
+```
+
