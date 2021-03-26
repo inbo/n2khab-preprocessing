@@ -47,7 +47,11 @@ habmap <- read_habitatmap_stdized()
 
 ```
 
-The watersurface map does not have an attribute that contains a unique id. We create one based on the WVLC attribute. Watersurfaces with an identical value for WVLC get a suffix equal to the rank of the watersurface based on its area. 
+### Watersurfaces map
+
+Control the file hashes and read watersurfaces.
+
+In previous versions (until v1.0) the watersurface map did not have an attribute that contained a unique id. In v1.1 the WVLC attribute is unique and can be used as identifier. 
 
 ```{r read watersurfaces map}
 
@@ -75,8 +79,6 @@ hashes <-
 kable(hashes) %>%
   kable_styling()
 
-watersurfaces <- st_read(file.path(path, file),
-                  layer = "watersurfaces",
 if (!all.equal(hashes$xxh64, hashes$xxh64_ref)) {
     stop(cat("The source map is NOT up to date ! Please check the datasource. "))
 }
@@ -86,18 +88,11 @@ watersurfaces <- st_read(filepath,
                   crs = 31370)
 
 unique_id <- nrow(watersurfaces) == n_distinct(watersurfaces$WVLC)
-#FALSE
+#TRUE
+# we will call this id polygon_id_ws
 
-watersurfaces <- watersurfaces %>%
-    group_by(WVLC) %>%
-    mutate(n_id = n(),
-           polygon_id_ws = ifelse(n_id > 1,
-                                  str_c(as.character(WVLC), "_", rank(OPPWVL)),
-                                  as.character(WVLC))
-           ) %>%
-    ungroup()
-
-unique_id <- nrow(watersurfaces) == n_distinct(watersurfaces$polygon_id_ws)
+watersurfaces <- watersurfaces %>% 
+  rename(polygon_id_ws = WVLC)
 
 ```
 
@@ -112,9 +107,8 @@ For habitat sutbtype 2190_a we select all water surfaces within habitat map poly
 habitatmap_21xx_types <- habmap$habitatmap_types %>%
   filter((str_sub(type, 1, 2) == "21")) 
 
-habitatmap_21xx_polygons<- habmap$habitatmap_polygons %>%
-  filter(polygon_id %in% habitatmap_21xx_types$polygon_id)
-
+habitatmap_21xx_polygons <- habmap$habitatmap_polygons %>%
+  filter(polygon_id %in% habitatmap_21xx_types$polygon_id) 
 ```
 
 ### Selection of water surfaces that overlap with dune habitat polygons in habitat map
@@ -166,7 +160,7 @@ watersurfaces_2190_a_polygons <- watersurfaces_21xx %>%
            polygon_id = polygon_id_ws) %>%
     select(polygon_id, polygon_id_ws, polygon_id_habitatmap, description_orig, polygon_type)
 
-check_unique_polygon <- nrow(watersurfaces_2190_a_polygons) == n_distinct(watersurfaces_2190_a_polygons$geometry)
+check_unique_polygon <- nrow(watersurfaces_2190_a_polygons) == n_distinct(watersurfaces_2190_a_polygons$geom)
 check_unique_polygon
 
 watersurfaces_2190_a_types <- watersurfaces_2190_a_types %>%
@@ -235,8 +229,7 @@ watersurfaces_standw_polygons <- watersurfaces_standw %>%
     mutate(polygon_type = "watersurface map") %>%
     select(polygon_id_ws, polygon_id_habitatmap, description_orig, polygon_type)
 
-check_unique_polygon <- nrow(watersurfaces_standw_polygons) == n_distinct(watersurfaces_standw_polygons$geometry)
-
+check_unique_polygon <- nrow(watersurfaces_standw_polygons) == n_distinct(watersurfaces_standw_polygons$geom)
 check_unique_polygon
     
 watersurfaces_standw_types <- watersurfaces_standw_types %>%
@@ -248,13 +241,13 @@ watersurfaces_standw_types <- watersurfaces_standw_types %>%
 
 ### Standing water habitat that does not intersect with the water surface map
 
-We also select all habitat map polyons that do not intersect with the water surface map (see map below). 
+We also select all habitat map polygons that do not intersect with the water surface map (see map below). 
 
 ```{r}
 
 habitatmap_standw_polygons_no_ws <- habitatmap_standw_polygons %>%
     filter(!polygon_id %in% intersection_ws_standw$polygon_id) %>%
-    rename(polygon_id_habitatmap = polygon_id, geometry = geom) %>%
+    rename(polygon_id_habitatmap = polygon_id) %>%
     mutate(polygon_id_ws = NA,
            polygon_type = "habitatmap")
 
@@ -325,7 +318,7 @@ watersurfaces_hab_polygons <- habmap_standw_polygons %>%
 check_unique_id <- nrow(watersurfaces_hab_polygons) == n_distinct(watersurfaces_hab_polygons$polygon_id)
 check_unique_id
 
-check_unique_polygon <- nrow(watersurfaces_hab_polygons) == n_distinct(watersurfaces_hab_polygons$geometry)
+check_unique_polygon <- nrow(watersurfaces_hab_polygons) == n_distinct(watersurfaces_hab_polygons$geom)
 check_unique_polygon
 ```
 
@@ -339,8 +332,7 @@ if(!dir.exists(file.path(path, "20_processed/watersurfaces_hab"))){
     dir.create(file.path(path, "20_processed/watersurfaces_hab"), recursive = TRUE)
 }
 
-```
-
+filepath <- file.path(path,"20_processed/watersurfaces_hab/watersurfaces_hab.gpkg")
 
 ```
 
