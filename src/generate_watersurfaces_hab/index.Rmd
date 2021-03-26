@@ -38,6 +38,8 @@ output:
 
 ```{r setup, include=FALSE}
 
+renv::restore() 
+
 library(sf)
 library(rgdal)
 library(tidyverse)
@@ -48,8 +50,6 @@ library(git2rdata)
 library(googlesheets)
 library(kableExtra)
 library(DBI)
-#devtools::install_github("inbo/inborutils", ref = "sessioninfo")
-library(inborutils)
 
 opts_chunk$set(
   echo = TRUE,
