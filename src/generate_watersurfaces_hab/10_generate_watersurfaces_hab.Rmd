@@ -132,8 +132,34 @@ For each watersurface (that is situated in coastal dune habitat) we create follo
 
 To create the attributes 'polygon_id_habitatmap' and 'description_orig', we make a spatial intersection between the watersurfaces within  coastal dunes and the habitatmap. Next we summarise for each watersurface and paste the different polygon_id_habitatmap's and description_orig's.  
 
-```{r}
+#### Tidying feature geometries
 
+Unfortunately the intersection step would be hampered by a faulty geometry in habitatmap_21xx_polygons
+"Error in CPL_geos_op2(op, x, y) : 
+  Evaluation error: TopologyException: Input geom 1 is invalid: Ring Self-intersection at or near point 78082.684000000358 228483.7210999988 at 78082.684000000358 228483.7210999988.".
+
+We solve the problem based on this [article](https://www.r-spatial.org/r/2017/03/19/invalid.html).
+
+```{r correct geometry habmap}
+validity_habmap <- 
+  st_is_valid(habitatmap_21xx_polygons, reason = TRUE) %>% 
+  .[. != "Valid Geometry"]
+
+kable(validity_habmap) %>% 
+  kable_styling()
+
+# correct the geometry
+habitatmap_21xx_polygons <- st_make_valid(habitatmap_21xx_polygons)
+
+st_is_valid(habitatmap_21xx_polygons, reason = TRUE) %>% 
+  .[. != "Valid Geometry"]
+```
+
+#### Create 2190_a map 
+
+Now we can proceed to the intersect and add the attributes listed above.
+
+```{r}
 intersection_ws_21xx <- watersurfaces_21xx %>%
     st_intersection(habitatmap_21xx_polygons) %>%
     select(polygon_id_ws, polygon_id, description_orig)
@@ -198,10 +224,33 @@ check_id
 
 We create the water surface map with standing water habitat in a very similar way than the 2190_a map.
 
-For each water surface we will create a record for every standing water habitat type that occurs in the water surface according to the habitat map. We do not attempt to calculate a phab for the different types. 
+For each water surface we will create a record for every standing water habitat type that occurs in the water surface according to the habitat map. We do not attempt to calculate a phab for the different types.
+
+Once again, the intersection step is hampered by a faulty geometry, this time in watersurfaces_standw. 
+
+
+#### Tidying feature geometries
+
+```{r correct geometry}
+validity_ws_standw <- 
+  st_is_valid(watersurfaces_standw, reason = TRUE) %>% 
+  .[. != "Valid Geometry"]
+
+kable(validity_ws_standw) %>% 
+  kable_styling()
+
+# correct the geometry
+watersurfaces_standw <- st_make_valid(watersurfaces_standw)
+
+st_is_valid(watersurfaces_standw, reason = TRUE) %>% 
+  .[. != "Valid Geometry"]
+```
+
+#### Create map 
+
+Now we can proceed to the intersect and add the needed attributes.
 
 ```{r}
-
 intersection_ws_standw <- watersurfaces_standw %>%
     st_intersection(habitatmap_standw_polygons) %>%
     select(polygon_id_ws, polygon_id, description_orig)
