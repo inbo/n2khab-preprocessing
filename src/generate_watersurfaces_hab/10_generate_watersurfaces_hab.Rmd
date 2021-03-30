@@ -140,22 +140,19 @@ Unfortunately the intersection step would be hampered by a faulty geometry in ha
 
 We solve the problem based on this [article: Tidying feature geometries with sf](https://www.r-spatial.org/r/2017/03/19/invalid.html).
 
-```{r inspect geometry habmap}
+```{r inspect geometry habmap, out.width='800px', out.height='500px'}
 
-validity_habmap <- 
-  st_is_valid(habitatmap_21xx_polygons, reason = TRUE) %>% 
-  .[. != "Valid Geometry"]
-
-kable(validity_habmap) %>% 
-  kable_styling()
-
-library(leaflet)
-
-check_geom <- st_is_valid(habitatmap_21xx_polygons %>% 
+geom_validity_habmap <- 
+  st_is_valid(habitatmap_21xx_polygons %>% 
                    st_transform(crs = 4326), 
-                 reason = TRUE) %>% 
-  .[. != "Valid Geometry"] %>% 
+              reason = TRUE) %>% 
   as_tibble() %>% 
+  mutate(id = rownames(.)) %>% 
+  left_join(habitatmap_21xx_polygons %>% 
+              # rownames_to_column(var = "id") %>% 
+              mutate(id = as.character(row_number())), 
+            by = "id") %>% 
+  filter(value != "Valid Geometry") %>% 
   mutate(lng_lat = str_extract(string = value, 
                                 pattern = "(?<=\\[).*(?=\\])"),
          lng = str_extract(string = lng_lat, 
@@ -164,20 +161,31 @@ check_geom <- st_is_valid(habitatmap_21xx_polygons %>%
                                 pattern = " .*") %>% as.double(),
          problem = str_extract(string = value, 
                                 pattern = "[^\\[]+")) %>% 
-  select(-value, -lng_lat)
+  select(-lng_lat)
+
+kable(geom_validity_habmap %>% 
+        select(id, value, polygon_id, description_orig, geom)) %>% 
+  kable_styling()
+
+library(leaflet)
 
 leaflet() %>%
-  setView(lng = check_geom[1,]$lng, lat = check_geom[1,]$lat, 
+  setView(lng = geom_validity_habmap[1,]$lng, lat = geom_validity_habmap[1,]$lat, 
           zoom = 9) %>% 
   addTiles(group = "OSM (default)") %>%
   addPolygons(data = habitatmap_21xx_polygons %>%
-            st_transform(crs = 4326)) %>%
-  addCircleMarkers(data = check_geom, 
+            st_transform(crs = 4326),
+            popup = paste("polygon_id:", habitatmap_21xx_polygons$polygon_id, "<br>",
+                           "description_orig:", habitatmap_21xx_polygons$description_orig)) %>%
+  addCircleMarkers(data = geom_validity_habmap, 
                    lng  = ~lng, lat = ~lat, 
-                   color = "red")
+                   color = "red",
+                   label = paste(geom_validity_habmap$polygon_id,
+                                 geom_validity_habmap$problem))
+  
 ```
 
-```{r correct geometry habmap}
+```{r correct geometry habmap, out.width='800px', out.height='500px'}
 
 habitatmap_21xx_polygons <- st_make_valid(habitatmap_21xx_polygons)
 
@@ -186,14 +194,19 @@ st_is_valid(habitatmap_21xx_polygons, reason = TRUE) %>%
 
 # let's compare this map with the previous map: no difference at first sight
 leaflet() %>%
-  setView(lng = check_geom[1,]$lng, lat = check_geom[1,]$lat, 
+  setView(lng = geom_validity_habmap[1,]$lng, lat = geom_validity_habmap[1,]$lat, 
           zoom = 9) %>% 
   addTiles(group = "OSM (default)") %>%
   addPolygons(data = habitatmap_21xx_polygons %>%
-            st_transform(crs = 4326)) %>%
-  addCircleMarkers(data = check_geom, 
+            st_transform(crs = 4326),
+            popup = paste("polygon_id:", habitatmap_21xx_polygons$polygon_id, "<br>",
+                           "description_orig:", habitatmap_21xx_polygons$description_orig)) %>%
+  addCircleMarkers(data = geom_validity_habmap, 
                    lng  = ~lng, lat = ~lat, 
-                   color = "black")
+                   color = "black",
+                   label = paste(geom_validity_habmap$polygon_id,
+                                 geom_validity_habmap$problem))
+
 ```
 
 #### Create 2190_a map 
@@ -272,19 +285,18 @@ Once again, the intersection step is hampered by a faulty geometry, this time in
 
 #### Tidying feature geometries
 
-```{r inspect geometry}
-validity_ws_standw <- 
-  st_is_valid(watersurfaces_standw, reason = TRUE) %>% 
-  .[. != "Valid Geometry"]
-
-kable(validity_ws_standw) %>% 
-  kable_styling()
-
-check_geom <- st_is_valid(watersurfaces_standw %>% 
+```{r inspect geometry, out.width='800px', out.height='500px'}
+geom_validity_ws_standw <- 
+  st_is_valid(watersurfaces_standw %>% 
                    st_transform(crs = 4326), 
-                 reason = TRUE) %>% 
-  .[. != "Valid Geometry"] %>% 
+              reason = TRUE) %>% 
   as_tibble() %>% 
+  mutate(id = rownames(.)) %>% 
+  left_join(watersurfaces_standw %>% 
+              # rownames_to_column(var = "id") %>% 
+              mutate(id = as.character(row_number())), 
+                     by = "id") %>% 
+  filter(value != "Valid Geometry") %>% 
   mutate(lng_lat = str_extract(string = value, 
                                 pattern = "(?<=\\[).*(?=\\])"),
          lng = str_extract(string = lng_lat, 
@@ -293,20 +305,27 @@ check_geom <- st_is_valid(watersurfaces_standw %>%
                                 pattern = " .*") %>% as.double(),
          problem = str_extract(string = value, 
                                 pattern = "[^\\[]+")) %>% 
-  select(-value, -lng_lat)
+  select(-lng_lat)
+
+kable(geom_validity_ws_standw %>% 
+        select(id, value, polygon_id_ws, geom)) %>% 
+  kable_styling()
 
 leaflet() %>%
-  setView(lng = check_geom[1,]$lng, lat = check_geom[1,]$lat, 
+  setView(lng = geom_validity_ws_standw[1,]$lng, lat = geom_validity_ws_standw[1,]$lat, 
           zoom = 9) %>% 
   addTiles(group = "OSM (default)") %>%
   addPolygons(data = watersurfaces_standw %>%
-            st_transform(crs = 4326)) %>%
-  addCircleMarkers(data = check_geom, 
+            st_transform(crs = 4326),
+            popup = paste("polygon_id_ws:", watersurfaces_standw$polygon_id_ws)) %>%
+  addCircleMarkers(data = geom_validity_ws_standw, 
                    lng  = ~lng, lat = ~lat, 
-                   color = "red")
+                   color = "red",
+                   label = paste(geom_validity_ws_standw$polygon_id_ws,
+                                 geom_validity_ws_standw$problem))
 ```
 
-```{r correct geometry}
+```{r correct geometry, out.width='800px', out.height='500px'}
 
 watersurfaces_standw <- st_make_valid(watersurfaces_standw)
 
@@ -315,14 +334,17 @@ st_is_valid(watersurfaces_standw, reason = TRUE) %>%
 
 # let's compare this map with the previous map: no difference at first sight
 leaflet() %>%
-  setView(lng = check_geom[1,]$lng, lat = check_geom[1,]$lat, 
+  setView(lng = geom_validity_ws_standw[1,]$lng, lat = geom_validity_ws_standw[1,]$lat, 
           zoom = 9) %>% 
   addTiles(group = "OSM (default)") %>%
   addPolygons(data = watersurfaces_standw %>%
-            st_transform(crs = 4326)) %>%
-  addCircleMarkers(data = check_geom, 
+            st_transform(crs = 4326),
+            popup = paste("polygon_id_ws:", watersurfaces_standw$polygon_id_ws)) %>%
+  addCircleMarkers(data = geom_validity_ws_standw, 
                    lng  = ~lng, lat = ~lat, 
-                   color = "black")
+                   color = "black",
+                   label = paste(geom_validity_ws_standw$polygon_id_ws,
+                                 geom_validity_ws_standw$problem))
 ```
 
 #### Create map 
@@ -389,7 +411,7 @@ habitatmap_standw_types_no_ws <- habitatmap_standw_types %>%
 
 
 
-```{r}
+```{r, out.width='800px', out.height='500px'}
 
 leaflet(habitatmap_standw_polygons_no_ws %>%
             st_transform(crs = 4326)) %>%
