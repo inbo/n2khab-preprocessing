@@ -25,7 +25,7 @@ filepath <- str_c(file.path(path, file), "/",
 
 hashes <-
     tibble(filepath) %>%
-    mutate(filename = str_match(filepath, "(.+\\/)*(.+)")[,3],
+    mutate(filename = basename(filepath),
            xxh64 = map(filepath, function(x) {
                            x %>% xxh64sum() %>% str_c(collapse = '')
                          }) %>% as.character) %>% 
@@ -65,7 +65,7 @@ filepath <- str_c(file.path(path, file), "/",
 
 hashes <-
     tibble(filepath) %>%
-    mutate(filename = str_match(filepath, "(.+\\/)*(.+)")[,3],
+    mutate(filename = basename(filepath),
            xxh64 = map(filepath, function(x) {
                            x %>% xxh64sum() %>% str_c(collapse = '')
                          }) %>% as.character) %>% 
