@@ -1,0 +1,108 @@
+# Generate random number based on uniform distribution for each GRTS master cell 
+
+```{r}
+grts_master <- read_GRTSmh()
+
+raster_runif <- grts_master
+
+set.seed(3841280)
+values(raster_runif) <- runif(n = ncell(raster_runif))
+
+raster_runif@data@names <- "draw_runif"
+
+# writeRaster(raster_runif, 
+#             file.path(fileman_up("n2khab_data"), "20_processed/raster_runif/raster_runif.tif"),
+#             format = "GTiff")
+```
+
+For every grid-cell in the 32m x 32m grts-master we draw a random number between 0 and 1 based on the uniform distribution.
+
+# Application: sample selection for terrestrial types
+
+To draw an equal probability sample for terrestrial types, following approach can be used:
+
++ select all grts-cells within polygons that contain (partially) a certain type;
++ perform a Bernoulli trial for all grts-cell with the probability of success equal to proportion of the type within the polygon (the phab value);
++ rank the successful grts-cells according to the grts-ranking and select a number of grts-cells according to the desired sample size.
+
+We can use raster_runif to perform the Bernoulli trial: a grts-cell is successful when the corresponding raster_runif value is lower than the phab value. This way we only have to draw one random number per grts-cell, even when the grts-cell contains different possible types each having a different phab-value. 
+
+
+```{r}
+habmap_terr <- read_habitatmap_terr()
+
+habitatmap_terr_polygons <- habmap_terr$habitatmap_terr_polygons 
+
+habitatmap_terr_types <- habmap_terr$habitatmap_terr_types
+
+habpolygon_example <- habitatmap_terr_polygons %>%
+  filter(polygon_id == "118623_v2014")
+
+grts_habpolygon_example <- grts_master %>%
+  crop(habpolygon_example) %>%
+  mask(habpolygon_example) %>%
+  rasterToPoints(spatial = TRUE) %>%
+  st_as_sf() %>%
+  rename(grts_ranking = GRTSmaster_habitats) 
+  
+st_crs(grts_habpolygon_example) <- 31370
+
+sampling_units_example <- grts_habpolygon_example %>%
+  mutate(draw_runif = raster_runif[as(., "Spatial")])%>%
+  st_join(dplyr::select(habpolygon_example, polygon_id)) %>%
+  left_join(habitatmap_terr_types, by = "polygon_id") %>%
+  mutate(draw_bernoulli = draw_runif < phab/100)
+
+```
+
+As example we can take a look at a polygon from the habitatmap containing following types:
+
+```{r}
+sampling_units_example %>%
+  st_drop_geometry() %>%
+  distinct(polygon_id, type, phab) %>%
+  arrange(type) %>%
+  kable() %>%
+  kable_styling() %>%
+  collapse_rows(columns = 1)
+  
+```
+
+In the table bellow we illustrate how the do a Bernoulli trial per grts-cell and per type, based raster_runif value.
+
+```{r}
+sampling_units_example %>%
+  st_drop_geometry() %>%
+  dplyr::select(type, phab, grts_ranking, draw_runif, draw_bernoulli) %>%
+  arrange(type) %>%
+  kable() %>%
+  kable_styling() %>%
+  collapse_rows(columns = 1)
+```
+
+The result for type 6510_hu is shown bellow. The green circles correspond the centroids of the successful grts-cells. The labels show the relative rank of the successful grts-cells. 
+
+```{r, out.width = '100%'}
+sampling_units_example_show <- sampling_units_example %>%
+  filter(type == "6510_hu") %>% 
+  group_by(draw_bernoulli) %>%
+  mutate(volgorde = rank(grts_ranking)) %>%
+  ungroup() %>%
+  mutate(show_color = ifelse(draw_bernoulli, "green", "red"),
+         text = ifelse(draw_bernoulli, str_c("rank: ",volgorde), "")) %>%
+  st_transform(4326) 
+
+
+leaflet(sampling_units_example_show) %>%
+  addTiles() %>%
+  addCircleMarkers(color = ~show_color,
+                   label = ~text, 
+                   labelOptions = labelOptions(noHide = TRUE)) %>%
+  addPolygons(data = st_transform(habpolygon_example, 4326))
+    
+  
+    
+```
+
+`
+

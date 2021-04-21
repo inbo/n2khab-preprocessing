@@ -1,0 +1,76 @@
+---
+title: "Generate raster runif"
+# subtitle: "x"
+date: "`r lubridate::now()`"
+link-citations: true
+linkcolor: link.colour
+citecolor: link.colour
+urlcolor: link.colour
+geometry: margin=1in
+mainfont: "Calibri"
+fontsize: 11pt
+documentclass: "article"
+# csl: ../inbo.csl
+# bibliography: ../references.bib
+site: bookdown::bookdown_site
+output:
+  bookdown::html_document2:
+    keep_md: TRUE
+    number_sections: yes
+    fig_caption: yes
+    df_print: paged
+    toc: TRUE
+    toc_float:
+      collapsed: FALSE
+      smooth_scroll: FALSE
+    includes:
+        in_header: ../header.html
+  bookdown::pdf_document2:
+    fig_caption: yes
+    keep_tex: yes
+    toc: yes
+    toc_depth: 3
+    latex_engine: xelatex
+    number_sections: true
+    includes:
+        in_header: ../header.tex
+---
+
+```{r setup, include=FALSE}
+
+options(stringsAsFactors = FALSE,
+        scipen = 999, 
+        digits = 15)
+
+renv::restore()
+library(sf)
+library(raster)
+library(stringr)
+library(knitr)
+library(n2khab)
+library(git2rdata)
+library(kableExtra)
+library(openssl)
+library(leaflet)
+library(tidyverse)
+
+opts_chunk$set(
+  echo = TRUE,
+  dpi = 300
+)
+# ISO8601 timestamp to set as fixed value in the GeoPackage 
+# (to be UPDATED to the actual creation date; at least update for each version):
+Sys.setenv(OGR_CURRENT_DATE = "2021-03-11T00:00:00.000Z")
+# This is used to keep results reproducible, as the timestamp is otherwise
+# updated each time.
+# Above environment variable OGR_CURRENT_DATE is used by the GDAL driver.
+# The time precision (milliseconds) & timezone (UTC, denoted by 'Z') is
+# needed to meet Requirement 15 of the GeoPackage standard (version 1.2.1 & 1.3).
+```
+
+**Note: this is a bookdown project, supposed to be run from within the `src/generate_raster_runif` subfolder. You can use the `generate_raster_runif.Rproj` RStudio project file in this subfolder to run it.**
+
+
+
+
+
