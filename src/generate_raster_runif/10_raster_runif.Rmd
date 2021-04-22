@@ -1,21 +1,136 @@
 # Generate random number based on uniform distribution for each GRTS master cell 
 
++ We start from the `GRTSmh_base4frac` data source
+
++ To be sure we will use the correct version of the data source (GRTSmh_base4frac_v1), we will derive the md5 file hashes and compare it to the file hashes in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
+
+```{r}
+path <- fileman_up("n2khab_data")
+file <- "20_processed/GRTSmh_base4frac"
+mypath <- file.path(path, file)
+
+hashes <-
+    tibble(filepath = str_c(mypath, "/",
+        list.files(path = mypath,
+            recursive = TRUE)
+      )) %>%
+    mutate(filename = str_match(filepath, "(.+\\/)*(.+)")[,3],
+           md5 = map(filepath, function(x) {
+                           file(x) %>% md5 %>% str_c(collapse = '')
+                         }) %>% as.character,
+           md5_ref = c("723ece9ec6e77a7dc3928ee1872040ab"),
+           match = md5 == md5_ref) %>%
+    select(filename,
+           md5,
+           md5_ref,
+           match)
+
+kable(hashes) %>%
+  kable_styling()
+
+if (!all.equal(hashes$md5, hashes$md5_ref)) {
+    stop(cat("The source map is NOT up to date ! Please check  the datasource. "))
+} else {
+  cat("We have a match!")
+}
+```
+
 ```{r}
 grts_master <- read_GRTSmh()
 
-raster_runif <- grts_master
-
-set.seed(3841280)
-values(raster_runif) <- runif(n = ncell(raster_runif))
-
-raster_runif@data@names <- "draw_runif"
-
-# writeRaster(raster_runif, 
-#             file.path(fileman_up("n2khab_data"), "20_processed/raster_runif/raster_runif.tif"),
-#             format = "GTiff")
 ```
 
-For every grid-cell in the 32m x 32m grts-master we draw a random number between 0 and 1 based on the uniform distribution.
++ Next we increase the extent of the raster to anticipate on issue [#45](https://github.com/inbo/n2khab-preprocessing/issues/45).
+
++ We generate a random number between 0 and 1 according to the uniform distribution
+
++ Finally we mask the raster using a shapefile of Flanders with a buffer of 1024 m: all raster cells outside the buffer get a NA value.
+
+```{r}
+raster_runif <- grts_master
+
+extent_raster <- extent(grts_master)
+extent_raster@xmin <- extent_raster@xmin - 32 * 64
+extent_raster@ymin <- extent_raster@ymin - 32 * 64
+extent_raster@xmax <- extent_raster@xmax + 32 * 64
+extent_raster@ymax <- extent_raster@ymax + 32 * 64
+
+raster_runif_buffer <- setExtent(raster_runif, 
+                                 ext = extent_raster, 
+                                 keepres = TRUE, 
+                                 snap = TRUE
+                                 )
+
+set.seed(3841280)
+values(raster_runif_buffer) <- runif(n = ncell(raster_runif_buffer))
+
+flanders_buffer <- read_admin_areas(dsn = "flanders") %>%
+  st_buffer(32 * 32)
+
+raster_runif_buffer_mask <- raster_runif_buffer %>%
+  crop(flanders_buffer) %>%
+  mask(flanders_buffer)
+
+raster_runif_buffer_mask@data@names <- "raster_runif"
+
+```
+
+
+
+# Check the result
+
+```{r}
+habmap_terr <- read_habitatmap_terr()
+
+habitatmap_terr_polygons <- habmap_terr$habitatmap_terr_polygons 
+
+polygon_show <- habitatmap_terr_polygons %>%
+  filter(polygon_id == "580464_v2018")
+
+polygon_show_buffer <- st_buffer(polygon_show, dist = 200)
+
+grts_polygon_example <- grts_master %>%
+  crop(polygon_show_buffer) %>%
+  #mask(polygon_show_buffer) %>%
+  rasterToPoints(spatial = TRUE) %>%
+  st_as_sf() %>%
+  rename(grts_ranking = GRTSmaster_habitats) 
+
+st_crs(grts_polygon_example) <- 31370
+
+runif_polygon_example <- raster_runif_buffer_mask %>%
+  crop(polygon_show_buffer) %>%
+  #mask(polygon_show_buffer) %>%
+  rasterToPoints(spatial = TRUE) %>%
+  st_as_sf()
+
+st_crs(runif_polygon_example) <- 31370
+
+
+```
+
+The map below shows:
+
++ a polygon of the habitatmap at the border of Flanders
++ the centroids of the grts_master grid-cells in the surrounding of the habitatmap polygon (larger black circles)
++ the centroids of the raster_runif grid-cells in the surrounding of the habitatmap polygon (smaller yellow circles)
++ the raster_runif values (labels of the yellow circles)
+
+The result shows that:
+
++ the grid-cells of the grts_master overlap with those of raster_runif
++ the extent of raster_runif exceeds the border of Flanders
++ the values of raster_runif are between 0 and 1
+
+```{r, out.width= "100%"}
+leaflet() %>%
+  addTiles() %>%
+  addPolygons(data = st_transform(polygon_show, crs = 4326)) %>%
+  addCircleMarkers(data = st_transform(grts_polygon_example, crs = 4326), radius = 6, color = "black") %>%
+  addCircleMarkers(data = st_transform(runif_polygon_example, crs = 4326), radius = 2, color = "yellow", label = ~raster_runif)
+```
+
+
 
 # Application: sample selection for terrestrial types
 
@@ -29,9 +144,6 @@ We can use raster_runif to perform the Bernoulli trial: a grts-cell is successfu
 
 
 ```{r}
-habmap_terr <- read_habitatmap_terr()
-
-habitatmap_terr_polygons <- habmap_terr$habitatmap_terr_polygons 
 
 habitatmap_terr_types <- habmap_terr$habitatmap_terr_types
 
@@ -48,14 +160,14 @@ grts_habpolygon_example <- grts_master %>%
 st_crs(grts_habpolygon_example) <- 31370
 
 sampling_units_example <- grts_habpolygon_example %>%
-  mutate(draw_runif = raster_runif[as(., "Spatial")])%>%
+  mutate(draw_runif = raster_runif_buffer[as(., "Spatial")])%>%
   st_join(dplyr::select(habpolygon_example, polygon_id)) %>%
   left_join(habitatmap_terr_types, by = "polygon_id") %>%
   mutate(draw_bernoulli = draw_runif < phab/100)
 
 ```
 
-As example we can take a look at a polygon from the habitatmap containing following types:
+As an example we can take a look at a polygon from the habitatmap containing following types:
 
 ```{r}
 sampling_units_example %>%
@@ -83,13 +195,14 @@ sampling_units_example %>%
 The result for type 6510_hu is shown bellow. The green circles correspond the centroids of the successful grts-cells. The labels show the relative rank of the successful grts-cells. 
 
 ```{r, out.width = '100%'}
+
 sampling_units_example_show <- sampling_units_example %>%
   filter(type == "6510_hu") %>% 
   group_by(draw_bernoulli) %>%
   mutate(volgorde = rank(grts_ranking)) %>%
   ungroup() %>%
   mutate(show_color = ifelse(draw_bernoulli, "green", "red"),
-         text = ifelse(draw_bernoulli, str_c("rank: ",volgorde), "")) %>%
+         text = ifelse(draw_bernoulli, str_c("rank: ",volgorde), "not selected")) %>%
   st_transform(4326) 
 
 
@@ -104,5 +217,52 @@ leaflet(sampling_units_example_show) %>%
     
 ```
 
-`
+# Write result
+
+```{r}
+dir.create(file.path(path, "20_processed/raster_runif"), recursive = TRUE)
+
+filepath <-  file.path(fileman_up("n2khab_data"), "20_processed/raster_runif/raster_runif.tif")
+```
+
+
+```{r, eval = params$overwrite_result}
+writeRaster(raster_runif_buffer_mask,
+            filepath,
+            format = "GTiff",
+            overwrite = TRUE)
+```
+
+
+# Checks on the data source
+
+Checksums:
+
+```{r}
+file(filepath) %>% 
+  openssl::md5() %>% 
+  str_c(collapse = '') %>% 
+  `names<-`("md5sum")
+
+file(filepath) %>% 
+  openssl::sha256() %>% 
+  str_c(collapse = '') %>% 
+  `names<-`("sha256sum")
+```
+
++ Check if values are between 0 and 1
+
+```{r}
+(raster_runif_buffer_mask@data@min >= 0) & (raster_runif_buffer_mask@data@max <= 1)
+```
+
++ Check distribution
+
+```{r}
+tibble(value_runif = values(raster_runif_buffer_mask)) %>%
+  filter(!is.na(value_runif)) %>%
+  ggplot(aes(x = value_runif)) +
+  geom_density()
+  
+```
 
