@@ -1,0 +1,74 @@
+---
+title: "Generate raster runif"
+# subtitle: "x"
+date: "`r lubridate::now()`"
+link-citations: true
+linkcolor: link.colour
+citecolor: link.colour
+urlcolor: link.colour
+geometry: margin=1in
+mainfont: "Calibri"
+fontsize: 11pt
+documentclass: "article"
+params:
+  overwrite_result: FALSE
+# csl: ../inbo.csl
+# bibliography: ../references.bib
+site: bookdown::bookdown_site
+output:
+  bookdown::html_document2:
+    keep_md: TRUE
+    number_sections: yes
+    fig_caption: yes
+    df_print: paged
+    toc: TRUE
+    toc_float:
+      collapsed: FALSE
+      smooth_scroll: FALSE
+    includes:
+        in_header: ../header.html
+  bookdown::pdf_document2:
+    fig_caption: yes
+    keep_tex: yes
+    toc: yes
+    toc_depth: 3
+    latex_engine: xelatex
+    number_sections: true
+    includes:
+        in_header: ../header.tex
+---
+
+```{r setup, include=FALSE}
+
+# remotes::install_github("inbo/n2khab",
+#                         ref = "dev_0.5.0")
+
+options(stringsAsFactors = FALSE,
+        scipen = 999, 
+        digits = 15)
+
+renv::restore()
+library(sf)
+library(raster)
+library(knitr)
+library(n2khab)
+library(kableExtra)
+library(openssl)
+library(leaflet)
+library(tidyverse)
+library(smoothr)
+
+opts_chunk$set(
+  echo = TRUE,
+  dpi = 300
+)
+
+options(rgdal_show_exportToProj4_warnings = "none")
+```
+
+**Note: this is a bookdown project, supposed to be run from within the `src/generate_raster_runif` subfolder. You can use the `generate_raster_runif.Rproj` RStudio project file in this subfolder to run it.**
+
+
+
+
+
