@@ -44,7 +44,18 @@ grts_master <- read_GRTSmh()
 
 + We generate a random number between 0 and 1 according to the uniform distribution
 
-+ Finally we mask the raster using a shapefile of Flanders with a buffer of 1024 m: all raster cells outside the buffer get a NA value.
++ Finally we mask the raster using a shapefile of Flanders with a buffer of 1024 m: all raster cells outside the buffer get a NA value. We include the Brussels region (by using `fill_holes` function of the `smoothr` package) as the grts_master also covers this region. 
+
+```{r}
+
+flanders <- read_admin_areas(dsn = "flanders")
+
+flanders_and_brussels <- fill_holes(flanders, threshold = units::set_units(1000000, km^2))
+
+flanders_and_brussels_buffer <- flanders_and_brussels %>%
+  st_buffer(32 * 32)
+```
+
 
 ```{r}
 raster_runif <- grts_master
@@ -64,12 +75,11 @@ raster_runif_buffer <- setExtent(raster_runif,
 set.seed(3841280)
 values(raster_runif_buffer) <- runif(n = ncell(raster_runif_buffer))
 
-flanders_buffer <- read_admin_areas(dsn = "flanders") %>%
-  st_buffer(32 * 32)
-
 raster_runif_buffer_mask <- raster_runif_buffer %>%
-  crop(flanders_buffer) %>%
-  mask(flanders_buffer)
+  crop(flanders_and_brussels_buffer) %>%
+  mask(flanders_and_brussels_buffer)
+
+#values(raster_runif_buffer_mask) <- values(raster_runif_buffer_mask)/10000
 
 raster_runif_buffer_mask@data@names <- "raster_runif"
 
@@ -160,7 +170,7 @@ grts_habpolygon_example <- grts_master %>%
 st_crs(grts_habpolygon_example) <- 31370
 
 sampling_units_example <- grts_habpolygon_example %>%
-  mutate(draw_runif = raster_runif_buffer[as(., "Spatial")])%>%
+  mutate(draw_runif = raster_runif_buffer_mask[as(., "Spatial")])%>%
   st_join(dplyr::select(habpolygon_example, polygon_id)) %>%
   left_join(habitatmap_terr_types, by = "polygon_id") %>%
   mutate(draw_bernoulli = draw_runif < phab/100)
@@ -239,15 +249,8 @@ writeRaster(raster_runif_buffer_mask,
 Checksums:
 
 ```{r}
-file(filepath) %>% 
-  openssl::md5() %>% 
-  str_c(collapse = '') %>% 
-  `names<-`("md5sum")
+plyr::each(xxh64sum, md5sum, sha256sum)(filepath)
 
-file(filepath) %>% 
-  openssl::sha256() %>% 
-  str_c(collapse = '') %>% 
-  `names<-`("sha256sum")
 ```
 
 + Check if values are between 0 and 1
