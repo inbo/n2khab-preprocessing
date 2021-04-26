@@ -603,15 +603,15 @@
     },
     "n2khab": {
       "Package": "n2khab",
-      "Version": "0.3.1",
+      "Version": "0.4.0.9000",
       "Source": "GitHub",
       "RemoteType": "github",
       "RemoteHost": "api.github.com",
       "RemoteRepo": "n2khab",
       "RemoteUsername": "inbo",
-      "RemoteRef": "HEAD",
-      "RemoteSha": "63d3c3ebea742e8d4beb0ce38b5ab2263b82a246",
-      "Hash": "e84fd2b2bc902ba2a981eb023e08715b"
+      "RemoteRef": "dev_0.5.0",
+      "RemoteSha": "eb36f7c05acc1eabee23bb2c1b2488c4bf3ede69",
+      "Hash": "1dd0225e99e19d3e166c17ed3a6c75e0"
     },
     "nlme": {
       "Package": "nlme",
@@ -871,6 +871,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "d82215b501772c9faadb4dcd71395c7d"
+    },
+    "smoothr": {
+      "Package": "smoothr",
+      "Version": "0.1.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "4279ba07d046d3795ad4743de46eb0f4"
     },
     "sp": {
       "Package": "sp",
