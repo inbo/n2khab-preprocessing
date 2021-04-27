@@ -269,3 +269,20 @@ tibble(value_runif = values(raster_runif_buffer_mask)) %>%
   
 ```
 
+Check CRS with the GDAL utility `gdalsrsinfo` (because `raster` does not succeed well here):
+
+```{r}
+raster_runif_wkt <- 
+  gdalUtils::gdalsrsinfo(filepath, o = "wkt2_2018") %>% 
+  .[. != ""] %>% 
+  paste(collapse = "\n")
+cat(raster_runif_wkt)
+```
+
+Compare CRS with expected:
+
+```{r}
+raster_runif_wkt == sf::st_crs(31370)$wkt
+```
+
+
