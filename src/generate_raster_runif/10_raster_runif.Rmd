@@ -1,12 +1,12 @@
 # Generate random number based on uniform distribution for each GRTS master cell 
 
-+ We start from the `GRTSmh_base4frac` data source
++ We start from the `GRTSmaster_habitats` data source
 
-+ To be sure we will use the correct version of the data source (GRTSmh_base4frac_v1), we will derive the md5 file hashes and compare it to the file hashes in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
++ To be sure we will use the correct version of the data source (GRTSmaster_habitats_v2), we will derive the md5 file hashes and compare it to the file hashes in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
 
 ```{r}
 path <- fileman_up("n2khab_data")
-file <- "20_processed/GRTSmh_base4frac"
+file <- "10_raw/GRTSmaster_habitats"
 mypath <- file.path(path, file)
 
 hashes <-
@@ -18,7 +18,7 @@ hashes <-
            md5 = map(filepath, function(x) {
                            file(x) %>% md5 %>% str_c(collapse = '')
                          }) %>% as.character,
-           md5_ref = c("723ece9ec6e77a7dc3928ee1872040ab"),
+           md5_ref = c("20de76e1abfbafd6edcc00e1a9cf87a0"),
            match = md5 == md5_ref) %>%
     select(filename,
            md5,
