@@ -51,6 +51,7 @@ options(stringsAsFactors = FALSE,
 renv::restore()
 library(sf)
 library(raster)
+library(rgdal)
 library(knitr)
 library(n2khab)
 library(kableExtra)
