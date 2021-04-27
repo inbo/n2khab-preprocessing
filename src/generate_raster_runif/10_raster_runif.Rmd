@@ -230,9 +230,9 @@ leaflet(sampling_units_example_show) %>%
 # Write result
 
 ```{r}
-dir.create(file.path(path, "20_processed/raster_runif"), recursive = TRUE)
+dir.create(file.path(path, "10_raw/raster_runif"), recursive = TRUE)
 
-filepath <-  file.path(fileman_up("n2khab_data"), "20_processed/raster_runif/raster_runif.tif")
+filepath <-  file.path(fileman_up("n2khab_data"), "10_raw/raster_runif/raster_runif.tif")
 ```
 
 
