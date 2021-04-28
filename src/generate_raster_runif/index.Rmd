@@ -45,11 +45,13 @@ output:
 
 options(stringsAsFactors = FALSE,
         scipen = 999, 
-        digits = 15)
+        digits = 15,
+        rgdal_show_exportToProj4_warnings = "none")
 
 renv::restore()
 library(sf)
 library(raster)
+library(rgdal)
 library(knitr)
 library(n2khab)
 library(kableExtra)
@@ -62,8 +64,6 @@ opts_chunk$set(
   echo = TRUE,
   dpi = 300
 )
-
-options(rgdal_show_exportToProj4_warnings = "none")
 ```
 
 **Note: this is a bookdown project, supposed to be run from within the `src/generate_raster_runif` subfolder. You can use the `generate_raster_runif.Rproj` RStudio project file in this subfolder to run it.**

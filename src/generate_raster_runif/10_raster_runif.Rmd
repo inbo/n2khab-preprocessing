@@ -236,11 +236,11 @@ filepath <-  file.path(fileman_up("n2khab_data"), "10_raw/raster_runif/raster_ru
 ```
 
 
-```{r, eval = params$overwrite_result}
+```{r}
 writeRaster(raster_runif_buffer_mask,
             filepath,
             format = "GTiff",
-            overwrite = TRUE)
+            overwrite = params$overwrite_result)
 ```
 
 
@@ -268,4 +268,21 @@ tibble(value_runif = values(raster_runif_buffer_mask)) %>%
   geom_density()
   
 ```
+
+Check CRS with the GDAL utility `gdalsrsinfo` (because `raster` does not succeed well here):
+
+```{r}
+raster_runif_wkt <- 
+  gdalUtils::gdalsrsinfo(filepath, o = "wkt2_2018") %>% 
+  .[. != ""] %>% 
+  paste(collapse = "\n")
+cat(raster_runif_wkt)
+```
+
+Compare CRS with expected:
+
+```{r}
+raster_runif_wkt == sf::st_crs(31370)$wkt
+```
+
 
