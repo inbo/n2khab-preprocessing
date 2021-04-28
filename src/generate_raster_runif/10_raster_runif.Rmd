@@ -288,13 +288,10 @@ tibble(value_runif = values(raster_runif_buffer_mask)) %>%
   
 ```
 
-Check CRS with the GDAL utility `gdalsrsinfo` (because `raster` does not succeed well here):
+Check CRS with `rgdal` (because `raster` does not succeed well here):
 
 ```{r}
-raster_runif_wkt <- 
-  gdalUtils::gdalsrsinfo(filepath, o = "wkt2_2018") %>% 
-  .[. != ""] %>% 
-  paste(collapse = "\n")
+raster_runif_wkt <- rgdal::readGDAL(filepath, silent = TRUE) %>% wkt
 cat(raster_runif_wkt)
 ```
 
