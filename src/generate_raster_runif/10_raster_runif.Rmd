@@ -73,16 +73,26 @@ raster_runif_buffer <- setExtent(raster_runif,
                                  )
 
 set.seed(3841280)
-values(raster_runif_buffer) <- runif(n = ncell(raster_runif_buffer))
+values(raster_runif_buffer) <- runif(n = ncell(raster_runif_buffer)) * 100000
 
 raster_runif_buffer_mask <- raster_runif_buffer %>%
   crop(flanders_and_brussels_buffer) %>%
   mask(flanders_and_brussels_buffer)
 
-#values(raster_runif_buffer_mask) <- values(raster_runif_buffer_mask)/10000
+values(raster_runif_buffer_mask) <- round(values(raster_runif_buffer_mask)/100000, 5)
 
 raster_runif_buffer_mask@data@names <- "raster_runif"
 
+if (wkt(grts_master) != wkt(raster_runif_buffer_mask)) {
+  
+  crs(raster_runif_buffer_mask) <- 31370
+  
+}
+
+```
+
+```{r}
+wkt(grts_master) == wkt(raster_runif_buffer_mask)
 ```
 
 
