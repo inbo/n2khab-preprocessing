@@ -237,10 +237,19 @@ filepath <-  file.path(fileman_up("n2khab_data"), "10_raw/raster_runif/raster_ru
 
 
 ```{r}
-writeRaster(raster_runif_buffer_mask,
+if (!file.exists(filepath)) {
+  
+  writeRaster(raster_runif_buffer_mask,
+            filepath,
+            format = "GTiff")
+  
+} else if (params$overwrite_result) {
+  
+  writeRaster(raster_runif_buffer_mask,
             filepath,
             format = "GTiff",
-            overwrite = params$overwrite_result)
+            overwrite = TRUE)
+}
 ```
 
 
