@@ -5,8 +5,16 @@ si <- devtools::session_info()
 p <- si$platform %>%
   do.call(what = "c")
 if ("sf" %in% si$packages$package) {
-  p <- c(p, sf_extSoftVersion())
-  names(p)[names(p) == "proj.4"] <- "PROJ"
+  sf_ext <- sf_extSoftVersion()
+  names(sf_ext)[names(sf_ext) == "proj.4"] <- "PROJ"
+  names(sf_ext) <- paste("(sf)", names(sf_ext))
+  p <- c(p, sf_ext)
+}
+if ("rgdal" %in% si$packages$package) {
+  rgdal_ext <- rgdal_extSoftVersion()
+  rgdal_ext <- rgdal_ext[names(rgdal_ext) != "sp"]
+  names(rgdal_ext) <- paste("(rgdal)", names(rgdal_ext))
+  p <- c(p, rgdal_ext)
 }
 if ("rgrass7" %in% si$packages$package) {
   p <- c(p, GRASS = link2GI::findGRASS()[1, "version"])

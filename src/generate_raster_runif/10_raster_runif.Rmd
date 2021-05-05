@@ -1,12 +1,12 @@
 # Generate random number based on uniform distribution for each GRTS master cell 
 
-+ We start from the `GRTSmh_base4frac` data source
++ We start from the `GRTSmaster_habitats` data source
 
-+ To be sure we will use the correct version of the data source (GRTSmh_base4frac_v1), we will derive the md5 file hashes and compare it to the file hashes in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
++ To be sure we will use the correct version of the data source (GRTSmaster_habitats_v2), we will derive the md5 file hashes and compare it to the file hashes in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
 
 ```{r}
 path <- fileman_up("n2khab_data")
-file <- "20_processed/GRTSmh_base4frac"
+file <- "10_raw/GRTSmaster_habitats"
 mypath <- file.path(path, file)
 
 hashes <-
@@ -18,7 +18,7 @@ hashes <-
            md5 = map(filepath, function(x) {
                            file(x) %>% md5 %>% str_c(collapse = '')
                          }) %>% as.character,
-           md5_ref = c("723ece9ec6e77a7dc3928ee1872040ab"),
+           md5_ref = c("20de76e1abfbafd6edcc00e1a9cf87a0"),
            match = md5 == md5_ref) %>%
     select(filename,
            md5,
@@ -73,16 +73,26 @@ raster_runif_buffer <- setExtent(raster_runif,
                                  )
 
 set.seed(3841280)
-values(raster_runif_buffer) <- runif(n = ncell(raster_runif_buffer))
+values(raster_runif_buffer) <- runif(n = ncell(raster_runif_buffer)) * 100000
 
 raster_runif_buffer_mask <- raster_runif_buffer %>%
   crop(flanders_and_brussels_buffer) %>%
   mask(flanders_and_brussels_buffer)
 
-#values(raster_runif_buffer_mask) <- values(raster_runif_buffer_mask)/10000
+values(raster_runif_buffer_mask) <- round(values(raster_runif_buffer_mask)/100000, 5)
 
 raster_runif_buffer_mask@data@names <- "raster_runif"
 
+if (wkt(grts_master) != wkt(raster_runif_buffer_mask)) {
+  
+  crs(raster_runif_buffer_mask) <- 31370
+  
+}
+
+```
+
+```{r}
+wkt(grts_master) == wkt(raster_runif_buffer_mask)
 ```
 
 
@@ -230,17 +240,26 @@ leaflet(sampling_units_example_show) %>%
 # Write result
 
 ```{r}
-dir.create(file.path(path, "20_processed/raster_runif"), recursive = TRUE)
+dir.create(file.path(path, "10_raw/raster_runif"), recursive = TRUE)
 
-filepath <-  file.path(fileman_up("n2khab_data"), "20_processed/raster_runif/raster_runif.tif")
+filepath <-  file.path(fileman_up("n2khab_data"), "10_raw/raster_runif/raster_runif.tif")
 ```
 
 
-```{r, eval = params$overwrite_result}
-writeRaster(raster_runif_buffer_mask,
+```{r}
+if (!file.exists(filepath)) {
+  
+  writeRaster(raster_runif_buffer_mask,
+            filepath,
+            format = "GTiff")
+  
+} else if (params$overwrite_result) {
+  
+  writeRaster(raster_runif_buffer_mask,
             filepath,
             format = "GTiff",
             overwrite = TRUE)
+}
 ```
 
 
@@ -268,4 +287,18 @@ tibble(value_runif = values(raster_runif_buffer_mask)) %>%
   geom_density()
   
 ```
+
+Check CRS with `rgdal` (because `raster` does not succeed well here):
+
+```{r}
+raster_runif_wkt <- rgdal::readGDAL(filepath, silent = TRUE) %>% wkt
+cat(raster_runif_wkt)
+```
+
+Compare CRS with expected:
+
+```{r}
+raster_runif_wkt == sf::st_crs(31370)$wkt
+```
+
 
