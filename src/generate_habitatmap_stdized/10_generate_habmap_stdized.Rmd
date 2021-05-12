@@ -163,7 +163,7 @@ habmap_long <- habmap_longHAB %>%
 Sometimes you get two records for the same type within the same habitatmap polygon.
 We distinguish two cases: 
 
-+ two certain records of the same type, for example:
++ two certain or two uncertain records of the same type, for example:
 
 ```{r}
 habmap_long %>%
