@@ -1,5 +1,5 @@
 ---
-title: "Processing habitatmap"
+title: "Generate standardized habitatmap"
 # subtitle: "x"
 date: "`r lubridate::now()`"
 link-citations: true
@@ -37,26 +37,35 @@ output:
 ---
 
 ```{r setup, include=FALSE}
+
 options(stringsAsFactors = FALSE,
         scipen = 999, 
         digits = 15)
+
+renv::restore()
 library(sf)
 library(tidyverse)
 library(stringr)
 library(knitr)
 library(n2khab)
 library(git2rdata)
-library(googlesheets)
 library(kableExtra)
-library(DBI) 
-
+library(openssl)
 opts_chunk$set(
   echo = TRUE,
   dpi = 300
 )
+# ISO8601 timestamp to set as fixed value in the GeoPackage 
+# (to be UPDATED to the actual creation date; at least update for each version):
+Sys.setenv(OGR_CURRENT_DATE = "2021-03-11T00:00:00.000Z")
+# This is used to keep results reproducible, as the timestamp is otherwise
+# updated each time.
+# Above environment variable OGR_CURRENT_DATE is used by the GDAL driver.
+# The time precision (milliseconds) & timezone (UTC, denoted by 'Z') is
+# needed to meet Requirement 15 of the GeoPackage standard (version 1.2.1 & 1.3).
 ```
 
-**Note: this is a bookdown project, supposed to be run from within the `src/process_habitatmap` subfolder. You can use the `process_habitatmap.Rproj` RStudio project file in this subfolder to run it.**
+**Note: this is a bookdown project, supposed to be run from within the `src/generate_habitatmap_stdized` subfolder. You can use the `generate_habitatmap_stdized.Rproj` RStudio project file in this subfolder to run it.**
 
 
 
