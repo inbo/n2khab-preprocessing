@@ -1,0 +1,146 @@
+# Check results
+
+## The new version v4
+
+Based on habitatmap_stdized_2020_v1 and watersurfaces_v1.1
+
+Checksums:
+
+```{r}
+filepath %>% 
+  n2khab::md5sum() %>% 
+  `names<-`("md5sum")
+filepath %>% 
+  n2khab::sha256sum() %>% 
+  `names<-`("sha256sum")
+filepath %>% 
+  n2khab::xxh64sum() %>% 
+  `names<-`("xxh64sum")
+```
+
+Read file:
+
+```{r paged.print=FALSE, warning=FALSE}
+(pol <- read_sf(filepath, 
+                layer = "watersurfaces_hab_polygons"))
+```
+
+```{r paged.print=FALSE, warning=FALSE}
+(types <- read_sf(filepath, 
+                layer = "watersurfaces_hab_types"))
+```
+
+
+- Do all records in the watersurfaces_hab_types table have a corresponding spatial feature in the watersurfaces_hab_polygons layer?
+
+```{r}
+check_polygon_id_types <- types %>%
+  anti_join(pol, by = "polygon_id")
+nrow(check_polygon_id_types) == 0
+```
+
+- Do all spatial features in the watersurfaces_hab_polygons layer have a corresponding record in the watersurfaces_hab_types table?
+
+```{r}
+check_polygon_id_polygons <- pol %>%
+  st_drop_geometry() %>%
+  anti_join(types, by = "polygon_id")
+nrow(check_polygon_id_polygons) == 0
+```
+
+- Is the number of unique IDs in the dataframe the same as the number of polygons in the sf object? 
+  
+```{r} 
+ types %>%  
+   distinct(polygon_id) %>%  
+   nrow == nrow(pol) 
+``` 
+
+- Is the CRS conform EPSG:31370?
+
+```{r} 
+ st_crs(pol) == st_crs(31370) 
+```
+
+## Compare with the previous version 
+
+We load the previous version of watersurfaces_hab (version 3 based on watersurfaces_v1 and habitatmap_stdized_2018_v2)
+
+```{r paged.print=FALSE, warning=FALSE}
+# adapt this part of the script to load version v3 (expected md5 = fcf021e4bfca827dfc13466295d65174
+# as referenced in https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853)
+filepath_v3 <- file.path(path,"20_processed/watersurfaces_hab/versies/v3/watersurfaces_hab.gpkg")
+
+hashes <-
+    tibble(filepath_v3) %>%
+    mutate(filename = basename(filepath_v3),
+           md5 = map(filepath_v3, function(x) {
+                           x %>% md5sum() %>% str_c(collapse = '')
+                         }) %>% as.character) %>% 
+           mutate(md5_ref = c("fcf021e4bfca827dfc13466295d65174"),
+           match = md5 == md5_ref) %>%
+    select(filename,
+           md5,
+           md5_ref,
+           match)
+
+if (!all.equal(hashes$md5, hashes$md5_ref)) {
+    stop(cat("The source map is NOT v3 ! Please check the datasource. "))
+}
+  
+(pol_v3 <- read_sf(filepath_v3, 
+                layer = "watersurfaces_hab_polygons"))
+(types_v3 <- read_sf(filepath_v3, 
+                layer = "watersurfaces_hab_types"))
+```
+
+- Are there differences between version v3 and version v4 and where are they located?
+
+There are many changes between versions, and unfortunately it is difficult
+to check them without showing the source maps for both versions.
+A detailed check is not easy to realize, so we merely show a map of the polygons 
+with a difference in polygon_id for watersurface and/or habitatmap_stdized.
+
+```{r}
+# polygons with polygon_id in v4 butnot in version v3
+check_polygon_id_v4_v3 <- pol %>%
+  anti_join(pol_v3 %>%
+              st_drop_geometry(), 
+            by = c("polygon_id_habitatmap", "polygon_id_ws"))
+ nrow(check_polygon_id_v4_v3)
+   
+# we expected new polygons with polygon_id like "xxx_v2020" so we neglect 
+# them when we count
+ nrow(check_polygon_id_v4_v3 %>% 
+   filter(!str_detect(string = polygon_id_habitatmap, pattern = "v2020")))
+
+```
+
+```{r}
+check_polygon_id_v3_v4 <- pol_v3 %>%
+  anti_join(pol %>%
+              st_drop_geometry(), 
+            by = c("polygon_id_habitatmap", "polygon_id_ws"))
+
+nrow(check_polygon_id_v3_v4) 
+```
+
+```{r, out.width='800px', out.height='500px'}
+leaflet() %>%
+  addTiles(group = "OSM (default)") %>%
+  addPolygons(data = check_polygon_id_v4_v3 %>%
+            st_transform(crs = 4326), 
+            group = "in v4 and not v3 (blue)",
+            popup = paste("polygon_id_habitatmap:", check_polygon_id_v4_v3$polygon_id_habitatmap, "<br>",
+                           "polygon_id_ws:", check_polygon_id_v4_v3$polygon_id_ws)) %>%
+  addPolygons(data = check_polygon_id_v3_v4 %>%
+            st_transform(crs = 4326), 
+            color = "black", group = "in v3 and not v4 (black)",
+            popup = paste("polygon_id_habitatmap:", check_polygon_id_v3_v4$polygon_id_habitatmap, "<br>",
+                           "polygon_id_ws:", check_polygon_id_v3_v4$polygon_id_ws)) %>% 
+  addLayersControl(
+    overlayGroups = c("in v4 and not v3 (blue)", "in v3 and not v4 (black)"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
+```
+
