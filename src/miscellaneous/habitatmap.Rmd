@@ -2,7 +2,7 @@
 title: "Handling the habitatmap"
 date: '`r paste("Version",lubridate::now())`'
 output:
-  html_notebook:
+  html_document:
     number_sections: yes
     code_folding: show
     includes:
@@ -15,16 +15,9 @@ output:
 
 ```{r setup, message=FALSE, echo=FALSE}
 options(stringsAsFactors = FALSE)
-# library(sp)
 library(sf)
-library(raster)
-library(tidyverse)
+library(dplyr)
 library(n2khab)
-# # library(plotly)
-# library(rasterVis)
-# library(stars)
-# library(units)
-# library(tmap)
 library(knitr)
 opts_chunk$set(
   echo = TRUE,
@@ -36,14 +29,31 @@ opts_chunk$set(
 # A few checks of the habitatmap_stdized data source
 
 ```{r}
-result <- read_habitatmap_stdized("../../n2khab_data")
+filepath <- file.path(fileman_up("n2khab_data"),
+                      "20_processed/habitatmap_stdized/habitatmap_stdized.gpkg")
+habitatmap_polygons <- st_read(filepath, layer = "habitatmap_polygons")
+habitatmap_types <- st_read(filepath, layer = "habitatmap_types")
 ```
 
+Checking the CRS stated in the file as "`r st_crs(habitatmap_polygons)$input`": does it actually conform to the EPSG standard (in order to prevent CRS clashes in workflows)?
 
-Do all polygons from the sf object have a unique ID? (Beware, this calculation takes approx. 2-3 minutes; it has been disabled)
+- can the EPSG code be exported?
 
-```{r eval=FALSE}
-result$habitatmap_polygons %>% 
+```{r}
+!is.na(st_crs(habitatmap_polygons)$epsg)
+```
+
+- does it conform to EPSG:31370?
+
+```{r}
+st_crs(habitatmap_polygons) == st_crs(31370)
+```
+
+Do all polygons from the sf object have a unique ID?
+
+```{r}
+habitatmap_polygons %>% 
+  st_drop_geometry %>% 
   count(polygon_id) %>% 
   filter(n > 1) %>% 
   nrow == 0
@@ -52,23 +62,23 @@ result$habitatmap_polygons %>%
 Is the number of unique IDs in the dataframe the same as the number of polygons in the sf object?
 
 ```{r}
-result$habitatmap_patches %>% 
+habitatmap_types %>% 
   distinct(polygon_id) %>% 
-  nrow == nrow(result$habitatmap_polygons)
+  nrow == nrow(habitatmap_polygons)
 ```
 
 Do all polygon IDs from the dataframe coincide with those of the sf object?
 
 ```{r message=FALSE}
-result$habitatmap_patches %>% 
-  inner_join(result$habitatmap_polygons) %>% 
-  nrow == nrow(result$habitatmap_patches)
+habitatmap_types %>% 
+  inner_join(habitatmap_polygons) %>% 
+  nrow == nrow(habitatmap_types)
 ```
 
 Number of polygons with phab = 0:
 
 ```{r}
-result$habitatmap_patches %>% 
+habitatmap_types %>% 
   filter(phab == 0) %>% 
   nrow()
 ```
