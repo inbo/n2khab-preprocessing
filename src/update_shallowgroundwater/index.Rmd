@@ -1,0 +1,77 @@
+---
+title: "Updating the raw data source shallow groundwater"
+# subtitle: "x"
+date: "`r lubridate::now()`"
+link-citations: true
+linkcolor: link.colour
+citecolor: link.colour
+urlcolor: link.colour
+geometry: margin=1in
+mainfont: "Calibri"
+fontsize: 11pt
+documentclass: "article"
+site: bookdown::bookdown_site
+params:
+  gisbase_grass: !r if (.Platform$OS.type == "windows") link2GI::paramGRASSw()$gisbase_GRASS[1] else link2GI::paramGRASSx()$gisbase_GRASS[1]
+output:
+  bookdown::html_document2:
+    code_folding: hide
+    keep_md: TRUE
+    number_sections: yes
+    fig_caption: yes
+    df_print: paged
+    toc: TRUE
+    toc_float:
+      collapsed: FALSE
+      smooth_scroll: FALSE
+    includes:
+        in_header: ../header.html
+---
+
+```{r setup, include=FALSE}
+library(sf)
+library(units)
+library(dplyr)
+library(stringr)
+library(purrr)
+library(knitr)
+library(rprojroot)
+library(googledrive)
+library(ggplot2)
+library(mapview)
+library(n2khab)
+library(rgrass7)
+library(qgisprocess)
+if (.Platform$OS.type == "unix") {
+  Sys.setenv(GRASS_PYTHON = system("which python3", intern = TRUE))
+}
+gisbase_grass <- 
+  if (interactive()) {
+    if (.Platform$OS.type == "windows") link2GI::paramGRASSw()$gisbase_GRASS[1] else {
+      link2GI::paramGRASSx()$gisbase_GRASS[1]
+    }
+  } else params$gisbase_grass
+opts_chunk$set(
+  echo = TRUE,
+  dpi = 300
+)
+```
+
+**Note: this is a bookdown project, supposed to be run from within the `src/update_shallowgroundwater` subfolder. You can use the `update_shallowgroundwater.Rproj` RStudio project file in this subfolder to run it.**
+
+```{r}
+# Function to aid in GRASS processing
+execshell <- function(commandstring, intern = FALSE) {
+    if (.Platform$OS.type == "windows") {
+        res <- shell(commandstring, intern = TRUE)
+    } else {
+        res <- system(commandstring, intern = TRUE)
+    }
+    if (!intern) cat(res, sep = "\n") else return(res)
+}
+```
+
+
+
+
+

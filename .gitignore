@@ -21,3 +21,4 @@ src/private_code.R
 *.qgz
 grass_*/
 watercourse_segments/
+*/update_shallowgroundwater/data/

@@ -1,0 +1,428 @@
+# Introduction
+
+## Current, intermediate state of the `shallowgroundwater` data source
+
+A `shallowgroundwater` data source was prepared by Dries Adriaens and colleagues in order to delineate the areas in Flanders where the Mean Lowest Watertable ('GLG') is located higher (less deep) than approx. 1.5 - 2 m below soil surface.
+This data source is needed to restrict the target population of several schemes in the groundwater compartiment.
+It is more specifically applied to restrict the 'locally groundwater dependent' types, i.e. to discard the sites without shallow groundwater.
+
+- Data and metadata are in [a GDrive folder](https://drive.google.com/drive/u/0/folders/1S9colwuaMNmB58u4RUnB0MqZLyIUZ9rT).
+- More info about checking the data source: see <https://github.com/inbo/n2khab-mne-design/pull/74> and links therein.
+
+Based on an evaluation that uses the '(almost) everywhere groundwater dependent' types, the current state does not yet cover a significant proportion of those types.
+Hence, the area it covers needs to be made broader.
+
+## Aim
+
+In this document, we generate several sets of _extra polygons_ to be added to shallowgroundwater:
+
+- _within_ anthropogenic soil types (using the `bsm_mo_soilunitype` column of the `soilmap_simple` data source): buffers of 500 m around the '(almost) everywhere groundwater dependent' types (here also called 'obliggwdep' types);
+- for narrow anthropogenic soil type polygons: if they contain 'obliggwdep' types, then add them as a whole.
+An appropriate algorithm has to be made that selects meaningful polygons - often it appears that complete cities would meet the foregoing requirement, so a sufficient amount of 'obliggwdep' type will need to be present in such polygons;
+- buffering `shallowgroundwater`
+
+# Preparation
+
+## Data setup and checks
+
+```{r}
+local_root <- find_root(has_file("update_shallowgroundwater.Rproj"))
+datapath <- file.path(local_root, "data")
+if (!dir.exists(datapath)) dir.create(datapath)
+sgpath <- find_root_file("n2khab_data/10_raw/shallowgroundwater", 
+                            criterion = has_dir("n2khab_data"))
+
+if (!dir.exists(sgpath) | list.files(sgpath) %>% length == 0) {
+  dir.create(sgpath)
+  drive_auth(email = TRUE)
+  # downloads "ZonesOndiepGrondwater_2019-03-29.zip":
+  as_id("1n_LyvRDDzL3hraoMWf_pBhabTYiWsiD0") %>% 
+    drive_download(file.path(tempdir(), "file.zip"), 
+                   overwrite = TRUE)
+  unzip(file.path(tempdir(), "file.zip"), 
+        exdir = sgpath)
+  filenames <- list.files(sgpath, full.names = TRUE)
+  file.rename(filenames,
+              str_replace(filenames, 
+                          "ZonesOndiepGrondwater", 
+                          "shallowgroundwater"))
+}
+```
+
+Verification of several input data sets.
+
+```{r}
+checksums <- 
+  list.files(sgpath, full.names = TRUE) %>% 
+  checksum
+checksums %>% 
+  as.matrix
+```
+
+```{r}
+if (any(checksums != 
+        c(shallowgroundwater.cpg = "a0915c78be995614",
+          shallowgroundwater.dbf = "c4ceda6d9466bd89", 
+          shallowgroundwater.qpj = "853f02064884203e",
+          shallowgroundwater.sbn = "cb0c0bb2565829ff", 
+          shallowgroundwater.sbx = "9419203dc2909044",
+          shallowgroundwater.shp = "5cf8969daa942dec", 
+          shallowgroundwater.shp.xml = "6df16307066eec5e",
+          shallowgroundwater.shx = "bc582622278dba1c"))
+) warning("Beware, your version of shallowgroundwater is not the one for which this code was intended!")
+```
+
+```{r}
+sspath <- find_root_file("n2khab_data/20_processed/soilmap_simple/soilmap_simple.gpkg", 
+                            criterion = has_dir("n2khab_data"))
+if (!file.exists(sspath)) stop("Please organize soilmap_simple location. See e.g. https://inbo.github.io/n2khab/articles/v022_example.html")
+if (checksum(sspath) != "9f4204b476506031") stop("Incorrect soilmap_simple version.")
+
+hmtpath <- find_root_file("n2khab_data/20_processed/habitatmap_terr/habitatmap_terr.gpkg", 
+                            criterion = has_dir("n2khab_data"))
+if (!file.exists(hmtpath)) stop("Please organize habitatmap_terr location. See https://inbo.github.io/n2khab")
+assertthat::assert_that(checksum(hmtpath) == "72d3144016e816ed",
+                        msg = "Incorrect habitatmap_terr version.")
+```
+
+Reading data sets.
+
+```{r}
+soilmap <- read_soilmap()
+```
+
+```{r include=FALSE}
+gpkg_sg_exists <- 
+  file.exists(file.path(datapath, 
+                        "sg_repairedgeom.gpkg"))
+```
+
+```{r eval=!gpkg_sg_exists}
+sg <- read_sf(sgpath, crs = 31370)
+```
+
+```{r eval=FALSE, echo=FALSE}
+read_soilmap(use_processed = FALSE) %>% 
+  st_drop_geometry %>% 
+  filter(str_sub(bsm_mo_soilunitype, 1, 1) == "O") %>% 
+  count(bsm_mo_soilunitype, 
+           bsm_soilseries, 
+           bsm_soilseries_explan,
+           bsm_ge_series,
+           bsm_ge_series_explan)
+```
+
+## Preparing derived input data
+
+Constructing the geospatial and attribute data of `habitatmap_terr` polygons that contain 'obliggwdep' types, relevant in the MNE monitoring programme.
+
+```{r message = FALSE, warning = FALSE}
+scheme_types_mne_expanded <-
+  read_scheme_types(extended = TRUE) %>%
+  filter(programme == "MNE") %>%
+  distinct(scheme, type) %>%
+  group_by(scheme) %>%
+  expand_types %>%
+  ungroup
+types_obliggwdep <-
+  read_types() %>% 
+  filter(groundw_dep == "GD2") %>%
+  select(type) %>% 
+  # following step does 2 things: 
+  # - drop 6 (main) type codes that don't appear in habitatmap_terr
+  # - avoid 7110, which we don't recognize within MNE (one location in habitatmap_terr)
+  semi_join(scheme_types_mne_expanded, by = "type")
+hmt <- read_habitatmap_terr(keep_aq_types = FALSE)
+hmt_occ_obliggwdep <- 
+  hmt$habitatmap_terr_types %>% 
+  semi_join(types_obliggwdep,  
+            by = "type")
+hmt_pol_obliggwdep <- 
+  hmt$habitatmap_terr_polygons %>% 
+  select(polygon_id, description_orig) %>% 
+  semi_join(hmt_occ_obliggwdep,
+            by = "polygon_id")
+st_agr(hmt_pol_obliggwdep) <- "constant"
+```
+
+Creating a geospatial object of anthropogenic soil type polygons, and calculate a property 'thinness' (from [here](https://tereshenkov.wordpress.com/2014/04/08/fighting-sliver-polygons-in-arcgis-thinness-ratio/)) - lower means more narrow - as well as the areal fraction occupied by `habitatmap_terr` polygons having 'obliggwdep' types.
+
+```{r}
+soil_anthrop <- 
+  soilmap %>% 
+  filter(str_sub(bsm_mo_soilunitype, 1, 1) == "O") %>% 
+  select(bsm_poly_id, bsm_mo_soilunitype) %>% 
+  mutate(perimeter = lwgeom::st_perimeter(.),
+         area = st_area(.),
+         thinness =  4 * pi * (area / perimeter ^2) %>% drop_units()) %>% 
+  st_make_valid()
+st_agr(soil_anthrop) <- "constant"
+soil_anthrop_occupied <- 
+  soil_anthrop %>% 
+  st_intersection(hmt_pol_obliggwdep) %>% 
+  mutate(subarea = st_area(.)) %>% 
+  st_drop_geometry %>% 
+  group_by(bsm_poly_id) %>% 
+  summarise(obliggwdep_pol_frac = drop_units(sum(subarea) / first(area)))
+soil_anthrop <- 
+  soil_anthrop %>% 
+  left_join(soil_anthrop_occupied,
+            by = "bsm_poly_id")
+```
+
+The distribution of both calculated variables:
+
+```{r warning=FALSE}
+soil_anthrop %>% 
+  st_drop_geometry %>% 
+  ggplot(aes(x = thinness)) + 
+  geom_histogram(binwidth = 0.01, fill = "white", colour = "grey70")
+soil_anthrop %>% 
+  st_drop_geometry %>% 
+  ggplot(aes(x = obliggwdep_pol_frac)) + 
+  geom_histogram(binwidth = 0.01, fill = "white", colour = "grey70")
+```
+
+# Execution
+
+## Buffer 500 m around obliggwdep types, within `soil_anthrop`
+
+We create this geospatial object and also write it as a GPKG file, since the calculation takes several minutes.
+
+```{r include=FALSE}
+gpkg_exists <- 
+  file.exists(file.path(datapath, 
+                        "buffered_obliggwdep_within_soilanthrop.gpkg"))
+```
+
+```{r eval=!gpkg_exists}
+# following step takes several minutes!
+buffered_obliggwdep_within_soilanthrop <-
+  hmt_pol_obliggwdep[soil_anthrop, ] %>% 
+  st_make_valid(.) %>% 
+  st_buffer(500) %>% 
+  st_union() %>% 
+  st_intersection(soil_anthrop)
+st_write(buffered_obliggwdep_within_soilanthrop, 
+         file.path(datapath, 
+                   "buffered_obliggwdep_within_soilanthrop.gpkg"),
+         delete_dsn = TRUE)
+```
+
+```{r eval=gpkg_exists, include = FALSE}
+buffered_obliggwdep_within_soilanthrop <- 
+  read_sf(file.path(datapath, 
+                    "buffered_obliggwdep_within_soilanthrop.gpkg"))
+```
+
+Resulting object: `buffered_obliggwdep_within_soilanthrop`.
+
+## Narrow anthropogenic soil polygons with 'obliggwdep' types, buffered by 100 m
+
+After several iterations, the below used conditions on `thinness` and `obliggwdep_pol_frac` appeared satisfying.
+
+```{r out.width='800px', out.height='500px'}
+narrow_soilanthrop_with_obliggwdep <- 
+  soil_anthrop %>% 
+  filter(thinness < 0.15,
+         obliggwdep_pol_frac > 0.04)
+mapview(narrow_soilanthrop_with_obliggwdep,
+        zcol = "thinness",
+        color = "pink3",
+        lwd = 2)
+```
+
+Resulting object: `narrow_soilanthrop_with_obliggwdep`.
+
+## Buffer 200 m around `buffered_obliggwdep_within_soilanthrop` and `narrow_soilanthrop_with_obliggwdep`
+
+```{r}
+buffered_obliggwdep_within_soilanthrop_buff200 <- 
+  buffered_obliggwdep_within_soilanthrop %>% 
+  st_buffer(200)
+```
+
+```{r}
+narrow_soilanthrop_with_obliggwdep_buff200 <- 
+  narrow_soilanthrop_with_obliggwdep %>% 
+  st_buffer(200)
+```
+
+
+## Buffer 500 m around obliggwdep types, that are within 200 m of `shallowgroundwater`
+
+We need to do this in GRASS because of the large `shallowgroundwater` input.
+
+```{r}
+grasspath <- file.path(datapath, "grass")
+grass_exists <- file.exists(file.path(grasspath, 
+                                      "PERMANENT/PROJ_INFO"))
+if (!dir.exists(grasspath)) dir.create(grasspath)
+```
+
+
+```{r results="hide"}
+# CREATE OR LINK to a permanent GRASS location
+initGRASS(gisBase = gisbase_grass,
+          gisDbase = datapath,
+          home = grasspath,
+          location = "grass",
+          mapset = "PERMANENT", 
+          override = TRUE)
+if (!grass_exists) {
+    execGRASS("g.proj", c("c", "quiet"), 
+              epsg = 31370)
+}
+# gmeta()
+use_sf()
+```
+
+
+```{r}
+stopifnot(file.exists(file.path(grasspath, 
+                                "PERMANENT/PROJ_INFO")))
+```
+
+```{r warning=FALSE, results="hide", eval=!grass_exists}
+execGRASS("v.in.ogr",
+          input = normalizePath(file.path(fileman_up("n2khab_data"),
+                                          "10_raw/shallowgroundwater")),
+          output = "sg",
+          flags = c("o", # assume CRS is same as from GRASS, i.e. set CRS as EPSG:31370
+                    "overwrite")
+          )
+```
+
+```{r}
+writeVECT(hmt_pol_obliggwdep, "hmt_pol_obliggwdep")
+```
+
+```{r eval=!gpkg_sg_exists}
+sg_repairedgeom <- 
+  st_make_valid(sg) %>% 
+  st_cast("MULTIPOLYGON")
+st_write(sg_repairedgeom,
+         file.path(datapath, 
+                   "sg_repairedgeom.gpkg"),
+         delete_dsn = TRUE)
+```
+
+```{r eval=gpkg_sg_exists, include=FALSE}
+sg_repairedgeom <- 
+  read_sf(file.path(datapath, 
+                    "sg_repairedgeom.gpkg"))
+```
+
+```{r include=FALSE}
+gpkg_sg_buff_exists <- 
+  file.exists(file.path(datapath, 
+                        "sg_buff.gpkg"))
+```
+
+
+```{r eval=!gpkg_sg_buff_exists}
+sg_buff <- 
+  sg_repairedgeom %>% 
+  st_buffer(200) %>% 
+  st_cast("MULTIPOLYGON")
+sg_buff %>% 
+  st_write(file.path(datapath, 
+                     "sg_buff.gpkg"),
+           delete_dsn = TRUE)
+```
+
+```{r eval=gpkg_sg_buff_exists, include=FALSE}
+sg_buff <- 
+  read_sf(file.path(datapath, 
+                    "sg_buff.gpkg"))
+```
+
+```{r}
+# qgis_algorithms() %>% filter(str_detect(algorithm, "diff"))
+# qgis_show_help("native:difference")
+hmt_pol_obliggwdep %>% 
+  st_make_valid %>% 
+  st_write(file.path(datapath, 
+                     "hmt_pol_obliggwdep.gpkg"),
+           delete_dsn = TRUE)
+sg_ring <- 
+  qgis_run_algorithm("native:difference",
+                     INPUT = file.path(datapath, 
+                                       "sg_buff.gpkg"),
+                     OVERLAY = file.path(datapath, 
+                                         "sg_repairedgeom.gpkg"))
+system.time(
+  sg_ring <- 
+    qgis_run_algorithm("grass7:v.overlay",
+                       ainput = file.path(datapath, 
+                                          "sg_buff.gpkg"),
+                       binput = file.path(datapath, 
+                                          "sg_repairedgeom.gpkg"),
+                       operator = "2")
+)
+```
+
+
+```{r}
+execGRASS("v.in.ogr",
+          input = file.path(datapath, "sg_repairedgeom.gpkg"),
+          output = "sg_repairedgeom",
+          flags = "overwrite")
+execGRASS("v.in.ogr",
+          input = file.path(datapath, "sg_buff.gpkg"),
+          output = "sg_buff",
+          flags = c("c", "overwrite"))
+```
+
+
+```{r}
+system.time({
+sg_union <-
+  sg_repairedgeom %>%
+  st_union()
+sg_buff2 <-
+  sg_union %>%
+  st_buffer(200)
+sg_ring <- 
+  st_difference(sg_buff2, sg_union)
+})
+#     user   system  elapsed 
+# 2044.543    0.000 2045.678 
+st_write(sg_ring, 
+         file.path(datapath, 
+                   "sg_ring.gpkg"),
+         delete_dsn = TRUE)
+```
+
+```{r eval=!gpkg_exists}
+# following step takes several minutes!
+system.time(
+buffered_obliggwdep_nearsg <-
+  hmt_pol_obliggwdep[sg_ring, ] %>% 
+  st_make_valid(.) %>% 
+  st_buffer(500) %>% 
+  st_union()
+)
+st_write(buffered_obliggwdep_nearsg, 
+         file.path(datapath, 
+                   "buffered_obliggwdep_nearsg.gpkg"),
+         delete_dsn = TRUE)
+```
+
+
+```{r}
+execshell("v.overlay ainput=sg_buff binput=sg_repairedgeom operator=not output=sg_ring")
+```
+
+```{r}
+library(future)
+plan(multisession, workers = 6)
+hmt_sel %<-% {
+  hmt_pol_obliggwdep[sg_ring, ]
+}
+hmt_sel %<-% hmt_pol_obliggwdep[sg_ring, ] %packages% "sf"
+f <- futureOf(hmt_sel)
+resolved(f)
+value(f)
+```
+
