@@ -390,13 +390,15 @@ gpkg_newareas_exists <-
 buffered_obliggwdep_within_soilanthrop_buff200 <- 
   buffered_obliggwdep_within_soilanthrop %>% 
   st_buffer(200) %>% 
-  st_union
+  st_union %>% 
+  st_as_sf
 
 narrow_soilanthrop_with_obliggwdep_buff200 <-
   narrow_soilanthrop_with_obliggwdep %>% 
   select(-everything()) %>% 
   st_buffer(200) %>% 
-  st_union
+  st_union %>% 
+  st_as_sf
 
 buffered_obliggwdep_within_sg_ring_buff200 <- 
   buffered_obliggwdep_within_sg_ring %>% 
