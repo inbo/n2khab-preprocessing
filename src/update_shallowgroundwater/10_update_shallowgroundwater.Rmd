@@ -197,7 +197,7 @@ gpkg_exists <-
                         "buffered_obliggwdep_within_soilanthrop.gpkg"))
 ```
 
-```{r eval=!gpkg_exists}
+```{r eval=!gpkg_exists || params$rewrite_intermediate_files}
 # following step takes several minutes!
 buffered_obliggwdep_within_soilanthrop <-
   hmt_pol_obliggwdep[soil_anthrop, ] %>% 
@@ -211,7 +211,7 @@ write_sf(buffered_obliggwdep_within_soilanthrop,
          delete_dsn = TRUE)
 ```
 
-```{r eval=gpkg_exists, include = FALSE}
+```{r eval=gpkg_exists && !params$rewrite_intermediate_files, include = FALSE}
 buffered_obliggwdep_within_soilanthrop <- 
   read_sf(file.path(datapath, 
                     "buffered_obliggwdep_within_soilanthrop.gpkg"))
@@ -266,7 +266,7 @@ gpkg_sg_ring_exists <-
                         "sg_ring.gpkg"))
 ```
 
-```{r eval=!gpkg_sg_ring_exists}
+```{r eval=!gpkg_sg_ring_exists || params$rewrite_intermediate_files}
 system.time({
 sg_union <-
   sg_repairedgeom %>%
@@ -285,7 +285,7 @@ write_sf(sg_ring,
          delete_dsn = TRUE)
 ```
 
-```{r eval=gpkg_sg_ring_exists, include=FALSE}
+```{r eval=gpkg_sg_ring_exists && !params$rewrite_intermediate_files, include=FALSE}
 sg_ring <- 
   read_sf(file.path(datapath, 
                     "sg_ring.gpkg"))
@@ -308,7 +308,7 @@ gpkg_buffered_obliggwdep_within_sg_ring_exists <-
                         "buffered_obliggwdep_within_sg_ring.gpkg"))
 ```
 
-```{r eval=!gpkg_buffered_obliggwdep_within_sg_ring_exists}
+```{r eval=!gpkg_buffered_obliggwdep_within_sg_ring_exists || params$rewrite_intermediate_files}
 # qgis_algorithms() %>% filter(str_detect(algorithm, "extract"))
 # qgis_show_help("native:extractbylocation")
 hmt_pol_obliggwdep %>% 
@@ -319,12 +319,12 @@ hmt_pol_obliggwdep %>%
 ```
 
 
-```{r eval=!gpkg_buffered_obliggwdep_within_sg_ring_exists}
+```{r eval=!gpkg_buffered_obliggwdep_within_sg_ring_exists || params$rewrite_intermediate_files}
 plan(multisession) # future kept here as demonstration
 ```
 
 
-```{r eval=!gpkg_buffered_obliggwdep_within_sg_ring_exists}
+```{r eval=!gpkg_buffered_obliggwdep_within_sg_ring_exists || params$rewrite_intermediate_files}
 # use of future unneeded in this case (runs quickly; however
 # hmt_pol_obliggwdep[sg_ring, ] takes very long)
 f <- future({
@@ -340,7 +340,7 @@ obliggwdep_sgring_qgis <- value(f, stdout = FALSE) # blocks calling R session if
 ```
 
 
-```{r eval=!gpkg_buffered_obliggwdep_within_sg_ring_exists}
+```{r eval=!gpkg_buffered_obliggwdep_within_sg_ring_exists || params$rewrite_intermediate_files}
 # use of future unneeded in this case (runs quickly)
 f <- future({
   elapsed <- 
@@ -364,7 +364,7 @@ write_sf(buffered_obliggwdep_within_sg_ring,
 ```
 
 
-```{r eval=gpkg_buffered_obliggwdep_within_sg_ring_exists, include=FALSE}
+```{r eval=gpkg_buffered_obliggwdep_within_sg_ring_exists && !params$rewrite_intermediate_files, include=FALSE}
 buffered_obliggwdep_within_sg_ring <- 
   read_sf(file.path(datapath, 
                     "buffered_obliggwdep_within_sg_ring.gpkg"))
@@ -381,7 +381,7 @@ gpkg_newareas_exists <-
                         "new_areas.gpkg"))
 ```
 
-```{r eval=!gpkg_newareas_exists}
+```{r eval=!gpkg_newareas_exists || params$rewrite_intermediate_files}
 buffered_obliggwdep_within_soilanthrop_buff200 <- 
   buffered_obliggwdep_within_soilanthrop %>% 
   st_buffer(200) %>% 
@@ -411,7 +411,7 @@ list(buffered_obliggwdep_within_soilanthrop_buff200 =
                   layer = .y))
 ```
 
-```{r eval=gpkg_newareas_exists, include=FALSE}
+```{r eval=gpkg_newareas_exists && !params$rewrite_intermediate_files, include=FALSE}
 walk(1:3, function(i) {
   layername <- st_layers(file.path(datapath, "new_areas.gpkg"))$name[i]
   assign(layername,

@@ -13,6 +13,7 @@ documentclass: "article"
 site: bookdown::bookdown_site
 params:
   gisbase_grass: !r if (.Platform$OS.type == "windows") link2GI::paramGRASSw()$gisbase_GRASS[1] else link2GI::paramGRASSx()$gisbase_GRASS[1]
+  rewrite_intermediate_files: TRUE
   overwrite_sg_extended: TRUE
 output:
   bookdown::html_document2:
