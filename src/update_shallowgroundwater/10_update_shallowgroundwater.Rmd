@@ -432,7 +432,8 @@ narrow_soilanthrop_with_obliggwdep_buff200 <-
 
 buffered_obliggwdep_within_sg_ring_buff200 <- 
   buffered_obliggwdep_within_sg_ring %>% 
-  st_buffer(200)
+  st_buffer(200) %>% 
+  st_as_sf
 
 list(buffered_obliggwdep_within_soilanthrop_buff200 =
        buffered_obliggwdep_within_soilanthrop_buff200,
