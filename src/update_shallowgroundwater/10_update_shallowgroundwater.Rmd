@@ -428,6 +428,7 @@ gpkg_sg_extended_exists <- file.exists(file.path(datapath, "sg_extended.gpkg"))
 
 
 ```{r eval=params$overwrite_sg_extended || !gpkg_sg_extended_exists}
+# qgis_arguments("native:union")
 # use of future unneeded in this case (runs quickly)
 f <- future({
   elapsed <- 
