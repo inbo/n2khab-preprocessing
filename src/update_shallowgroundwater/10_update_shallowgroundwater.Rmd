@@ -239,21 +239,6 @@ mapview(narrow_soilanthrop_with_obliggwdep,
 
 Resulting object: `narrow_soilanthrop_with_obliggwdep`.
 
-## Buffer 200 m around `buffered_obliggwdep_within_soilanthrop` and `narrow_soilanthrop_with_obliggwdep`
-
-```{r}
-buffered_obliggwdep_within_soilanthrop_buff200 <- 
-  buffered_obliggwdep_within_soilanthrop %>% 
-  st_buffer(200)
-```
-
-```{r}
-narrow_soilanthrop_with_obliggwdep_buff200 <- 
-  narrow_soilanthrop_with_obliggwdep %>% 
-  st_buffer(200)
-```
-
-
 ## Buffer 500 m around obliggwdep types, that are within 200 m of `shallowgroundwater`
 
 
@@ -313,26 +298,124 @@ buffered_obliggwdep_nearsg <-
   st_buffer(500) %>% 
   st_union()
 )
-st_write(buffered_obliggwdep_nearsg, 
+```
+
+```{r include=FALSE}
+gpkg_buffered_obliggwdep_within_sg_ring_exists <- 
+  file.exists(file.path(datapath, 
+                        "buffered_obliggwdep_within_sg_ring.gpkg"))
+```
+
+```{r eval=!gpkg_buffered_obliggwdep_within_sg_ring_exists}
+# qgis_algorithms() %>% filter(str_detect(algorithm, "extract"))
+# qgis_show_help("native:extractbylocation")
+hmt_pol_obliggwdep %>% 
+  st_make_valid %>% 
+  st_write(file.path(datapath, 
+                     "hmt_pol_obliggwdep.gpkg"),
+           delete_dsn = TRUE)
+```
+
+
+```{r eval=!gpkg_buffered_obliggwdep_within_sg_ring_exists}
+plan(multisession) # future kept here as demonstration
+```
+
+
+```{r eval=!gpkg_buffered_obliggwdep_within_sg_ring_exists}
+# use of future unneeded in this case (runs quickly; however
+# hmt_pol_obliggwdep[sg_ring, ] takes very long)
+f <- future({
+  qgis_run_algorithm("native:extractbylocation",
+                       INPUT = file.path(datapath, 
+                                         "hmt_pol_obliggwdep.gpkg"),
+                       PREDICATE = 0,
+                       INTERSECT = file.path(datapath, 
+                                             "sg_ring.gpkg"))
+}, seed = NULL)
+# resolved(f)
+obliggwdep_sgring_qgis <- value(f, stdout = FALSE) # blocks calling R session if !resolved(f)
+```
+
+
+```{r eval=!gpkg_buffered_obliggwdep_within_sg_ring_exists}
+# use of future unneeded in this case (runs quickly
+f <- future({
+  elapsed <- 
+    system.time(
+      result <-
+        obliggwdep_sgring_qgis$OUTPUT %>% 
+        read_sf %>% 
+        st_buffer(500) %>% 
+        st_union() %>% 
+        st_intersection(sg_ring)
+    )
+  list(result = result, elapsed = elapsed)
+}, seed = NULL)
+# resolved(f)
+value(f, stdout = FALSE)$elapsed
+buffered_obliggwdep_within_sg_ring <- value(f, stdout = FALSE)$result
+st_write(buffered_obliggwdep_within_sg_ring, 
          file.path(datapath, 
-                   "buffered_obliggwdep_nearsg.gpkg"),
+                   "buffered_obliggwdep_within_sg_ring.gpkg"),
          delete_dsn = TRUE)
 ```
 
 
 ```{r}
-execshell("v.overlay ainput=sg_buff binput=sg_repairedgeom operator=not output=sg_ring")
+plan(sequential)
 ```
 
-```{r}
-library(future)
-plan(multisession, workers = 6)
-hmt_sel %<-% {
-  hmt_pol_obliggwdep[sg_ring, ]
-}
-hmt_sel %<-% hmt_pol_obliggwdep[sg_ring, ] %packages% "sf"
-f <- futureOf(hmt_sel)
-resolved(f)
-value(f)
+
+```{r eval=gpkg_buffered_obliggwdep_within_sg_ring_exists, include=FALSE}
+buffered_obliggwdep_within_sg_ring <- 
+  read_sf(file.path(datapath, 
+                    "buffered_obliggwdep_within_sg_ring.gpkg"))
 ```
 
+Resulting object: `buffered_obliggwdep_within_sg_ring`.
+
+
+## Buffer 200 m around `buffered_obliggwdep_within_soilanthrop`, `narrow_soilanthrop_with_obliggwdep` and `buffered_obliggwdep_within_sg_ring`
+
+```{r include=FALSE}
+gpkg_newareas_exists <- 
+  file.exists(file.path(datapath, 
+                        "new_areas.gpkg"))
+```
+
+```{r eval=!gpkg_newareas_exists}
+buffered_obliggwdep_within_soilanthrop_buff200 <- 
+  buffered_obliggwdep_within_soilanthrop %>% 
+  st_buffer(200) %>% 
+  st_cast("MULTIPOLYGON")
+
+narrow_soilanthrop_with_obliggwdep_buff200 <- 
+  narrow_soilanthrop_with_obliggwdep %>% 
+  select(-everything()) %>% 
+  st_buffer(200)
+
+buffered_obliggwdep_within_sg_ring_buff200 <- 
+  buffered_obliggwdep_within_sg_ring %>% 
+  st_buffer(200)
+
+list(buffered_obliggwdep_within_soilanthrop_buff200 =
+       buffered_obliggwdep_within_soilanthrop_buff200,
+     narrow_soilanthrop_with_obliggwdep_buff200 =
+       narrow_soilanthrop_with_obliggwdep_buff200,
+     buffered_obliggwdep_within_sg_ring_buff200 =
+       buffered_obliggwdep_within_sg_ring_buff200) %>% 
+  walk2(names(.),
+        ~st_write(.x,
+                  dsn = file.path(datapath, "new_areas.gpkg"),
+                  layer = .y))
+```
+
+```{r eval=gpkg_newareas_exists, include=FALSE}
+walk(1:3, function(i) {
+  layername <- st_layers(file.path(datapath, "new_areas.gpkg"))$name[i]
+  assign(layername,
+         read_sf(file.path(datapath, "new_areas.gpkg"),
+                 layer = layername))
+})
+```
