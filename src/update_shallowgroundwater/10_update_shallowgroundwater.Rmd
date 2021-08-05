@@ -425,6 +425,27 @@ walk(1:3, function(i) {
 
 ## Intersect the new zones, subtract the original `shallowgroundwater` layer and append
 
+```{r}
+# use of future unneeded in this case (runs quickly)
+f <- future({
+  elapsed <- 
+    system.time(
+      result <- qgis_run_algorithm("native:union",
+                                   INPUT = file.path(datapath, 
+                                                     "new_areas.gpkg") %>% 
+                                     str_c("|layername=",
+                                           "buffered_obliggwdep_within_soilanthrop_buff200"),
+                                   OVERLAY = file.path(datapath, 
+                                                     "new_areas.gpkg") %>% 
+                                     str_c("|layername=",
+                                           "narrow_soilanthrop_with_obliggwdep_buff200"))
+    )
+  list(result = result, elapsed = elapsed)
+}, seed = NULL)
+# resolved(f)
+value(f, stdout = FALSE, signal = FALSE)$elapsed
+res <- value(f, stdout = FALSE)$result$OUTPUT
+```
 
 
 
