@@ -12,7 +12,6 @@ fontsize: 11pt
 documentclass: "article"
 site: bookdown::bookdown_site
 params:
-  gisbase_grass: !r if (.Platform$OS.type == "windows") link2GI::paramGRASSw()$gisbase_GRASS[1] else link2GI::paramGRASSx()$gisbase_GRASS[1]
   rewrite_intermediate_files: TRUE
   overwrite_sg_extended: TRUE
   buffer_obliggwdep: 100
@@ -55,15 +54,6 @@ Sys.setenv(OGR_CURRENT_DATE = "2021-08-05T00:00:00.000Z")
 # The time precision (milliseconds) & timezone (UTC, denoted by 'Z') is
 # needed to meet Requirement 15 of the GeoPackage standard (version 1.2.1 & 1.3).
 
-if (.Platform$OS.type == "unix") {
-  Sys.setenv(GRASS_PYTHON = system("which python3", intern = TRUE))
-}
-gisbase_grass <- 
-  if (interactive()) {
-    if (.Platform$OS.type == "windows") link2GI::paramGRASSw()$gisbase_GRASS[1] else {
-      link2GI::paramGRASSx()$gisbase_GRASS[1]
-    }
-  } else params$gisbase_grass
 opts_chunk$set(
   echo = TRUE,
   dpi = 300
