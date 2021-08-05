@@ -1,0 +1,27 @@
+# Check results
+
+```{r}
+filepath <- file.path(datapath, "sg_extended.gpkg")
+```
+
+- Checksums:
+
+```{r}
+c("xxh64", "md5", "sha256") %>% 
+  map_dfr(~tibble(algorithm = ., 
+                  checksum = checksum(filepath, .))) %>% 
+  kable
+```
+
+- Contents:
+
+```{r paged.print=FALSE, warning=FALSE}
+(pol <- read_sf(filepath))
+glimpse(pol)
+```
+
+- Is the CRS conform EPSG:31370?
+
+```{r} 
+ st_crs(pol) == st_crs(31370) 
+```
