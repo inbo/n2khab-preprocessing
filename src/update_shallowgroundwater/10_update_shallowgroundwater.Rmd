@@ -185,7 +185,9 @@ soil_anthrop %>%
 
 # Execution
 
-## Buffer 500 m around obliggwdep types, within `soil_anthrop`
+## Zones where shallow groundwater is more probable
+
+### Buffer 500 m around obliggwdep types, within `soil_anthrop`
 
 We create this geospatial object and also write it as a GPKG file, since the calculation takes several minutes.
 
@@ -217,7 +219,7 @@ buffered_obliggwdep_within_soilanthrop <-
 
 Resulting object: `buffered_obliggwdep_within_soilanthrop`.
 
-## Narrow anthropogenic soil polygons with 'obliggwdep' types, buffered by 100 m
+### Narrow anthropogenic soil polygons with 'obliggwdep' types
 
 After several iterations, the below used conditions on `thinness` and `obliggwdep_pol_frac` appeared satisfying.
 
@@ -239,7 +241,7 @@ mapview(narrow_soilanthrop_with_obliggwdep,
 
 Resulting object: `narrow_soilanthrop_with_obliggwdep`.
 
-## Buffer 500 m around obliggwdep types, that are within 200 m of `shallowgroundwater`
+### Buffer 500 m around obliggwdep types, that are within 200 m of `shallowgroundwater`
 
 
 ```{r eval=!gpkg_sg_exists}
@@ -376,7 +378,7 @@ buffered_obliggwdep_within_sg_ring <-
 Resulting object: `buffered_obliggwdep_within_sg_ring`.
 
 
-## Buffer 200 m around `buffered_obliggwdep_within_soilanthrop`, `narrow_soilanthrop_with_obliggwdep` and `buffered_obliggwdep_within_sg_ring`
+## Add 200 m buffer around previously created zones to minimize false negatives
 
 ```{r include=FALSE}
 gpkg_newareas_exists <- 
@@ -419,3 +421,10 @@ walk(1:3, function(i) {
                  layer = layername))
 })
 ```
+
+## Intersect the new zones, subtract the original `shallowgroundwater` layer and append
+
+
+
+
+
