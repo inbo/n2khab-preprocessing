@@ -40,8 +40,8 @@ library(googledrive)
 library(ggplot2)
 library(mapview)
 library(n2khab)
-library(rgrass7)
 library(qgisprocess)
+library(future)
 if (.Platform$OS.type == "unix") {
   Sys.setenv(GRASS_PYTHON = system("which python3", intern = TRUE))
 }

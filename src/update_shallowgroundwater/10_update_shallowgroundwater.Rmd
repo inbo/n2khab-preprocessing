@@ -221,11 +221,16 @@ Resulting object: `buffered_obliggwdep_within_soilanthrop`.
 
 After several iterations, the below used conditions on `thinness` and `obliggwdep_pol_frac` appeared satisfying.
 
-```{r out.width='800px', out.height='500px'}
+```{r}
 narrow_soilanthrop_with_obliggwdep <- 
   soil_anthrop %>% 
   filter(thinness < 0.15,
-         obliggwdep_pol_frac > 0.04)
+         obliggwdep_pol_frac > 0.04) %>% 
+  st_cast("MULTIPOLYGON")
+```
+
+
+```{r out.width='800px', out.height='500px'}
 mapview(narrow_soilanthrop_with_obliggwdep,
         zcol = "thinness",
         color = "pink3",
@@ -251,51 +256,6 @@ narrow_soilanthrop_with_obliggwdep_buff200 <-
 
 ## Buffer 500 m around obliggwdep types, that are within 200 m of `shallowgroundwater`
 
-We need to do this in GRASS because of the large `shallowgroundwater` input.
-
-```{r}
-grasspath <- file.path(datapath, "grass")
-grass_exists <- file.exists(file.path(grasspath, 
-                                      "PERMANENT/PROJ_INFO"))
-if (!dir.exists(grasspath)) dir.create(grasspath)
-```
-
-
-```{r results="hide"}
-# CREATE OR LINK to a permanent GRASS location
-initGRASS(gisBase = gisbase_grass,
-          gisDbase = datapath,
-          home = grasspath,
-          location = "grass",
-          mapset = "PERMANENT", 
-          override = TRUE)
-if (!grass_exists) {
-    execGRASS("g.proj", c("c", "quiet"), 
-              epsg = 31370)
-}
-# gmeta()
-use_sf()
-```
-
-
-```{r}
-stopifnot(file.exists(file.path(grasspath, 
-                                "PERMANENT/PROJ_INFO")))
-```
-
-```{r warning=FALSE, results="hide", eval=!grass_exists}
-execGRASS("v.in.ogr",
-          input = normalizePath(file.path(fileman_up("n2khab_data"),
-                                          "10_raw/shallowgroundwater")),
-          output = "sg",
-          flags = c("o", # assume CRS is same as from GRASS, i.e. set CRS as EPSG:31370
-                    "overwrite")
-          )
-```
-
-```{r}
-writeVECT(hmt_pol_obliggwdep, "hmt_pol_obliggwdep")
-```
 
 ```{r eval=!gpkg_sg_exists}
 sg_repairedgeom <- 
@@ -314,77 +274,21 @@ sg_repairedgeom <-
 ```
 
 ```{r include=FALSE}
-gpkg_sg_buff_exists <- 
+gpkg_sg_ring_exists <- 
   file.exists(file.path(datapath, 
-                        "sg_buff.gpkg"))
+                        "sg_ring.gpkg"))
 ```
 
-
-```{r eval=!gpkg_sg_buff_exists}
-sg_buff <- 
-  sg_repairedgeom %>% 
-  st_buffer(200) %>% 
-  st_cast("MULTIPOLYGON")
-sg_buff %>% 
-  st_write(file.path(datapath, 
-                     "sg_buff.gpkg"),
-           delete_dsn = TRUE)
-```
-
-```{r eval=gpkg_sg_buff_exists, include=FALSE}
-sg_buff <- 
-  read_sf(file.path(datapath, 
-                    "sg_buff.gpkg"))
-```
-
-```{r}
-# qgis_algorithms() %>% filter(str_detect(algorithm, "diff"))
-# qgis_show_help("native:difference")
-hmt_pol_obliggwdep %>% 
-  st_make_valid %>% 
-  st_write(file.path(datapath, 
-                     "hmt_pol_obliggwdep.gpkg"),
-           delete_dsn = TRUE)
-sg_ring <- 
-  qgis_run_algorithm("native:difference",
-                     INPUT = file.path(datapath, 
-                                       "sg_buff.gpkg"),
-                     OVERLAY = file.path(datapath, 
-                                         "sg_repairedgeom.gpkg"))
-system.time(
-  sg_ring <- 
-    qgis_run_algorithm("grass7:v.overlay",
-                       ainput = file.path(datapath, 
-                                          "sg_buff.gpkg"),
-                       binput = file.path(datapath, 
-                                          "sg_repairedgeom.gpkg"),
-                       operator = "2")
-)
-```
-
-
-```{r}
-execGRASS("v.in.ogr",
-          input = file.path(datapath, "sg_repairedgeom.gpkg"),
-          output = "sg_repairedgeom",
-          flags = "overwrite")
-execGRASS("v.in.ogr",
-          input = file.path(datapath, "sg_buff.gpkg"),
-          output = "sg_buff",
-          flags = c("c", "overwrite"))
-```
-
-
-```{r}
+```{r eval=!gpkg_sg_ring_exists}
 system.time({
 sg_union <-
   sg_repairedgeom %>%
   st_union()
-sg_buff2 <-
+sg_buff <-
   sg_union %>%
   st_buffer(200)
 sg_ring <- 
-  st_difference(sg_buff2, sg_union)
+  st_difference(sg_buff, sg_union)
 })
 #     user   system  elapsed 
 # 2044.543    0.000 2045.678 
@@ -394,11 +298,17 @@ st_write(sg_ring,
          delete_dsn = TRUE)
 ```
 
-```{r eval=!gpkg_exists}
-# following step takes several minutes!
+```{r eval=gpkg_sg_ring_exists, include=FALSE}
+sg_ring <- 
+  read_sf(file.path(datapath, 
+                    "sg_ring.gpkg"))
+```
+
+```{r eval=FALSE, echo=FALSE}
+# following step takes too much time! Interrupted this manually.
 system.time(
 buffered_obliggwdep_nearsg <-
-  hmt_pol_obliggwdep[sg_ring, ] %>% 
+  hmt_pol_obliggwdep[sg_ring, ] %>% # especially this takes an age. Will use QGIS here.
   st_make_valid(.) %>% 
   st_buffer(500) %>% 
   st_union()
