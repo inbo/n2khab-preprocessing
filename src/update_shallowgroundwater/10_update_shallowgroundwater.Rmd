@@ -427,7 +427,7 @@ gpkg_sg_extended_exists <- file.exists(file.path(datapath, "sg_extended.gpkg"))
 ```
 
 
-```{r eval=params$overwrite_sg_extended | !gpkg_sg_extended_exists}
+```{r eval=params$overwrite_sg_extended || !gpkg_sg_extended_exists}
 # use of future unneeded in this case (runs quickly)
 f <- future({
   elapsed <- 
@@ -463,7 +463,7 @@ value(f, stdout = FALSE, signal = FALSE)$elapsed
 res_filepath2 <- value(f, stdout = FALSE)$result$OUTPUT %>% as.character
 ```
 
-```{r eval=params$overwrite_sg_extended | !gpkg_sg_extended_exists}
+```{r eval=params$overwrite_sg_extended || !gpkg_sg_extended_exists}
 f <- future({
   elapsed <- 
     system.time(
@@ -483,7 +483,7 @@ value(f, stdout = FALSE, signal = FALSE)$elapsed
 addition <- value(f, stdout = FALSE)$result
 ```
 
-```{r eval=params$overwrite_sg_extended | !gpkg_sg_extended_exists}
+```{r eval=params$overwrite_sg_extended || !gpkg_sg_extended_exists}
 sg_extended <- 
   sg_repairedgeom %>% 
   as_tibble %>% 
@@ -493,7 +493,7 @@ sg_extended <-
   st_sf(crs = 31370)
 ```
 
-```{r eval=params$overwrite_sg_extended | !gpkg_sg_extended_exists}
+```{r eval=params$overwrite_sg_extended || !gpkg_sg_extended_exists}
 system.time(
 write_sf(sg_extended,
          file.path(datapath, "sg_extended.gpkg"),
