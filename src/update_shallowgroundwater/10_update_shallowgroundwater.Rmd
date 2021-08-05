@@ -425,30 +425,85 @@ walk(1:3, function(i) {
 })
 ```
 
-## Intersect the new zones, subtract the original `shallowgroundwater` layer and append
+## Union the new zones (keeping intersections), subtract the original `shallowgroundwater` layer and append
 
-```{r}
+```{r include=FALSE}
+gpkg_sg_extended_exists <- file.exists(file.path(datapath, "sg_extended.gpkg"))
+```
+
+
+```{r eval=params$overwrite_sg_extended | !gpkg_sg_extended_exists}
 # use of future unneeded in this case (runs quickly)
 f <- future({
   elapsed <- 
     system.time(
       result <- qgis_run_algorithm("native:union",
-                                   INPUT = file.path(datapath, 
-                                                     "new_areas.gpkg") %>% 
-                                     str_c("|layername=",
-                                           "buffered_obliggwdep_within_soilanthrop_buff200"),
-                                   OVERLAY = file.path(datapath, 
-                                                     "new_areas.gpkg") %>% 
-                                     str_c("|layername=",
-                                           "narrow_soilanthrop_with_obliggwdep_buff200"))
+                                   INPUT = 
+                                     buffered_obliggwdep_within_soilanthrop_buff200 %>% 
+                                     mutate(within_soilanthrop_plus_buffer = TRUE),
+                                   OVERLAY = 
+                                     narrow_soilanthrop_with_obliggwdep_buff200 %>% 
+                                     mutate(narrow_soilanthrop_plus_buffer = TRUE))
     )
   list(result = result, elapsed = elapsed)
 }, seed = NULL)
 # resolved(f)
 value(f, stdout = FALSE, signal = FALSE)$elapsed
-res <- value(f, stdout = FALSE)$result$OUTPUT
+res_filepath <- value(f, stdout = FALSE)$result$OUTPUT %>% as.character
+
+f <- future({
+  elapsed <- 
+    system.time(
+      result <- qgis_run_algorithm("native:union",
+                                   INPUT = 
+                                     res_filepath,
+                                   OVERLAY = 
+                                     buffered_obliggwdep_within_sg_ring_buff200 %>% 
+                                     mutate(nearby_originalsg_plus_buffer = TRUE))
+    )
+  list(result = result, elapsed = elapsed)
+}, seed = NULL)
+# resolved(f)
+value(f, stdout = FALSE, signal = FALSE)$elapsed
+res_filepath2 <- value(f, stdout = FALSE)$result$OUTPUT %>% as.character
 ```
 
+```{r eval=params$overwrite_sg_extended | !gpkg_sg_extended_exists}
+f <- future({
+  elapsed <- 
+    system.time(
+      result <- 
+        read_sf(res_filepath2) %>% 
+        select(-starts_with("fid")) %>% 
+        mutate(across(where(is.logical), ~ifelse(is.na(.), FALSE, .))) %>% 
+        st_difference(
+          sg_repairedgeom %>% 
+            st_union()
+        )
+    )
+  list(result = result, elapsed = elapsed)
+}, seed = NULL)
+# resolved(f)
+value(f, stdout = FALSE, signal = FALSE)$elapsed
+addition <- value(f, stdout = FALSE)$result
+```
 
+```{r eval=params$overwrite_sg_extended | !gpkg_sg_extended_exists}
+sg_extended <- 
+  sg_repairedgeom %>% 
+  as_tibble %>% 
+  bind_rows(
+    addition %>% as_tibble
+  ) %>% 
+  st_sf(crs = 31370)
+```
 
+```{r eval=params$overwrite_sg_extended | !gpkg_sg_extended_exists}
+system.time(
+write_sf(sg_extended,
+         file.path(datapath, "sg_extended.gpkg"),
+         delete_dsn = TRUE,
+         )
+)
+```
 
