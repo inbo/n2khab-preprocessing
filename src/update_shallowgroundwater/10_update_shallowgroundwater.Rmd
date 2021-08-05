@@ -205,7 +205,7 @@ buffered_obliggwdep_within_soilanthrop <-
   st_buffer(500) %>% 
   st_union() %>% 
   st_intersection(soil_anthrop)
-st_write(buffered_obliggwdep_within_soilanthrop, 
+write_sf(buffered_obliggwdep_within_soilanthrop, 
          file.path(datapath, 
                    "buffered_obliggwdep_within_soilanthrop.gpkg"),
          delete_dsn = TRUE)
@@ -248,7 +248,7 @@ Resulting object: `narrow_soilanthrop_with_obliggwdep`.
 sg_repairedgeom <- 
   st_make_valid(sg) %>% 
   st_cast("MULTIPOLYGON")
-st_write(sg_repairedgeom,
+write_sf(sg_repairedgeom,
          file.path(datapath, 
                    "sg_repairedgeom.gpkg"),
          delete_dsn = TRUE)
@@ -279,7 +279,7 @@ sg_ring <-
 })
 #     user   system  elapsed 
 # 2044.543    0.000 2045.678 
-st_write(sg_ring, 
+write_sf(sg_ring, 
          file.path(datapath, 
                    "sg_ring.gpkg"),
          delete_dsn = TRUE)
@@ -313,7 +313,7 @@ gpkg_buffered_obliggwdep_within_sg_ring_exists <-
 # qgis_show_help("native:extractbylocation")
 hmt_pol_obliggwdep %>% 
   st_make_valid %>% 
-  st_write(file.path(datapath, 
+  write_sf(file.path(datapath, 
                      "hmt_pol_obliggwdep.gpkg"),
            delete_dsn = TRUE)
 ```
@@ -357,7 +357,7 @@ f <- future({
 # resolved(f)
 value(f, stdout = FALSE)$elapsed
 buffered_obliggwdep_within_sg_ring <- value(f, stdout = FALSE)$result
-st_write(buffered_obliggwdep_within_sg_ring, 
+write_sf(buffered_obliggwdep_within_sg_ring, 
          file.path(datapath, 
                    "buffered_obliggwdep_within_sg_ring.gpkg"),
          delete_dsn = TRUE)
@@ -411,7 +411,7 @@ list(buffered_obliggwdep_within_soilanthrop_buff200 =
      buffered_obliggwdep_within_sg_ring_buff200 =
        buffered_obliggwdep_within_sg_ring_buff200) %>% 
   walk2(names(.),
-        ~st_write(.x,
+        ~write_sf(.x,
                   dsn = file.path(datapath, "new_areas.gpkg"),
                   layer = .y))
 ```
