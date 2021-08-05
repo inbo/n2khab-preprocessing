@@ -266,7 +266,7 @@ gpkg_sg_ring_exists <-
                         "sg_ring.gpkg"))
 ```
 
-```{r eval=!gpkg_sg_ring_exists || params$rewrite_intermediate_files}
+```{r eval=!gpkg_sg_ring_exists}
 system.time({
 sg_union <-
   sg_repairedgeom %>%
@@ -285,7 +285,7 @@ write_sf(sg_ring,
          delete_dsn = TRUE)
 ```
 
-```{r eval=gpkg_sg_ring_exists && !params$rewrite_intermediate_files, include=FALSE}
+```{r eval=gpkg_sg_ring_exists, include=FALSE}
 sg_ring <- 
   read_sf(file.path(datapath, 
                     "sg_ring.gpkg"))
@@ -319,7 +319,7 @@ hmt_pol_obliggwdep %>%
 ```
 
 
-```{r eval=!gpkg_buffered_obliggwdep_within_sg_ring_exists || params$rewrite_intermediate_files}
+```{r}
 plan(multisession) # future kept here as demonstration
 ```
 
