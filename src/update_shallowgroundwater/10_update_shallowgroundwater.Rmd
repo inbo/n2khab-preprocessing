@@ -81,8 +81,7 @@ if (checksum(sspath) != "9f4204b476506031") stop("Incorrect soilmap_simple versi
 hmtpath <- find_root_file("n2khab_data/20_processed/habitatmap_terr/habitatmap_terr.gpkg", 
                             criterion = has_dir("n2khab_data"))
 if (!file.exists(hmtpath)) stop("Please organize habitatmap_terr location. See https://inbo.github.io/n2khab")
-assertthat::assert_that(checksum(hmtpath) == "72d3144016e816ed",
-                        msg = "Incorrect habitatmap_terr version.")
+if (checksum(hmtpath) != "72d3144016e816ed") stop("Incorrect habitatmap_terr version.")
 ```
 
 Reading data sets.
