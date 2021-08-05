@@ -16,7 +16,7 @@ Hence, the area it covers needs to be made broader.
 
 In this document, we generate several sets of _extra polygons_ to be added to shallowgroundwater:
 
-- _within_ anthropogenic soil types (using the `bsm_mo_soilunitype` column of the `soilmap_simple` data source): buffers of 500 m around the '(almost) everywhere groundwater dependent' types (here also called 'obliggwdep' types);
+- _within_ anthropogenic soil types (using the `bsm_mo_soilunitype` column of the `soilmap_simple` data source): buffers of `r params$buffer_obliggwdep` m around the '(almost) everywhere groundwater dependent' types (here also called 'obliggwdep' types);
 - for narrow anthropogenic soil type polygons: if they contain 'obliggwdep' types, then add them as a whole.
 An appropriate algorithm has to be made that selects meaningful polygons - often it appears that complete cities would meet the foregoing requirement, so a sufficient amount of 'obliggwdep' type will need to be present in such polygons;
 - buffering `shallowgroundwater`
@@ -187,7 +187,7 @@ soil_anthrop %>%
 
 ## Zones where shallow groundwater is more probable
 
-### Buffer 500 m around obliggwdep types, within `soil_anthrop`
+### Buffer `r params$buffer_obliggwdep` m around obliggwdep types, within `soil_anthrop`
 
 We create this geospatial object and also write it as a GPKG file, since the calculation takes several minutes.
 
@@ -202,7 +202,7 @@ gpkg_exists <-
 buffered_obliggwdep_within_soilanthrop <-
   hmt_pol_obliggwdep[soil_anthrop, ] %>% 
   st_make_valid(.) %>% 
-  st_buffer(500) %>% 
+  st_buffer(params$buffer_obliggwdep) %>% 
   st_union() %>% 
   st_intersection(soil_anthrop)
 write_sf(buffered_obliggwdep_within_soilanthrop, 
@@ -241,7 +241,7 @@ mapview(narrow_soilanthrop_with_obliggwdep,
 
 Resulting object: `narrow_soilanthrop_with_obliggwdep`.
 
-### Buffer 500 m around obliggwdep types, that are within 200 m of `shallowgroundwater`
+### Buffer `r params$buffer_obliggwdep` m around obliggwdep types, that are within 200 m of `shallowgroundwater`
 
 
 ```{r eval=!gpkg_sg_exists}
@@ -297,7 +297,7 @@ system.time(
 buffered_obliggwdep_nearsg <-
   hmt_pol_obliggwdep[sg_ring, ] %>% # especially this takes an age. Will use QGIS here.
   st_make_valid(.) %>% 
-  st_buffer(500) %>% 
+  st_buffer(params$buffer_obliggwdep) %>% 
   st_union()
 )
 ```
@@ -348,7 +348,7 @@ f <- future({
       result <-
         obliggwdep_sgring_qgis$OUTPUT %>% 
         read_sf %>% 
-        st_buffer(500) %>% 
+        st_buffer(params$buffer_obliggwdep) %>% 
         st_union() %>% 
         st_intersection(sg_ring)
     )

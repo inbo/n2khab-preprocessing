@@ -15,6 +15,7 @@ params:
   gisbase_grass: !r if (.Platform$OS.type == "windows") link2GI::paramGRASSw()$gisbase_GRASS[1] else link2GI::paramGRASSx()$gisbase_GRASS[1]
   rewrite_intermediate_files: TRUE
   overwrite_sg_extended: TRUE
+  buffer_obliggwdep: 100
 output:
   bookdown::html_document2:
     code_folding: hide
