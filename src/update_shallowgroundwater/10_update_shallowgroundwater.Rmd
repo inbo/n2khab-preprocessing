@@ -9,17 +9,46 @@ It is more specifically applied to restrict the 'locally groundwater dependent' 
 - Data and metadata are in [a GDrive folder](https://drive.google.com/drive/u/0/folders/1S9colwuaMNmB58u4RUnB0MqZLyIUZ9rT).
 - More info about checking the data source: see <https://github.com/inbo/n2khab-mne-design/pull/74> and links therein.
 
-Based on an evaluation that uses the '(almost) everywhere groundwater dependent' types, the current state does not yet cover a significant proportion of those types.
+Based on an evaluation that uses the '(almost) everywhere groundwater dependent' types, the current state still mismatches a significant proportion of those types.
 Hence, the area it covers needs to be made broader.
 
-## Aim
+## Aim and method {#method}
 
-In this document, we generate several sets of _extra polygons_ to be added to shallowgroundwater:
+In this document, we append several layers to `shallowgroundwater`.
+The **aim** is to select areas which `shallowgroundwater` doesn't cover yet and where '(almost) everywhere groundwater dependent' types (here also called 'obliggwdep' types) are present.
+Such 'areas of interest' are e.g. anthropogenic soil type polygons, and a ring around the borders of `shallowgroundwater`.
 
-- _within_ anthropogenic soil types (using the `bsm_mo_soilunitype` column of the `soilmap_simple` data source): buffers of `r params$buffer_obliggwdep` m around the '(almost) everywhere groundwater dependent' types (here also called 'obliggwdep' types);
-- for narrow anthropogenic soil type polygons: if they contain 'obliggwdep' types, then add them as a whole.
-An appropriate algorithm has to be made that selects meaningful polygons - often it appears that complete cities would meet the foregoing requirement, so a sufficient amount of 'obliggwdep' type will need to be present in such polygons;
-- buffering `shallowgroundwater`
+- In order not to exaggerate the extension of `shallowgroundwater`, we will subseqently limit those areas to _buffers (of `r params$buffer_obliggwdep` m) around habitatmap polygons with 'obliggwdep' types_ -- still clipping along the borders of the aforementioned areas.
+So in practice, we first select the habitatmap polygons with 'obliggwdep' types that intersect the areas of interest, we buffer them, and we clip the result along the areas of interest.
+  - The buffers around habitatmap polygons with 'obliggwdep' types are applied since it is expected that shallow groundwater (with potentially 'locally groundwater dependent' types) will occur in their vicinity.
+- In a next step, we want to add a _buffer of 200 m_ around the resulting polygons.
+This is done as a further means of conservative area selection: we rather need too much area than too little, given the ultimate aim of restricting target populations.
+
+The areas of interest are:
+
+- all _anthropogenic soil type polygons_: i.e. where the `bsm_mo_soilunitype` column of the `soilmap_simple` data source starts with `O`;
+- a _ring around_ `shallowgroundwater` of 200 m wide.
+
+Regarding the anthropogenic soil type polygons, from earlier evaluation it appeared that the _narrow ones that contain 'obliggwdep' types_ are interesting as a whole.
+Hence we select them as a whole instead of selecting buffers around the habitatmap polygons with 'obliggwdep' types (before finally adding the buffer of 200 m to these soil type polygons):
+
+- An appropriate algorithm had to be made that selects meaningful polygons - at first it resulted in complete cities meeting the narrowness requirement (since they are part of polygons with long, narrow parts).
+- Hence an additional condition was required: a sufficient amount of 'obliggwdep' type must be present in such polygons.
+
+Finally, we append the parts -- of all new layers -- that don't overlap `shallowgroundwater`, to `shallowgroundwater`.
+The resulting new version of `shallowgroundwater` is written here as **`sg_extended.gpkg`**.
+
+Hence we will have three separate sources, which we will document as three extra TRUE/FALSE column inside `sg_extended.gpkg`:
+
+- `within_soilanthrop_plus_buffer`
+- `narrow_soilanthrop_plus_buffer`
+- `nearby_originalsg_plus_buffer`
+
+Where an area overlapped between several of these sources, more than one column is set as `TRUE`.
+
+We do most geoprocessing tasks using `sf` (mostly using GEOS as backend).
+However in some cases we use `qgisprocess` (QGIS as backend) when the QGIS algorithm is either faster than or absent from `sf`.
+
 
 # Preparation
 
@@ -50,6 +79,8 @@ if (!dir.exists(sgpath) | list.files(sgpath) %>% length == 0) {
 ```
 
 Verification of several input data sets.
+
+Checksums (using default algorithm of `n2khab::checksum()`) of `shallowgroundwater`:
 
 ```{r}
 checksums <- 
@@ -101,6 +132,7 @@ sg <- read_sf(sgpath, crs = 31370)
 ```
 
 ```{r eval=FALSE, echo=FALSE}
+# Preparatory exploration of anthropogenic areas:
 read_soilmap(use_processed = FALSE) %>% 
   st_drop_geometry %>% 
   filter(str_sub(bsm_mo_soilunitype, 1, 1) == "O") %>% 
@@ -144,7 +176,7 @@ hmt_pol_obliggwdep <-
 st_agr(hmt_pol_obliggwdep) <- "constant"
 ```
 
-Creating a geospatial object of anthropogenic soil type polygons, and calculate a property 'thinness' (from [here](https://tereshenkov.wordpress.com/2014/04/08/fighting-sliver-polygons-in-arcgis-thinness-ratio/)) - lower means more narrow - as well as the areal fraction occupied by `habitatmap_terr` polygons having 'obliggwdep' types.
+Creating a geospatial object of anthropogenic soil type polygons, and calculate a property 'thinness' (from [here](https://tereshenkov.wordpress.com/2014/04/08/fighting-sliver-polygons-in-arcgis-thinness-ratio/)) -- lower means more narrow -- as well as the areal fraction occupied by `habitatmap_terr` polygons having 'obliggwdep' types.
 
 ```{r}
 soil_anthrop <- 
@@ -184,7 +216,7 @@ soil_anthrop %>%
 
 # Execution
 
-## Zones where shallow groundwater is more probable
+## Generating the areas of interest (where shallow groundwater is more probable)
 
 ### Buffer `r params$buffer_obliggwdep` m around obliggwdep types, within `soil_anthrop`
 
@@ -230,6 +262,7 @@ narrow_soilanthrop_with_obliggwdep <-
   st_cast("MULTIPOLYGON")
 ```
 
+Interactive map:
 
 ```{r out.width='800px', out.height='500px'}
 mapview(narrow_soilanthrop_with_obliggwdep,
@@ -242,6 +275,7 @@ Resulting object: `narrow_soilanthrop_with_obliggwdep`.
 
 ### Buffer `r params$buffer_obliggwdep` m around obliggwdep types, that are within 200 m of `shallowgroundwater`
 
+We will first create a ring around `shallowgroundwater` of 200 m width.
 
 ```{r eval=!gpkg_sg_exists}
 sg_repairedgeom <- 
@@ -289,6 +323,8 @@ sg_ring <-
   read_sf(file.path(datapath, 
                     "sg_ring.gpkg"))
 ```
+
+Then we create the buffered habitatmap polygons with 'obliggwdep' types within the ring.
 
 ```{r eval=FALSE, echo=FALSE}
 # following step takes too much time! Interrupted this manually.
@@ -419,7 +455,18 @@ walk(1:3, function(i) {
 })
 ```
 
+We write the three resulting layers into `new_areas.gpkg`:
+
+```{r paged.print=FALSE}
+st_layers(file.path(datapath, "new_areas.gpkg"))
+```
+
+Each layer consists of just one Multipolygon.
+That is the result of unioning steps (`st_union()`; corresponding QGIS terminology is `native:aggregate`) in order to prevent overlapping polygons within the same layer, as a consequence of creating buffers.
+
 ## Union the new zones (keeping intersections), subtract the original `shallowgroundwater` layer and append
+
+We extend `shallowgroundwater` as described in paragraph \@ref(method).
 
 ```{r include=FALSE}
 gpkg_sg_extended_exists <- file.exists(file.path(datapath, "sg_extended.gpkg"))
@@ -482,6 +529,8 @@ f <- future({
 value(f, stdout = FALSE, signal = FALSE)$elapsed
 addition <- value(f, stdout = FALSE)$result
 ```
+
+The result is written as `sg_extended.gpkg`.
 
 ```{r eval=params$overwrite_sg_extended || !gpkg_sg_extended_exists}
 sg_extended <- 
