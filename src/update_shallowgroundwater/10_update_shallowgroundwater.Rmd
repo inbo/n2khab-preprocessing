@@ -364,11 +364,6 @@ write_sf(buffered_obliggwdep_within_sg_ring,
 ```
 
 
-```{r}
-plan(sequential)
-```
-
-
 ```{r eval=gpkg_buffered_obliggwdep_within_sg_ring_exists, include=FALSE}
 buffered_obliggwdep_within_sg_ring <- 
   read_sf(file.path(datapath, 
@@ -505,5 +500,9 @@ write_sf(sg_extended,
          delete_dsn = TRUE,
          )
 )
+```
+
+```{r}
+plan(sequential)
 ```
 
