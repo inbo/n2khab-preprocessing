@@ -341,7 +341,7 @@ obliggwdep_sgring_qgis <- value(f, stdout = FALSE) # blocks calling R session if
 
 
 ```{r eval=!gpkg_buffered_obliggwdep_within_sg_ring_exists}
-# use of future unneeded in this case (runs quickly
+# use of future unneeded in this case (runs quickly)
 f <- future({
   elapsed <- 
     system.time(
