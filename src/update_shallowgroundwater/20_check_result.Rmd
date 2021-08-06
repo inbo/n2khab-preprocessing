@@ -25,3 +25,21 @@ glimpse(pol)
 ```{r} 
  st_crs(pol) == st_crs(31370) 
 ```
+
+- Sensible results?
+
+```{r include=FALSE}
+image <- file.path(local_root, "images/qgis_shot.png")
+image_exists <- file.exists(image)
+```
+
+
+```{r eval = image_exists, fig.cap="_Appended new areas, in a QGIS screenshot. Zoomed into a specific area. Light colour = original data source, dark colour = appended area._", out.width='80%'}
+include_graphics(image)
+```
+
+The pattern of locally buffered 'obliggwdep' types is quite dominant in the resulting layer.
+In contrast, the original layer has numerous narrow and small patches of shallow groundwater.
+So these may be too narrow.
+It might be sensible to also add a narrow buffer, e.g. 50 m, around the whole of the original layer.
+Or, obtaining a broader area by being more liberal in the selection of soil types.
