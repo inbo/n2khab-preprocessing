@@ -62,18 +62,6 @@ opts_chunk$set(
 
 **Note: this is a bookdown project, supposed to be run from within the `src/update_shallowgroundwater` subfolder. You can use the `update_shallowgroundwater.Rproj` RStudio project file in this subfolder to run it.**
 
-```{r}
-# Function to aid in GRASS processing
-execshell <- function(commandstring, intern = FALSE) {
-    if (.Platform$OS.type == "windows") {
-        res <- shell(commandstring, intern = TRUE)
-    } else {
-        res <- system(commandstring, intern = TRUE)
-    }
-    if (!intern) cat(res, sep = "\n") else return(res)
-}
-```
-
 
 
 
