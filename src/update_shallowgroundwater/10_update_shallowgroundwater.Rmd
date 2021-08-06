@@ -436,6 +436,8 @@ buffered_obliggwdep_within_sg_ring_buff200 <-
   st_buffer(200) %>% 
   st_as_sf
 
+if (gpkg_newareas_exists) unlink(file.path(datapath, "new_areas.gpkg"))
+
 list(buffered_obliggwdep_within_soilanthrop_buff200 =
        buffered_obliggwdep_within_soilanthrop_buff200,
      narrow_soilanthrop_with_obliggwdep_buff200 =
