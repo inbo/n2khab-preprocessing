@@ -1,12 +1,21 @@
 # Used environment
 
 ```{r session-info, results = "asis", echo=FALSE}
-si <- devtools::session_info()
+si <- sessioninfo::session_info()
 p <- si$platform %>%
   do.call(what = "c")
-if ("sf" %in% si$packages$package) p <- c(p, sf_extSoftVersion())
-sprintf("- **%s**:\n %s\n", names(p), p) %>%
-  cat()
+if ("sf" %in% si$packages$package) {
+  p <- c(p, sf_extSoftVersion())
+  names(p)[names(p) == "proj.4"] <- "PROJ"
+}
+if ("rgrass7" %in% si$packages$package) {
+  p <- c(p, GRASS = link2GI::findGRASS()[1, "version"])
+}
+if ("qgisprocess" %in% si$packages$package) {
+  p <- c(p, QGIS = qgis_version())
+}
+sprintf("- **%s**: %s\n", names(p), p) %>%
+  cat(sep = "")
 ```
 
 ```{r results = "asis", echo=FALSE}
