@@ -99,9 +99,8 @@ if (any(checksums !=
           shallowgroundwater.sbn = "cb0c0bb2565829ff", 
           shallowgroundwater.sbx = "9419203dc2909044",
           shallowgroundwater.shp = "5cf8969daa942dec", 
-          shallowgroundwater.shp.xml = "6df16307066eec5e",
           shallowgroundwater.shx = "bc582622278dba1c"))
-) warning("Beware, your version of shallowgroundwater is not the one for which this code was intended!")
+) stop("Beware, your version of shallowgroundwater is not the one for which this code was intended!")
 ```
 
 ```{r}
