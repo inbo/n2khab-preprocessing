@@ -301,7 +301,7 @@ gpkg_newareas_exists <-
 plan(multisession) # future kept here as demonstration
 ```
 
-```{r eval=!gpkg_newareas_exists || params$rewrite_intermediate_files}
+```{r eval=!gpkg_newareas_exists || params$rewrite_intermediate_files, warning=FALSE}
 buffered_obliggwdep_within_soilanthrop_buff <- 
   buffered_obliggwdep_within_soilanthrop %>% 
   st_buffer(params$buffer_areas) %>% 
