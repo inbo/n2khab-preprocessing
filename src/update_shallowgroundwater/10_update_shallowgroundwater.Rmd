@@ -454,7 +454,8 @@ walk(1:3, function(i) {
   layername <- st_layers(file.path(datapath, "new_areas.gpkg"))$name[i]
   assign(layername,
          read_sf(file.path(datapath, "new_areas.gpkg"),
-                 layer = layername))
+                 layer = layername),
+         envir = parent.env(environment()))
 })
 ```
 
