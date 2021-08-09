@@ -212,6 +212,24 @@ soil_anthrop %>%
   geom_histogram(binwidth = 0.01, fill = "white", colour = "grey70")
 ```
 
+Cleaning `shallowgroundwater` geometry.
+
+```{r eval=!gpkg_sg_exists}
+sg_repairedgeom <- 
+  st_make_valid(sg) %>% 
+  st_cast("MULTIPOLYGON")
+write_sf(sg_repairedgeom,
+         file.path(datapath, 
+                   "sg_repairedgeom.gpkg"),
+         delete_dsn = TRUE)
+```
+
+```{r eval=gpkg_sg_exists, include=FALSE}
+sg_repairedgeom <- 
+  read_sf(file.path(datapath, 
+                    "sg_repairedgeom.gpkg"))
+```
+
 # Execution
 
 ## Generating the areas of interest (where shallow groundwater is more probable)
