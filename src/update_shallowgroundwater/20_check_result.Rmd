@@ -1,7 +1,7 @@
 # Check results
 
 ```{r}
-filepath <- file.path(datapath, "sg_extended.gpkg")
+filepath <- file.path(datapath, "sg_extended_2.gpkg")
 ```
 
 - Checksums:
@@ -29,7 +29,7 @@ glimpse(pol)
 - Sensible results?
 
 ```{r include=FALSE}
-image <- file.path(local_root, "images/qgis_shot.png")
+image <- file.path(local_root, "images/qgis_shot_sg_extended_2.png")
 image_exists <- file.exists(image)
 ```
 
@@ -38,8 +38,4 @@ image_exists <- file.exists(image)
 include_graphics(image)
 ```
 
-The pattern of locally buffered 'obliggwdep' types is quite dominant in the resulting layer.
-In contrast, the original layer has numerous narrow and small patches of shallow groundwater.
-So these may be too narrow.
-It might be sensible to also add a narrow buffer, e.g. 50 m, around the whole of the original layer.
-Or, obtaining a broader area by being more liberal in the selection of soil types.
+This looks better than in a previous trial (`sg_extended.gpkg`: <https://github.com/inbo/n2khab-preprocessing/pull/61>).
