@@ -21,7 +21,7 @@ Such 'areas of interest' are e.g. anthropogenic soil type polygons.
 - In the case of anthropogenic soil type polygons, we will subseqently limit those areas to _buffers (of `r params$buffer_obliggwdep` m) around habitatmap polygons with 'obliggwdep' types_ -- still subsequently clipping along the borders of the aforementioned areas.
 So in practice, we first select the habitatmap polygons with 'obliggwdep' types that intersect the anthropogenic soil type polygons, we buffer them, and we clip the result along the areas of interest.
   - The buffers around habitatmap polygons with 'obliggwdep' types are applied since it is expected that shallow groundwater (with potentially 'locally groundwater dependent' types) will occur in the vicinity of those polygons.
-- In a next step, we want to add a _buffer of `r params$buffer_areas` m_ around the obtained polygons, and also around the original `shallowgroundwater` layer.
+- In a next step, we want to add a _buffer of `r params$buffer_areas` m_ around the obtained polygons.
 This is done as a further means of conservative area selection: we rather need too much area than too little, for protection against over-restricting target populations.
 
 The areas of interest are:
@@ -35,13 +35,12 @@ Hence we select them as a whole instead of selecting buffers around the habitatm
 - Hence an additional condition was required: a minimal amount of 'obliggwdep' type must be present in such polygons.
 
 Finally, we stitch the parts.
-The resulting new version of `shallowgroundwater` is written here as **`sg_extended_2.gpkg`**.
+The resulting new version of `shallowgroundwater` is written here as **`sg2_extended_2.gpkg`**.
 
-Hence we will have three separate sources, which we will document as three extra TRUE/FALSE column inside `sg_extended_2.gpkg`:
+Hence we will have two separate sources, which we will document as two extra TRUE/FALSE column inside `sg2_extended_2.gpkg`:
 
 - `within_soilanthrop_plus_buffer`
 - `narrow_soilanthrop_plus_buffer`
-- `sg_plus_buffer`
 
 Where an area overlapped between several of these sources, more than one column is set as `TRUE`.
 
@@ -302,31 +301,12 @@ narrow_soilanthrop_with_obliggwdep_buff <-
   st_union %>% 
   st_as_sf
 
-f <- future({
-  elapsed <- 
-    system.time(
-      result <-
-        sg_repairedgeom %>% 
-        st_union %>% 
-        st_buffer(params$buffer_areas) %>% 
-        st_as_sf
-    )
-  list(result = result, elapsed = elapsed)
-}, seed = NULL)
-# resolved(f)
-# value(f, stdout = FALSE)$elapsed
-#    user  system elapsed 
-# 876.952   1.416 879.065
-sg_buff <- value(f, stdout = FALSE)$result
-
 if (gpkg_newareas_exists) unlink(file.path(datapath, "new_areas.gpkg"))
 
 list(buffered_obliggwdep_within_soilanthrop_buff =
        buffered_obliggwdep_within_soilanthrop_buff,
      narrow_soilanthrop_with_obliggwdep_buff =
-       narrow_soilanthrop_with_obliggwdep_buff,
-     sg_buff =
-       sg_buff) %>% 
+       narrow_soilanthrop_with_obliggwdep_buff) %>% 
   walk2(names(.),
         ~write_sf(.x,
                   dsn = file.path(datapath, "new_areas.gpkg"),
@@ -343,7 +323,7 @@ walk(1:3, function(i) {
 })
 ```
 
-We write the three resulting layers into `new_areas.gpkg`:
+We write the two resulting layers into `new_areas.gpkg`:
 
 ```{r paged.print=FALSE}
 st_layers(file.path(datapath, "new_areas.gpkg"))
@@ -358,7 +338,7 @@ The unioning is done in order to prevent overlapping polygons within the same la
 We extend `shallowgroundwater` as described in section \@ref(method).
 
 ```{r include=FALSE}
-gpkg_sg_extended_exists <- file.exists(file.path(datapath, "sg_extended_2.gpkg"))
+gpkg_sg_extended_exists <- file.exists(file.path(datapath, "sg2_extended_2.gpkg"))
 ```
 
 ```{r eval=params$overwrite_sg_extended || !gpkg_sg_extended_exists, warning=FALSE}
@@ -388,8 +368,10 @@ f <- future({
                                    INPUT = 
                                      res_filepath,
                                    OVERLAY = 
-                                     sg_buff %>% 
-                                     mutate(sg_plus_buffer = TRUE))
+                                     sg_repairedgeom %>% 
+                                     st_union %>% 
+                                     st_as_sf %>% 
+                                     mutate(sg = TRUE))
     )
   list(result = result, elapsed = elapsed)
 }, seed = NULL)
@@ -398,7 +380,7 @@ value(f, stdout = FALSE, signal = FALSE)$elapsed
 res_filepath2 <- value(f, stdout = FALSE)$result$OUTPUT %>% as.character
 ```
 
-The result is written as `sg_extended_2.gpkg`.
+The result is written as `sg2_extended_2.gpkg`.
 
 ```{r eval=params$overwrite_sg_extended || !gpkg_sg_extended_exists}
 sg_extended <- 
@@ -410,7 +392,7 @@ sg_extended <-
 ```{r eval=params$overwrite_sg_extended || !gpkg_sg_extended_exists}
 system.time(
 st_write(sg_extended,
-         file.path(datapath, "sg_extended_2.gpkg"),
+         file.path(datapath, "sg2_extended_2.gpkg"),
          layer = "sg_extended",
          delete_dsn = TRUE,
          quiet = TRUE)
