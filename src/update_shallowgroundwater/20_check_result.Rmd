@@ -1,7 +1,7 @@
 # Check results
 
 ```{r}
-filepath <- file.path(datapath, "sg2_extended_2.gpkg")
+filepath <- file.path(datapath, "sg2_extended_3.gpkg")
 ```
 
 - Checksums:
