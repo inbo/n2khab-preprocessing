@@ -417,7 +417,7 @@ We extend `shallowgroundwater` as described in section \@ref(method).
 gpkg_sg_extended_exists <- file.exists(file.path(datapath, "sg2_extended_3.gpkg"))
 ```
 
-```{r eval=params$overwrite_sg_extended || !gpkg_sg_extended_exists, warning=FALSE}
+```{r intersecting, eval=params$overwrite_sg_extended || !gpkg_sg_extended_exists, warning=FALSE}
 # qgis_arguments("native:union")
 # use of future unneeded in this case (runs quickly)
 f <- future({
