@@ -476,14 +476,21 @@ res_filepath <- value(f, stdout = FALSE)$result$OUTPUT %>% as.character
 f <- future({
   elapsed <- 
     system.time(
-      result <- qgis_run_algorithm("native:union",
-                                   INPUT = 
-                                     res_filepath,
-                                   OVERLAY = 
-                                     sg_repairedgeom %>% 
-                                     st_union %>% 
-                                     st_as_sf %>% 
-                                     mutate(sg = TRUE))
+      result <- 
+        if(params$union_sg) {
+          qgis_run_algorithm("native:union",
+                             INPUT = 
+                               res_filepath,
+                             OVERLAY = 
+                               sg_repairedgeom_union %>% 
+                               mutate(sg = TRUE))
+        } else {
+          qgis_run_algorithm("native:union",
+                             INPUT = 
+                               sg_repairedgeom,
+                             OVERLAY = 
+                               res_filepath)
+        }
     )
   list(result = result, elapsed = elapsed)
 }, seed = NULL)
