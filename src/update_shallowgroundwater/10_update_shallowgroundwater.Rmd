@@ -457,10 +457,12 @@ f <- future({
     system.time(
       result <- qgis_run_algorithm("native:union",
                                    INPUT = 
-                                     sg_repairedgeom,
+                                     res_filepath,
                                    OVERLAY = 
-                                     res_filepath
-)
+                                     sg_repairedgeom %>% 
+                                     st_union %>% 
+                                     st_as_sf %>% 
+                                     mutate(sg = TRUE))
     )
   list(result = result, elapsed = elapsed)
 }, seed = NULL)
