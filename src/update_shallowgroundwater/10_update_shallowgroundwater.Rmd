@@ -111,6 +111,9 @@ soilmap <- read_soilmap()
 gpkg_sg_exists <- 
   file.exists(file.path(datapath, 
                         "sg_repairedgeom.gpkg"))
+gpkg_sg_union_exists <- 
+  file.exists(file.path(datapath, 
+                        "sg_repairedgeom_union.gpkg"))
 ```
 
 ```{r eval=!gpkg_sg_exists}
@@ -250,6 +253,24 @@ write_sf(sg_repairedgeom,
 sg_repairedgeom <- 
   read_sf(file.path(datapath, 
                     "sg_repairedgeom.gpkg"))
+```
+
+
+```{r eval=!gpkg_sg_union_exists && params$union_sg}
+sg_repairedgeom_union <- 
+  sg_repairedgeom %>% 
+  st_union %>% 
+  st_as_sf
+write_sf(sg_repairedgeom_union,
+         file.path(datapath, 
+                   "sg_repairedgeom_union.gpkg"),
+         delete_dsn = TRUE)
+```
+
+```{r eval=gpkg_sg_union_exists && params$union_sg, include=FALSE}
+sg_repairedgeom_union <- 
+  read_sf(file.path(datapath, 
+                    "sg_repairedgeom_union.gpkg"))
 ```
 
 # Execution
