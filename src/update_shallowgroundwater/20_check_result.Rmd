@@ -29,7 +29,7 @@ glimpse(pol)
 - Sensible results?
 
 ```{r include=FALSE}
-image <- file.path(local_root, "images/qgis_shot_sg2_extended_2.png")
+image <- file.path(local_root, "images/qgis_shot_sg2_extended_3.png")
 image_exists <- file.exists(image)
 ```
 
