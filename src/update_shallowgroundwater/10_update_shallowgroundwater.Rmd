@@ -378,11 +378,17 @@ plan(multisession) # future kept here as demonstration
 if (gpkg_newareas_exists) unlink(file.path(datapath, "new_areas.gpkg"))
 
 list(buffered_obliggwdep_within_soilanthrop =
-       buffered_obliggwdep_within_soilanthrop,
+       buffered_obliggwdep_within_soilanthrop %>% 
+       st_union %>% 
+       st_as_sf,
      buffered_obliggwdep_within_soildunes =
-       buffered_obliggwdep_within_soildunes,
+       buffered_obliggwdep_within_soildunes %>% 
+       st_union %>% 
+       st_as_sf,
      narrow_soilanthrop_with_obliggwdep =
-       narrow_soilanthrop_with_obliggwdep) %>% 
+       narrow_soilanthrop_with_obliggwdep %>% 
+       st_union %>% 
+       st_as_sf) %>% 
   walk2(names(.),
         ~write_sf(.x,
                   dsn = file.path(datapath, "new_areas.gpkg"),
@@ -426,13 +432,9 @@ f <- future({
       result <- qgis_run_algorithm("native:union",
                                    INPUT = 
                                      buffered_obliggwdep_within_soilanthrop %>% 
-                                     st_union %>% 
-                                     st_as_sf %>% 
                                      mutate(within_soilanthrop = TRUE),
                                    OVERLAY = 
                                      narrow_soilanthrop_with_obliggwdep %>% 
-                                     st_union %>% 
-                                     st_as_sf %>% 
                                      mutate(narrow_soilanthrop = TRUE))
     )
   list(result = result, elapsed = elapsed)
@@ -448,8 +450,6 @@ f <- future({
                                    INPUT = res_filepath,
                                    OVERLAY = 
                                      buffered_obliggwdep_within_soildunes %>% 
-                                     st_union %>% 
-                                     st_as_sf %>% 
                                      mutate(within_soildunes = TRUE))
     )
   list(result = result, elapsed = elapsed)
