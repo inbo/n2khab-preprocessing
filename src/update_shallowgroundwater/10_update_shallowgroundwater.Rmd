@@ -21,8 +21,6 @@ Such 'areas of interest' are e.g. anthropogenic soil type polygons and polygons 
 - In the case of anthropogenic and dune soil polygons, we will subseqently limit those areas to _buffers (of `r params$buffer_obliggwdep` m) around habitatmap polygons with 'obliggwdep' types_ -- still subsequently clipping along the borders of the aforementioned areas.
 So in practice, we first select the habitatmap polygons with 'obliggwdep' types that intersect the anthropogenic and dune soil polygons, we buffer them, and we clip the result along the areas of interest.
   - The buffers around habitatmap polygons with 'obliggwdep' types are applied since it is expected that shallow groundwater (with potentially 'locally groundwater dependent' types) will occur in the vicinity of those polygons.
-- In a next step, we want to add a _buffer of `r params$buffer_areas` m_ around the obtained polygons.
-This is done as a further means of conservative area selection: we rather need too much area than too little, for protection against over-restricting target populations.
 
 The areas of interest are:
 
@@ -36,13 +34,13 @@ Hence we select them as a whole instead of selecting buffers around the habitatm
 - Hence an additional condition was required: a minimal amount of 'obliggwdep' type must be present in such polygons.
 
 Finally, we stitch the parts.
-The resulting new version of `shallowgroundwater` is written here as **`sg2_extended_3.gpkg`**.
+The resulting new version of `shallowgroundwater` is written here as **`sg2_extended_4.gpkg`**.
 
-Hence we will have three separate sources, which we will document as three extra TRUE/FALSE column inside `sg2_extended_3.gpkg`:
+Hence we will have three separate sources, which we will document as three extra TRUE/FALSE column inside `sg2_extended_4.gpkg`:
 
-- `within_soilanthrop_plus_buffer`
-- `within_soildunes_plus_buffer`
-- `narrow_soilanthrop_plus_buffer`
+- `within_soilanthrop`
+- `within_soildunes`
+- `narrow_soilanthrop`
 
 Where an area overlapped between several of these sources, more than one column is set as `TRUE`.
 
@@ -364,7 +362,7 @@ mapview(narrow_soilanthrop_with_obliggwdep,
 
 Resulting object: `narrow_soilanthrop_with_obliggwdep`.
 
-## Add `r params$buffer_areas` m buffer to minimize false negatives
+## Combine the resulting layers in `new_areas.gpkg`
 
 ```{r include=FALSE}
 gpkg_newareas_exists <- 
@@ -377,33 +375,14 @@ plan(multisession) # future kept here as demonstration
 ```
 
 ```{r eval=!gpkg_newareas_exists || params$rewrite_intermediate_files, warning=FALSE}
-buffered_obliggwdep_within_soilanthrop_buff <- 
-  buffered_obliggwdep_within_soilanthrop %>% 
-  st_buffer(params$buffer_areas) %>% 
-  st_union %>% 
-  st_as_sf
-
-buffered_obliggwdep_within_soildunes_buff <- 
-  buffered_obliggwdep_within_soildunes %>% 
-  st_buffer(params$buffer_areas) %>% 
-  st_union %>% 
-  st_as_sf
-
-narrow_soilanthrop_with_obliggwdep_buff <-
-  narrow_soilanthrop_with_obliggwdep %>% 
-  select(-everything()) %>% 
-  st_buffer(params$buffer_areas) %>% 
-  st_union %>% 
-  st_as_sf
-
 if (gpkg_newareas_exists) unlink(file.path(datapath, "new_areas.gpkg"))
 
-list(buffered_obliggwdep_within_soilanthrop_buff =
-       buffered_obliggwdep_within_soilanthrop_buff,
-     buffered_obliggwdep_within_soildunes_buff =
-       buffered_obliggwdep_within_soildunes_buff,
-     narrow_soilanthrop_with_obliggwdep_buff =
-       narrow_soilanthrop_with_obliggwdep_buff) %>% 
+list(buffered_obliggwdep_within_soilanthrop =
+       buffered_obliggwdep_within_soilanthrop,
+     buffered_obliggwdep_within_soildunes =
+       buffered_obliggwdep_within_soildunes,
+     narrow_soilanthrop_with_obliggwdep =
+       narrow_soilanthrop_with_obliggwdep) %>% 
   walk2(names(.),
         ~write_sf(.x,
                   dsn = file.path(datapath, "new_areas.gpkg"),
@@ -435,7 +414,7 @@ The unioning is done in order to prevent overlapping polygons within the same la
 We extend `shallowgroundwater` as described in section \@ref(method).
 
 ```{r include=FALSE}
-gpkg_sg_extended_exists <- file.exists(file.path(datapath, "sg2_extended_3.gpkg"))
+gpkg_sg_extended_exists <- file.exists(file.path(datapath, "sg2_extended_4.gpkg"))
 ```
 
 ```{r intersecting, eval=params$overwrite_sg_extended || !gpkg_sg_extended_exists, warning=FALSE}
@@ -446,11 +425,15 @@ f <- future({
     system.time(
       result <- qgis_run_algorithm("native:union",
                                    INPUT = 
-                                     buffered_obliggwdep_within_soilanthrop_buff %>% 
-                                     mutate(within_soilanthrop_plus_buffer = TRUE),
+                                     buffered_obliggwdep_within_soilanthrop %>% 
+                                     st_union %>% 
+                                     st_as_sf %>% 
+                                     mutate(within_soilanthrop = TRUE),
                                    OVERLAY = 
-                                     narrow_soilanthrop_with_obliggwdep_buff %>% 
-                                     mutate(narrow_soilanthrop_plus_buffer = TRUE))
+                                     narrow_soilanthrop_with_obliggwdep %>% 
+                                     st_union %>% 
+                                     st_as_sf %>% 
+                                     mutate(narrow_soilanthrop = TRUE))
     )
   list(result = result, elapsed = elapsed)
 }, seed = NULL)
@@ -464,8 +447,10 @@ f <- future({
       result <- qgis_run_algorithm("native:union",
                                    INPUT = res_filepath,
                                    OVERLAY = 
-                                     buffered_obliggwdep_within_soildunes_buff %>% 
-                                     mutate(within_soildunes_plus_buffer = TRUE))
+                                     buffered_obliggwdep_within_soildunes %>% 
+                                     st_union %>% 
+                                     st_as_sf %>% 
+                                     mutate(within_soildunes = TRUE))
     )
   list(result = result, elapsed = elapsed)
 }, seed = NULL)
@@ -499,7 +484,7 @@ value(f, stdout = FALSE, signal = FALSE)$elapsed
 res_filepath2 <- value(f, stdout = FALSE)$result$OUTPUT %>% as.character
 ```
 
-The result is written as `sg2_extended_3.gpkg`.
+The result is written as `sg2_extended_4.gpkg`.
 
 ```{r eval=params$overwrite_sg_extended || !gpkg_sg_extended_exists}
 sg_extended <- 
@@ -511,7 +496,7 @@ sg_extended <-
 ```{r eval=params$overwrite_sg_extended || !gpkg_sg_extended_exists}
 system.time(
 st_write(sg_extended,
-         file.path(datapath, "sg2_extended_3.gpkg"),
+         file.path(datapath, "sg2_extended_4.gpkg"),
          layer = "sg_extended",
          delete_dsn = TRUE,
          quiet = TRUE)
