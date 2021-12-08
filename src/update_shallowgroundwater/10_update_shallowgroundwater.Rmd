@@ -285,7 +285,7 @@ gpkg_exists <-
                         "buffered_obliggwdep_within_soilanthrop.gpkg"))
 ```
 
-```{r eval=!gpkg_exists || params$rewrite_intermediate_files}
+```{r eval=!gpkg_exists || params$rewrite_intermediate_aoi_files}
 # following step takes several minutes!
 buffered_obliggwdep_within_soilanthrop <-
   hmt_pol_obliggwdep[soil_anthrop, ] %>% 
@@ -299,7 +299,7 @@ write_sf(buffered_obliggwdep_within_soilanthrop,
          delete_dsn = TRUE)
 ```
 
-```{r eval=gpkg_exists && !params$rewrite_intermediate_files, include = FALSE}
+```{r eval=gpkg_exists && !params$rewrite_intermediate_aoi_files, include = FALSE}
 buffered_obliggwdep_within_soilanthrop <- 
   read_sf(file.path(datapath, 
                     "buffered_obliggwdep_within_soilanthrop.gpkg"))
@@ -317,7 +317,7 @@ gpkg_exists <-
                         "buffered_obliggwdep_within_soildunes.gpkg"))
 ```
 
-```{r eval=!gpkg_exists || params$rewrite_intermediate_files}
+```{r eval=!gpkg_exists || params$rewrite_intermediate_aoi_files}
 # following step takes several minutes!
 buffered_obliggwdep_within_soildunes <-
   hmt_pol_obliggwdep[soil_dunes, ] %>% 
@@ -331,7 +331,7 @@ write_sf(buffered_obliggwdep_within_soildunes,
          delete_dsn = TRUE)
 ```
 
-```{r eval=gpkg_exists && !params$rewrite_intermediate_files, include = FALSE}
+```{r eval=gpkg_exists && !params$rewrite_intermediate_aoi_files, include = FALSE}
 buffered_obliggwdep_within_soildunes <- 
   read_sf(file.path(datapath, 
                     "buffered_obliggwdep_within_soildunes.gpkg"))
@@ -374,7 +374,7 @@ gpkg_newareas_exists <-
 plan(multisession) # future kept here as demonstration
 ```
 
-```{r eval=!gpkg_newareas_exists || params$rewrite_intermediate_files, warning=FALSE}
+```{r eval=!gpkg_newareas_exists || params$rewrite_intermediate_aoi_files, warning=FALSE}
 if (gpkg_newareas_exists) unlink(file.path(datapath, "new_areas.gpkg"))
 
 list(buffered_obliggwdep_within_soilanthrop =
@@ -395,7 +395,7 @@ list(buffered_obliggwdep_within_soilanthrop =
                   layer = .y))
 ```
 
-```{r eval=gpkg_newareas_exists && !params$rewrite_intermediate_files, include=FALSE}
+```{r eval=gpkg_newareas_exists && !params$rewrite_intermediate_aoi_files, include=FALSE}
 walk(1:3, function(i) {
   layername <- st_layers(file.path(datapath, "new_areas.gpkg"))$name[i]
   assign(layername,
