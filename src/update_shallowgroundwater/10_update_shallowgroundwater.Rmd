@@ -413,7 +413,7 @@ st_layers(file.path(datapath, "new_areas.gpkg"))
 
 Each layer consists of just one Multipolygon.
 That is the result of unioning steps (obtained with `st_union()`; corresponding QGIS terminology is `native:aggregate`).
-The unioning is done in order to prevent overlapping polygons within the same layer as a consequence of creating buffers.
+The unioning is done in order to get the simplest possible intersection result in the next step.
 
 ## Union the new zones (keeping intersections)
 
