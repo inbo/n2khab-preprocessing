@@ -17,7 +17,6 @@ params:
   union_sg: FALSE
   overwrite_sg_extended: TRUE
   buffer_obliggwdep: 100
-  buffer_areas: 50
 output:
   bookdown::html_document2:
     code_folding: hide
