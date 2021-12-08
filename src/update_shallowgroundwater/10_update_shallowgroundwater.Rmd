@@ -9,7 +9,7 @@ It is more specifically applied to restrict the 'locally groundwater dependent' 
 - Data and metadata are in [a GDrive folder](https://drive.google.com/drive/u/0/folders/1S9colwuaMNmB58u4RUnB0MqZLyIUZ9rT).
 - More info about checking the data source: see <https://github.com/inbo/n2khab-mne-design/pull/74> and links therein.
 
-Based on an evaluation that uses the '(almost) everywhere groundwater dependent' types, the current state still mismatches a significant proportion of those types.
+Based on an evaluation that uses the '(almost) everywhere groundwater dependent' types, the current state still mismatches a proportion of those types.
 Hence, the area it covers needs to be made broader.
 
 ## Aim and method {#method}
@@ -33,7 +33,7 @@ Hence we select them as a whole instead of selecting buffers around the habitatm
 - An appropriate algorithm had to be made that selects meaningful polygons - at first it resulted in complete cities meeting the narrowness requirement (since they are part of anthropogenic soil type polygons with long, narrow parts).
 - Hence an additional condition was required: a minimal amount of 'obliggwdep' type must be present in such polygons.
 
-```{r}
+```{r echo=FALSE}
 output_filename <- params$output_filename
 ```
 
@@ -219,7 +219,7 @@ soil_anthrop %>%
   geom_histogram(binwidth = 0.01, fill = "white", colour = "grey70")
 ```
 
-Creating a geospatial object of dune texture polygons, with the areal fraction occupied by `habitatmap_terr` polygons having 'obliggwdep' types:
+Creating a geospatial object of dune texture polygons, with the areal fraction occupied by `habitatmap_terr` polygons having 'obliggwdep' types.
 
 ```{r}
 soil_dunes <- 
