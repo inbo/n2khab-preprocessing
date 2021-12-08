@@ -114,7 +114,7 @@ gpkg_sg_union_exists <-
                         "sg_repairedgeom_union.gpkg"))
 ```
 
-```{r eval=!gpkg_sg_exists}
+```{r eval=!gpkg_sg_exists || params$consider_sg_as_new}
 sg <- read_sf(file.path(sgpath, "shallowgroundwater.gpkg"), crs = 31370)
 ```
 
@@ -237,7 +237,7 @@ soil_dunes %>%
 
 Cleaning `shallowgroundwater` geometry.
 
-```{r eval=!gpkg_sg_exists}
+```{r eval=!gpkg_sg_exists || params$consider_sg_as_new}
 sg_repairedgeom <- 
   st_make_valid(sg) %>% 
   st_cast("MULTIPOLYGON")
@@ -247,14 +247,14 @@ write_sf(sg_repairedgeom,
          delete_dsn = TRUE)
 ```
 
-```{r eval=gpkg_sg_exists, include=FALSE}
+```{r eval=gpkg_sg_exists && !params$consider_sg_as_new, include=FALSE}
 sg_repairedgeom <- 
   read_sf(file.path(datapath, 
                     "sg_repairedgeom.gpkg"))
 ```
 
 
-```{r eval=!gpkg_sg_union_exists && params$union_sg}
+```{r eval=(!gpkg_sg_union_exists || params$consider_sg_as_new) && params$union_sg}
 sg_repairedgeom_union <- 
   sg_repairedgeom %>% 
   st_union %>% 
@@ -265,7 +265,7 @@ write_sf(sg_repairedgeom_union,
          delete_dsn = TRUE)
 ```
 
-```{r eval=gpkg_sg_union_exists && params$union_sg, include=FALSE}
+```{r eval=gpkg_sg_union_exists && params$union_sg && !params$consider_sg_as_new, include=FALSE}
 sg_repairedgeom_union <- 
   read_sf(file.path(datapath, 
                     "sg_repairedgeom_union.gpkg"))

@@ -13,6 +13,7 @@ documentclass: "article"
 site: bookdown::bookdown_site
 params:
   rewrite_intermediate_aoi_files: TRUE
+  consider_sg_as_new: TRUE
   union_sg: FALSE
   overwrite_sg_extended: TRUE
   buffer_obliggwdep: 100
