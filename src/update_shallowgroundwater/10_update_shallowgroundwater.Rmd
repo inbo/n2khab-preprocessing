@@ -67,8 +67,8 @@ sgpath <- find_root_file("n2khab_data/10_raw/shallowgroundwater",
 if (!dir.exists(sgpath) | list.files(sgpath) %>% length == 0) {
   dir.create(sgpath)
   drive_auth(email = TRUE)
-  # downloads "ZonesOndiepGrondwater_20211004.gpkg":
-  as_id("12EEomOBcKg0NMUPwsFDyKhqJSvrS8xs8") %>% 
+  # downloads "ZonesOndiepGrondwater_20211129.gpkg":
+  as_id("18ZHt8hoeuWNYzFadwR54g5-rLsW2CYmb") %>% 
     drive_download(file.path(sgpath, "shallowgroundwater.gpkg"), 
                    overwrite = TRUE)
 }
@@ -88,7 +88,7 @@ checksums %>%
 
 ```{r}
 if (any(checksums != 
-        c(shallowgroundwater.gpkg = "68646fe7362d8bf6"))
+        c(shallowgroundwater.gpkg = "0052a67f88296b60"))
 ) stop("Beware, your version of shallowgroundwater is not the one for which this code was intended!")
 ```
 
@@ -120,7 +120,9 @@ gpkg_sg_union_exists <-
 ```
 
 ```{r eval=!gpkg_sg_exists || params$consider_sg_as_new}
-sg <- read_sf(file.path(sgpath, "shallowgroundwater.gpkg"), crs = 31370)
+sg <- read_sf(file.path(sgpath, "shallowgroundwater.gpkg"), 
+              layer = params$input_layername,
+              crs = 31370)
 ```
 
 ```{r eval=FALSE, echo=FALSE}

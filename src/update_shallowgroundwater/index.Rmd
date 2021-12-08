@@ -17,7 +17,8 @@ params:
   union_sg: FALSE
   overwrite_sg_extended: TRUE
   buffer_obliggwdep: 100
-  output_filename: "sg2_extended_4.gpkg"
+  input_layername: "ZOG_20211129_diss"
+  output_filename: "sg_20211129_extended.gpkg"
 output:
   bookdown::html_document2:
     code_folding: hide
@@ -51,7 +52,7 @@ library(future)
 
 # ISO8601 timestamp to set as fixed value in the GeoPackage 
 # (to be UPDATED to the actual creation date; at least update for each version):
-Sys.setenv(OGR_CURRENT_DATE = "2021-10-15T00:00:00.000Z")
+Sys.setenv(OGR_CURRENT_DATE = "2021-12-08T00:00:00.000Z")
 # This is used to keep results reproducible, as the timestamp is otherwise
 # updated each time.
 # Above environment variable OGR_CURRENT_DATE is used by the GDAL driver.
