@@ -33,10 +33,15 @@ Hence we select them as a whole instead of selecting buffers around the habitatm
 - An appropriate algorithm had to be made that selects meaningful polygons - at first it resulted in complete cities meeting the narrowness requirement (since they are part of anthropogenic soil type polygons with long, narrow parts).
 - Hence an additional condition was required: a minimal amount of 'obliggwdep' type must be present in such polygons.
 
-Finally, we stitch the parts.
-The resulting new version of `shallowgroundwater` is written here as **`sg2_extended_4.gpkg`**.
+```{r}
+output_filename <- params$output_filename
+```
 
-Hence we will have three separate sources, which we will document as three extra TRUE/FALSE column inside `sg2_extended_4.gpkg`:
+
+Finally, we stitch the parts.
+The resulting new version of `shallowgroundwater` is written here as **``r output_filename``**.
+
+Hence we will have three separate sources, which we will document as three extra TRUE/FALSE column inside ``r output_filename``:
 
 - `within_soilanthrop`
 - `within_soildunes`
@@ -420,7 +425,7 @@ The unioning is done in order to get the simplest possible intersection result i
 We extend `shallowgroundwater` as described in section \@ref(method).
 
 ```{r include=FALSE}
-gpkg_sg_extended_exists <- file.exists(file.path(datapath, "sg2_extended_4.gpkg"))
+gpkg_sg_extended_exists <- file.exists(file.path(datapath, output_filename))
 ```
 
 ```{r intersecting, eval=params$overwrite_sg_extended || !gpkg_sg_extended_exists, warning=FALSE}
@@ -484,7 +489,7 @@ value(f, stdout = FALSE, signal = FALSE)$elapsed
 res_filepath2 <- value(f, stdout = FALSE)$result$OUTPUT %>% as.character
 ```
 
-The result is written as `sg2_extended_4.gpkg`.
+The result is written as ``r output_filename``.
 
 ```{r eval=params$overwrite_sg_extended || !gpkg_sg_extended_exists}
 sg_extended <- 
@@ -496,7 +501,7 @@ sg_extended <-
 ```{r eval=params$overwrite_sg_extended || !gpkg_sg_extended_exists}
 system.time(
 st_write(sg_extended,
-         file.path(datapath, "sg2_extended_4.gpkg"),
+         file.path(datapath, output_filename),
          layer = "sg_extended",
          delete_dsn = TRUE,
          quiet = TRUE)

@@ -17,6 +17,7 @@ params:
   union_sg: FALSE
   overwrite_sg_extended: TRUE
   buffer_obliggwdep: 100
+  output_filename: "sg2_extended_4.gpkg"
 output:
   bookdown::html_document2:
     code_folding: hide
