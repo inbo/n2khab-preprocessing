@@ -87,6 +87,11 @@ checksums %>%
 ```
 
 ```{r}
+if (!file.exists(file.path(sgpath, "shallowgroundwater.gpkg"))) {
+  stop("It seems that you have manually put a file inside ",
+       sgpath,
+       "\nMake sure that you name this file as shallowgroundwater.gpkg !")
+}
 if (any(checksums != 
         c(shallowgroundwater.gpkg = "0052a67f88296b60"))
 ) stop("Beware, your version of shallowgroundwater is not the one for which this code was intended!")
