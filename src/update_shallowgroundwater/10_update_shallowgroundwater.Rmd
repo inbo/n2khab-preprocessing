@@ -505,7 +505,7 @@ res_filepath2 <- value(f, stdout = FALSE)$result$OUTPUT %>% as.character
 The result is written as ``r output_filename``.
 
 ```{r eval=params$overwrite_sg_extended || !gpkg_sg_extended_exists}
-sg_extended <- 
+sg_extended <-
   read_sf(res_filepath2) %>% 
   select(-starts_with("fid")) %>% 
   {if (params$union_sg) . else {
@@ -528,6 +528,7 @@ sg_extended <-
            peat_survey = VEK_, 
            duneslack = K_DUINV_)
   }} %>% 
+  mutate(across(where(is.integer), ~ifelse(is.na(.) | . == 0L, FALSE, TRUE))) %>%
   mutate(across(where(is.logical), ~ifelse(is.na(.), FALSE, .)))
 ```
 
