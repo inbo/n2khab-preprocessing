@@ -487,7 +487,10 @@ f <- future({
         } else {
           qgis_run_algorithm("native:union",
                              INPUT = 
-                               sg_repairedgeom,
+                               sg_repairedgeom %>% 
+                               select(-OBJECTID, 
+                                      -Shape_Length,
+                                      -Shape_Area),
                              OVERLAY = 
                                res_filepath)
         }
