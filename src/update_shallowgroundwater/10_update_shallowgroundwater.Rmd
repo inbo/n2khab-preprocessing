@@ -64,14 +64,19 @@ if (!dir.exists(datapath)) dir.create(datapath)
 sgpath <- find_root_file("n2khab_data/10_raw/shallowgroundwater", 
                             criterion = has_dir("n2khab_data"))
 
-if (!dir.exists(sgpath) | list.files(sgpath) %>% length == 0) {
-  dir.create(sgpath)
-  drive_auth(email = TRUE)
-  # downloads "ZonesOndiepGrondwater_20211129.gpkg":
-  as_id("18ZHt8hoeuWNYzFadwR54g5-rLsW2CYmb") %>% 
-    drive_download(file.path(sgpath, "shallowgroundwater.gpkg"), 
-                   overwrite = TRUE)
-}
+if (!dir.exists(sgpath)) dir.create(sgpath)
+inputpath <- file.path(tempdir(), "shallowgroundwater")
+dir.create(inputpath, showWarnings = FALSE)
+
+drive_auth(email = TRUE)
+# download "shallowgroundwater_20211129.gpkg.zip", which only contains the 
+# "ZOG_20211129_diss" layer from ZonesOndiepGrondwater_20211129.gpkg":
+as_id("1bCQUMm1s0iDwr6HWe12bWQpBRiY-YS3H") %>% 
+  drive_download(file.path(inputpath, "shallowgroundwater.gpkg.zip"), 
+                 overwrite = TRUE)
+unzip(file.path(inputpath, "shallowgroundwater.gpkg.zip"),
+      exdir = inputpath)
+unlink(file.path(inputpath, "shallowgroundwater.gpkg.zip"))
 ```
 
 Verification of several input data sets.
@@ -80,20 +85,18 @@ Checksums of `shallowgroundwater` (using default algorithm of `n2khab::checksum(
 
 ```{r}
 checksums <- 
-  list.files(sgpath, full.names = TRUE) %>% 
+  list.files(inputpath, full.names = TRUE) %>% 
   checksum
 checksums %>% 
   as.matrix
 ```
 
 ```{r}
-if (!file.exists(file.path(sgpath, "shallowgroundwater.gpkg"))) {
-  stop("It seems that you have manually put a file inside ",
-       sgpath,
-       "\nMake sure that you name this file as shallowgroundwater.gpkg !")
+if (!file.exists(file.path(inputpath, "shallowgroundwater.gpkg"))) {
+  stop("The input GeoPackage file is missing from ", inputpath)
 }
 if (any(checksums != 
-        c(shallowgroundwater.gpkg = "0052a67f88296b60"))
+        c(shallowgroundwater.gpkg = "29660a8672412c95"))
 ) stop("Beware, your version of shallowgroundwater is not the one for which this code was intended!")
 ```
 
@@ -125,7 +128,7 @@ gpkg_sg_union_exists <-
 ```
 
 ```{r eval=!gpkg_sg_exists || params$consider_sg_as_new}
-sg <- read_sf(file.path(sgpath, "shallowgroundwater.gpkg"), 
+sg <- read_sf(file.path(inputpath, "shallowgroundwater.gpkg"), 
               layer = params$input_layername,
               crs = 31370)
 ```
@@ -432,7 +435,7 @@ The unioning is done in order to get the simplest possible intersection result i
 We extend `shallowgroundwater` as described in section \@ref(method).
 
 ```{r include=FALSE}
-gpkg_sg_extended_exists <- file.exists(file.path(datapath, output_filename))
+gpkg_sg_extended_exists <- file.exists(file.path(sgpath, output_filename))
 ```
 
 ```{r intersecting, eval=params$overwrite_sg_extended || !gpkg_sg_extended_exists, warning=FALSE}
@@ -508,8 +511,8 @@ sg_extended <-
 ```{r eval=params$overwrite_sg_extended || !gpkg_sg_extended_exists}
 system.time(
 st_write(sg_extended,
-         file.path(datapath, output_filename),
-         layer = "sg_extended",
+         file.path(sgpath, output_filename),
+         layer = "shallowgroundwater",
          delete_dsn = TRUE,
          quiet = TRUE)
 )

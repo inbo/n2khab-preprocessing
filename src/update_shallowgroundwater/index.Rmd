@@ -18,7 +18,7 @@ params:
   overwrite_sg_extended: TRUE
   buffer_obliggwdep: 100
   input_layername: "ZOG_20211129_diss"
-  output_filename: "sg_20211129_extended.gpkg"
+  output_filename: "shallowgroundwater.gpkg"
 output:
   bookdown::html_document2:
     code_folding: hide

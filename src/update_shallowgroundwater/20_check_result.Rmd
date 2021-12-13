@@ -1,7 +1,7 @@
 # Check results
 
 ```{r}
-filepath <- file.path(datapath, output_filename)
+filepath <- file.path(sgpath, output_filename)
 ```
 
 - Checksums:
