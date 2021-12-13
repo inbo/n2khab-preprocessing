@@ -43,9 +43,9 @@ The resulting new version of `shallowgroundwater` is written here as **``r outpu
 
 Hence we will have three separate sources, which we will document as three extra TRUE/FALSE column inside ``r output_filename``:
 
-- `within_soilanthrop`
-- `within_soildunes`
-- `narrow_soilanthrop`
+- `anthrop_gwdep`
+- `narrowanthrop_gwdep`
+- `dunes_gwdep`
 
 Where an area overlapped between several of these sources, more than one column is set as `TRUE`.
 
@@ -447,10 +447,10 @@ f <- future({
       result <- qgis_run_algorithm("native:union",
                                    INPUT = 
                                      buffered_obliggwdep_within_soilanthrop %>% 
-                                     mutate(within_soilanthrop = TRUE),
+                                     mutate(anthrop_gwdep = TRUE),
                                    OVERLAY = 
                                      narrow_soilanthrop_with_obliggwdep %>% 
-                                     mutate(narrow_soilanthrop = TRUE))
+                                     mutate(narrowanthrop_gwdep = TRUE))
     )
   list(result = result, elapsed = elapsed)
 }, seed = NULL)
@@ -465,7 +465,7 @@ f <- future({
                                    INPUT = res_filepath,
                                    OVERLAY = 
                                      buffered_obliggwdep_within_soildunes %>% 
-                                     mutate(within_soildunes = TRUE))
+                                     mutate(dunes_gwdep = TRUE))
     )
   list(result = result, elapsed = elapsed)
 }, seed = NULL)
