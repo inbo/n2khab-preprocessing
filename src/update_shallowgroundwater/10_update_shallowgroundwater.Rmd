@@ -508,6 +508,26 @@ The result is written as ``r output_filename``.
 sg_extended <- 
   read_sf(res_filepath2) %>% 
   select(-starts_with("fid")) %>% 
+  {if (params$union_sg) . else {
+    select(.,
+           geomorph_wcoast = K_GMK_, 
+           anthrop_gwdep,
+           narrowanthrop_gwdep,
+           drainage = BOD_DRA, 
+           dunes_gwdep,
+           peat_profile = BOD_PROV, 
+           peat_substr = BOD_SUB, 
+           peat_parentmat = BOD_MOEV, 
+           peat_texture = BOD_TEX, 
+           phys_system = FYS_, 
+           zwin = K_ZWIN_, 
+           habitat_1130 = HAB_1130, 
+           gwdepth_coast = K_GWD_, 
+           gwdepth_local = GWM_, 
+           seepage = BDS_, 
+           peat_survey = VEK_, 
+           duneslack = K_DUINV_)
+  }} %>% 
   mutate(across(where(is.logical), ~ifelse(is.na(.), FALSE, .)))
 ```
 
