@@ -67,7 +67,10 @@ sgpath <- find_root_file("n2khab_data/10_raw/shallowgroundwater",
 if (!dir.exists(sgpath)) dir.create(sgpath)
 inputpath <- file.path(tempdir(), "shallowgroundwater")
 dir.create(inputpath, showWarnings = FALSE)
+```
 
+
+```{r}
 drive_auth(email = TRUE)
 # download "shallowgroundwater_20211129.gpkg.zip", which only contains the 
 # "ZOG_20211129_diss" layer from ZonesOndiepGrondwater_20211129.gpkg":
