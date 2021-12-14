@@ -20,6 +20,22 @@ c("xxh64", "md5", "sha256") %>%
 glimpse(pol)
 ```
 
+```{r}
+pol %>% 
+  st_drop_geometry %>% 
+  summary
+```
+
+- Are all attribute combinations unique?
+This is a desirable property: each multipolygon stands for another combination of data origins.
+
+```{r}
+pol %>% 
+  st_drop_geometry %>% 
+  {nrow(.) == nrow(distinct(.))}
+```
+
+
 - Is the CRS conform EPSG:31370?
 
 ```{r} 
