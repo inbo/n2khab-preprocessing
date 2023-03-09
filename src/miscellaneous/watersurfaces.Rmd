@@ -1,7 +1,7 @@
 ---
 title: "Handling the watersurfaces data source"
-date: "`r paste("Version",lubridate::now())`"
-  output:
+date: "`r paste('Version',lubridate::now())`"
+output:
   html_document:
     toc: yes
     df_print: paged
