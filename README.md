@@ -66,7 +66,7 @@ Recommended resources to get started are:
 - have a quick look at the [tidyverse style guide](https://style.tidyverse.org/).
 There you see how to style object, variable and function names, as well as the documentation.
 At least keep in mind: **use lower case and 'snake_case'** for object, variable and function names.
-- preferrably use `git2rdata::write_vc()` when an R _dataframe_ needs to be written to disk for later use (see <https://inbo.github.io/git2rdata/>).
+- preferrably use `git2rdata::write_vc()` when an R _dataframe_ needs to be written to disk for later use (see <https://ropensci.github.io/git2rdata/>).
 Define the sorting order well (avoid ties) by using the `sorting` argument, in order to get meaningful _diffs_ when data are updated later.
 The function stores the object in a version-control + R friendly format (tab separated values (.tsv) plus metadata on sorting order and variables (.yml)).
 The R object can then be 100% recreated using `git2rdata::read_vc()`!!
