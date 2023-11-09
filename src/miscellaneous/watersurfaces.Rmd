@@ -88,8 +88,16 @@ There are plenty of `NA`'s but only in fields where we expect them.
 
 ```{r}
 sapply(ws, function(x) sum(is.na(x)))
-
 ```
+
+We see a missing value in `KRWTYPES` for `KRWTYPE == "Ad"`, while all other `KRWTYPE` values are accompanied by a value for `KRWTYPES`.
+
+```{r}
+ws |> 
+  st_drop_geometry() |> 
+  count(KRWTYPE, KRWTYPES)
+```
+
 
 ### Are there `<Null>` values?
 
