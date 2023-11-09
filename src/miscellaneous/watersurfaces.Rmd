@@ -243,8 +243,14 @@ levels(ws$KRWTYPE)
 levels(ws$KRWTYPES)
 ```
 
-**DIEPKL**: there are extra codes in the dataset ("> 6 m" and "0 - 2 m") and the ordering of 
-the levels could be more logical. 
+**DIEPKL**: there are extra codes in the dataset ("0 - 2 m", "2 - 4 m", "4 - 6 m" and "> 6 m") and the ordering of the levels could be more logical.
+
+Notes:
+
+- in version 1.1, an R chunk in the 'Windows encoding' section already reduced the number of levels, which resulted in fewer extra categories.
+However this was just for exploratory purposes as it was not the purpose to always implement such changes.
+- also in the future we will not rectify this (by default) in reading functions for raw data sources: problems in the data will be returned as-is and should be solved in a future version of the data source.
+By default we just streamline column names and variable types, we make sure that values referring to `NA` are effectively returned as `NA` and we try to avoid some encoding problems.
 
 ```{r}
 levels(ws$DIEPKL)
