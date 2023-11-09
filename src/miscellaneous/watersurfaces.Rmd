@@ -240,9 +240,12 @@ levels(ws$PEILBEHEER)
 
 ## Potential issues
 
-- `KRWTYPE`, `FUNCTIE`, `PEILBEHEER`: more levels in the metadata report than in the dataset 
+- `KRWTYPE`, `FUNCTIE`, `PEILBEHEER`: more levels in the metadata report than in the dataset.
+This is not necessarily a problem.
 - `DIEPKL`, `FUNCTIE`: extra codes in the dataset that are not present in the report
 - `CONNECT`: codes differ between dataset and report
+- a missing value in `KRWTYPES` for `KRWTYPE == "Ad"`
+- One `<Null>` string is present in `GEBIED` column
 
 The extra codes will be discussed with the authors of the layers.
 
@@ -334,7 +337,7 @@ data source variable          data frame variable
 `FUNCTIE`                     `usage`
 `PEILBEHEER`                  `water_level_management`
 
-**Other considerations for the R object returned by `read_watersurfaces()`**:
+# Other considerations for the R object returned by `read_watersurfaces()`
 
 - not uptaking `OPPWVL`, `OMTWVL`, `SHAPE_Length`, `SHAPE_Area` (area & perimeter are easily calculated etc) -- OK
 - sort by `polygon_id` -- OK
@@ -342,4 +345,9 @@ data source variable          data frame variable
 - add translations to long text for  `usage`? -- for a later version (as more 
 codes will be used)
 - converting null / 0 values to `NA` -- OK
+- support new variable `water_level_management` -- OK
+
+
+
+
 
