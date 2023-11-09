@@ -12,15 +12,6 @@ output:
     code_folding: hide
     includes:
       in_header: ../header.html
-  html_notebook:
-    number_sections: yes
-    code_folding: hide
-    includes:
-      in_header: ../header.html
-    toc: yes
-    toc_float:
-      collapsed: no
-      smooth_scroll: no
 ---
 
 ```{r setup, message=FALSE, echo=FALSE}
