@@ -247,11 +247,11 @@ The extra codes will be discussed with the authors of the layers.
 
 ## Validity of the geometries
 
-Let's inspect features with invalid geometry:
+Let's inspect features with invalid or corrupt geometry:
 
 ```{r}
 st_is_valid(ws) %>% table
-invalid_geoms <- ws[!st_is_valid(ws), ]
+invalid_geoms <- ws[!st_is_valid(ws) | is.na(st_is_valid(ws)), ]
 st_is_valid(invalid_geoms, reason = TRUE)
 ```
 
@@ -268,12 +268,21 @@ valid_geoms <- st_make_valid(invalid_geoms)
 tm_shape(valid_geoms) + tm_borders() + tm_facets(by = "OBJECTID")
 ```
 
+Are all geometries valid now?
+
 ```{r}
 all(st_is_valid(valid_geoms))
 ```
 
 So this works well; in derived data we will fix these geometries.
 We might also consider an optional geometry reparation step in `read_watersurfaces()`.
+
+We also check that no empty geometries are present:
+
+```{r}
+all(!is.na(st_dimension(ws$geom)))
+```
+
 
 Refer to <https://github.com/inbo/n2khab-preprocessing/issues/60> and <https://r-spatial.org/r/2017/03/19/invalid.html> for more information!
 
