@@ -1,26 +1,19 @@
-library(openssl)
 library(tidyverse)
 library(n2khab)
 
 mypath <- fileman_up("n2khab_data")
 
 hashes <-
-    tibble(filepath = str_c(mypath, "/",
-        list.files(path = mypath,
-            recursive = TRUE)
-      )) %>%
-    mutate(filename = str_match(filepath, "(.+\\/)*(.+)")[,3],
-           md5 = map(filepath, function(x) {
-                           file(x) %>% md5 %>% str_c(collapse = '')
-                         }) %>% as.character,
-           sha256 = map(filepath, function(x) {
-                          file(x) %>% sha256 %>% str_c(collapse = '')
-                          }) %>% as.character
-           ) %>%
-    select(filepath,
-           filename,
-           md5,
-           sha256)
+  tibble(filepath = str_c(mypath, "/",
+                          list.files(path = mypath,
+                                     recursive = TRUE)
+  )) %>%
+  mutate(
+    filename = basename(filepath),
+    xxh64 = xxh64sum(filepath),
+    md5 = md5sum(filepath),
+    sha256 = sha256sum(filepath)
+  )
 
 hashes %>%
-    write_csv("hashes.csv")
+  write_csv("hashes.csv")
