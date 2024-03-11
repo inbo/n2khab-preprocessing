@@ -51,9 +51,24 @@ nrow(check_polygon_id_polygons) == 0
    nrow == nrow(pol) 
 ``` 
 
-
 - Is the CRS conform EPSG:31370?
 
 ```{r} 
  st_crs(pol) == st_crs(31370) 
 ```
+
+- Is phab always between 0 and 100?
+
+```{r}
+all(between(types$phab, 0, 100))
+```
+
+- Is the primary key unique?
+
+```{r}
+types %>% 
+  select(polygon_id, type, certain) %>% 
+  duplicated() %>% 
+  negate(any)(.)
+```
+
