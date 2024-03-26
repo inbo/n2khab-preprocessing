@@ -54,7 +54,7 @@ opts_chunk$set(
 
 # ISO8601 timestamp to set as fixed value in the GeoPackage 
 # (to be UPDATED to the actual creation date; at least update for each version):
-Sys.setenv(OGR_CURRENT_DATE = "2021-03-26T00:00:00.000Z")
+Sys.setenv(OGR_CURRENT_DATE = "2023-03-26T00:00:00.000Z")
 # This is used to keep results reproducible, as the timestamp is otherwise
 # updated each time.
 # Above environment variable OGR_CURRENT_DATE is used by the GDAL driver.
