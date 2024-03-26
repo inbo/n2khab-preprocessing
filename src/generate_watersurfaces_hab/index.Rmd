@@ -47,11 +47,6 @@ library(n2khab)
 library(git2rdata)
 library(kableExtra)
 
-opts_chunk$set(
-  echo = TRUE,
-  dpi = 300
-)
-
 # ISO8601 timestamp to set as fixed value in the GeoPackage 
 # (to be UPDATED to the actual creation date; at least update for each version):
 Sys.setenv(OGR_CURRENT_DATE = "2023-03-26T00:00:00.000Z")
