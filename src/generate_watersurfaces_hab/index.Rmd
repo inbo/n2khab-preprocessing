@@ -46,6 +46,7 @@ library(knitr)
 library(n2khab)
 library(git2rdata)
 library(kableExtra)
+library(leaflet)
 
 # ISO8601 timestamp to set as fixed value in the GeoPackage 
 # (to be UPDATED to the actual creation date; at least update for each version):
