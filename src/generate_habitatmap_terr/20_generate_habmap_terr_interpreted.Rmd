@@ -262,10 +262,10 @@ habmap_polygons_water <-
     filter(opp == oppsum)
 
 habmap_polygons_interpreted <- habmap_polygons_interpreted %>% 
-    anti_join(habmap_polygons_water)
+    anti_join(habmap_polygons_water, by = join_by(polygon_id))
 
 habmap_types_interpreted <- habmap_types_interpreted %>% 
-    anti_join(habmap_polygons_water)    
+    anti_join(habmap_polygons_water, by = join_by(polygon_id))    
 
 
 ```
@@ -333,6 +333,19 @@ habmap_types_interpreted <- habmap_types_interpreted %>%
     mutate( type = str_replace_all(type, "µ_", "0_")) %>% 
     mutate( type = as.factor(type),
             source =  as.factor(source))
+
+# This step can create duplicates in the primary key on {polygon_id + type + certain}
+# (primary key used since version 2020 v1)
+# so we need to remove them:
+habmap_types_interpreted <- habmap_types_interpreted %>%
+  summarise(
+    certain = all(certain),
+    code_orig = str_c(code_orig, collapse = "; "),
+    phab = sum(phab),
+    source = str_c(source, collapse = "; "),
+    .by = c(polygon_id, type, certain)
+  )
+
 ```
 
 ## Write results into a geopackage
