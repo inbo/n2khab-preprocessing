@@ -3,14 +3,10 @@
 Checksums:
 
 ```{r}
-file(filepath) %>% 
-  openssl::md5() %>% 
-  str_c(collapse = '') %>% 
-  `names<-`("md5sum")
-file(filepath) %>% 
-  openssl::sha256() %>% 
-  str_c(collapse = '') %>% 
-  `names<-`("sha256sum")
+c("xxh64", "md5", "sha256") %>% 
+  map_dfr(~tibble(algorithm = ., 
+                  checksum = checksum(filepath, .))) %>% 
+  kable
 ```
 
 
