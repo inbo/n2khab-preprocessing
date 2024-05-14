@@ -68,3 +68,8 @@ types %>%
   negate(any)(.)
 ```
 
+- Are the geometries valid?
+
+```{r}
+sum(!st_is_valid(pol) | is.na(st_is_valid(pol))) == 0
+```
