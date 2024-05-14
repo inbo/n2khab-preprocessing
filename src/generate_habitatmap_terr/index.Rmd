@@ -37,9 +37,6 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-options(stringsAsFactors = FALSE,
-        scipen = 999, 
-        digits = 15)
 renv::restore()
 library(sf)
 library(tidyverse)
@@ -53,9 +50,12 @@ opts_chunk$set(
   echo = TRUE,
   dpi = 300
 )
+conflicted::conflict_prefer("select", "dplyr")
+conflicted::conflict_prefer("filter", "dplyr")
+
 # ISO8601 timestamp to set as fixed value in the GeoPackage 
 # (to be UPDATED to the actual creation date; at least update for each version):
-Sys.setenv(OGR_CURRENT_DATE = "2021-03-11T00:00:00.000Z")
+Sys.setenv(OGR_CURRENT_DATE = "2024-05-13T00:00:00.000Z")
 # This is used to keep results reproducible, as the timestamp is otherwise
 # updated each time.
 # Above environment variable OGR_CURRENT_DATE is used by the GDAL driver.
