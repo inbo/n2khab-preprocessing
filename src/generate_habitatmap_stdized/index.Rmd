@@ -46,6 +46,7 @@ library(n2khab)
 library(git2rdata)
 library(kableExtra)
 library(openssl)
+library(leaflet)
 opts_chunk$set(
   echo = TRUE,
   dpi = 300
