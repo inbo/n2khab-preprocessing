@@ -295,6 +295,106 @@ habmap_types %>%
   kable_styling()
 ```
 
+## Control and fix geometries
+
+We want to make sure that the layer has valid geometries so that we can use it 
+in spatial analysis in GIS. 
+
+First, we search for polygons with invalid geometries. 
+
+```{r}
+habmap_types_geom_invalid <- st_is_valid(habmap_types_sf, reason = TRUE) %>%
+  as_tibble() %>%
+  mutate(id = rownames(.)) %>% 
+  left_join(habmap_types_sf %>% 
+              # rownames_to_column(var = "id") %>% 
+              mutate(id = as.character(row_number())), 
+            by = "id") %>%
+  filter(value != "Valid Geometry") %>% 
+  mutate(problem = str_extract(string = value, 
+                                pattern = "[^\\[]+"))
+
+cat(paste0("There are ", habmap_types_geom_invalid %>% nrow() , 
+           " polygons with invalid geometry"))
+```
+
+```{r}
+habmap_types_geom_invalid  %>%
+  select(id, polygon_id, description_orig, problem) %>% 
+  kable(caption = "Polygons with faulty geometries", label = NA) %>%
+  kable_styling() %>% 
+  scroll_box(height = "300px")
+```
+
+```{r}
+# show the invalid polygons on a map
+habmap_types_geom_invalid_wgs84 <- habmap_types_sf %>% 
+  inner_join(habmap_types_geom_invalid %>% 
+               select(polygon_id, problem), 
+             by = join_by(polygon_id)) %>%
+  st_transform(crs = 4326) 
+
+leaflet(height = "600px", width = "700px") %>%
+  addTiles(group = "OSM (default)") %>%
+  addPolygons(data = habmap_types_geom_invalid_wgs84,
+              color = "darkred",
+              popup = paste("polygon_id:", 
+                          habmap_types_geom_invalid_wgs84$polygon_id, "<br>",
+                           "description_orig:",
+                          habmap_types_geom_invalid_wgs84$description_orig, 
+                          "<br>", 
+                          habmap_types_geom_invalid_wgs84$problem)) 
+```
+
+We correct the geometry using the function `st_make_valid` and check the results.
+
+```{r}
+# correct geometries
+habmap_types_sf <- st_make_valid(habmap_types_sf)
+```
+
+```{r}
+# list the corrected polygons and check the geometry again
+habmap_types_geom_corrected <- st_is_valid(habmap_types_sf, reason = TRUE) %>% 
+  as_tibble() %>% 
+  mutate(id = rownames(.)) %>% 
+  left_join(habmap_types_sf %>% 
+              mutate(id = as.character(row_number())), 
+            by = "id") %>% 
+  filter(polygon_id %in% habmap_types_geom_invalid$polygon_id)
+
+habmap_types_geom_corrected %>% 
+        select(id, polygon_id, description_orig, problem = value) %>% 
+  kable(caption = "Polygons with faulty geometries after correction", label = NA) %>% 
+  kable_styling() %>% 
+  scroll_box(height = "300px")
+```
+
+
+```{r}
+# show the corrected polygons on a map
+habmap_types_geom_corrected_wgs84 <- habmap_types_sf %>% 
+  # semi_join(habmap_types_geom_invalid %>% 
+  #              select(polygon_id), 
+  #            by = join_by(polygon_id)) %>%
+  filter(polygon_id %in% habmap_types_geom_invalid$polygon_id) %>% 
+  st_transform(crs = 4326) 
+
+leaflet(height = "600px", width = "700px") %>%
+  addTiles(group = "OSM (default)") %>%
+    addPolygons(data = habmap_types_geom_invalid_wgs84, 
+                group = "before correction",
+                color = "darkred") %>% 
+  addPolygons(data = habmap_types_geom_corrected_wgs84,
+              group = "after correction",
+              popup = paste("polygon_id:", 
+                          habmap_types_geom_corrected_wgs84$polygon_id, "<br>",
+                           "description_orig:",
+                          habmap_types_geom_corrected_wgs84$description_orig)) %>%
+    addLayersControl(overlayGroups = c("before correction", "after correction"),
+                     options = layersControlOptions(collapsed = FALSE))
+```
+
 
 ## Write results into a geopackage
 
