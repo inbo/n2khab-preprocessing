@@ -90,6 +90,17 @@ habmap_longHAB <- habmap_sf %>%
 
 ```
 
+Here are the vegetation codes used in this version of the habitatmap:
+
+```{r showListHabitats}
+habmap_longHAB %>%
+  distinct(code) %>% 
+  arrange(code) %>% 
+  kable(caption = "List codes in habitat map", label = NA) %>%
+  kable_styling() %>% 
+  scroll_box(height = "300px")
+```
+
 ## Correction of some of the codes in the Habitat map
 
 Some polygons in the habitat map contain codes that do not correspond with the standardized list of habitat types. 
@@ -140,7 +151,8 @@ if(sum(habmap_correction$code %in% habmap_longHAB$code) > 0){
 In several cases the code contains 2 or 3 possible vegetation types which are separated with a ','. 
 We will split the different possible vegetation types and create one row for each of them. 
 An additional variable 'certain' will be FALSE if the orginal habitatmap code consists of 2 or 3 possible vegetation types, and TRUE if only one vegetation type is provided.
-An exception to this rule are following codes: `3130,rbbmr`, `3140,rbbmr`, `3150,rbbmr` and `3160,rbbmr`.
+
+An exception to this rule are following codes: `3130_rbbmr`, `3140_rbbmr`, `3150_rbbmr` and `3160_rbbmr` (converted in the previous step into `31x0,rbbms`).
 These are standing water bodies that contain both `rbbmr` and the habitat type.
 Therefore `certain` will be set to `TRUE` for both types included in `code`.
 
@@ -249,7 +261,8 @@ habmap_other_type <- habmap_long_aggr %>%
 
 habmap_other_type %>%
   select(polygon_id, type, certain, code_orig, phab) %>%
-  kable(caption = "Polygons with types that do not coorspond with the standard list of types and rbb") %>%
+  kable(caption = "Polygons with types that do not correspond with the standard list of types and rbb"
+        , label = NA) %>%
   kable_styling()
 
 ```
