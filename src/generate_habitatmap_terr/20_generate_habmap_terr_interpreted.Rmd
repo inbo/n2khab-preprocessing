@@ -191,7 +191,7 @@ habmap_polygons_interpreted <- habmap_polygons_interpreted %>%
                   select(polygon_id, dunewater) %>% 
                    st_drop_geometry(), by = c("polygon_id")) %>% 
     mutate(description = ifelse(is.na(dunewater),
-                                str_replace_all(description, "2190_","2191_"),
+                                str_replace_all(description, "2190_","2191_"), # safeguards mappings on subtype-level from changes
                                 description_orig)) %>% 
     mutate(description = ifelse(is.na(dunewater), 
                                 str_replace_all(description, "2190", "2190_overig"),
@@ -207,7 +207,7 @@ habmap_types_interpreted <- habmap_types_interpreted %>%
     left_join(habmap_dunewater %>% 
                   select(polygon_id, dunewater) %>% 
                    st_drop_geometry(), by = c("polygon_id")) %>% 
-    mutate(type = str_replace_all(type, "2190_", "2191_")) %>% # mark mappings on subtype-level
+    mutate(type = str_replace_all(type, "2190_", "2191_")) %>% # safeguards mappings on subtype-level from changes
     mutate(type = case_when(
                     is.na(dunewater) & str_detect(type, "2190") ~ "2190_overig", 
                     is.na(dunewater) ~ as.character(type),                    
@@ -260,9 +260,9 @@ It means we will actually drop polygons which, besides water types, _contain no 
 ```{r exclude water surfaces}
 watertypes <- data.frame( "watertype" = c("1130", "2190_a", "3110", "3130", "3130_aom", "3130_na", "3140", "3150", "3160", "3260", "7220", "rbbah"))
 
-#polygons that are, regarding their habitat/rib content, exclusively represented by water type(s) are excluded.
-# polygons with only a very small portion of habitat/rib terrestrial and almost entirely watersurface ars still included.
-# fyi: polygons with a very small portion of watersurface that for the remaining part are terrestrial non(!)-habitat/rib are excluded
+# polygons that are, regarding their habitat/rib content, exclusively represented by water type(s) are excluded.
+# polygons with only a very small portion of habitat/rib terrestrial and almost entirely watersurface are still included.
+# polygons with a small portion of watersurface that for the remaining part are terrestrial non(!)-habitat/rib are excluded
 
 habmap_polygons_water <- 
     habmap_types_interpreted %>% 
@@ -275,10 +275,10 @@ habmap_polygons_water <-
     filter(opp == oppsum)
 
 habmap_polygons_interpreted <- habmap_polygons_interpreted %>% 
-    anti_join(habmap_polygons_water)
+    anti_join(habmap_polygons_water, by = join_by(polygon_id))
 
 habmap_types_interpreted <- habmap_types_interpreted %>% 
-    anti_join(habmap_polygons_water)    
+    anti_join(habmap_polygons_water, by = join_by(polygon_id))    
 
 
 ```
