@@ -73,3 +73,4 @@ types %>%
 
 ```{r}
 sum(!st_is_valid(pol) | is.na(st_is_valid(pol))) == 0
+```
