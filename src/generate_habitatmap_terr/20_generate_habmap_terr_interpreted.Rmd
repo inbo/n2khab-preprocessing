@@ -44,8 +44,6 @@ hashes <-
         list.files(path = mypath,
             recursive = TRUE)
       )) %>%
-    filter(!str_detect(filepath, "habitatmap_stdized_2020|habitatmap_stdized_2018")) %>%
-    # in case other version are stored in a subfolder
     mutate(filename = str_match(filepath, "(.+\\/)*(.+)")[,3],
            md5 = map(filepath, function(x) {
                            file(x) %>% md5 %>% str_c(collapse = '')
@@ -98,8 +96,6 @@ hashes <-
         list.files(path = mypath,
             recursive = TRUE)
       )) %>%
-    filter(!str_detect(filepath, "habitatmap_2020|habitatmap_2018")) %>% 
-    #in case you store an older version in a subfolder 
     mutate(filename = str_match(filepath, "(.+\\/)*(.+)")[,3],
            md5 = map(filepath, function(x) {
                            file(x) %>% md5 %>% str_c(collapse = '')
