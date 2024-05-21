@@ -166,7 +166,7 @@ intersection_ws_21xx <- watersurfaces_21xx %>%
 watersurfaces_2190_a_types <- intersection_ws_21xx %>%
     st_drop_geometry() %>%
     # add 'description_orig' attribute
-    left_join(habitatmap_21xx_types, by = "polygon_id") %>% 
+    left_join(habitatmap_21xx_types, by = "polygon_id", relationship = "many-to-many") %>% 
     rename(polygon_id_habitatmap = polygon_id) %>%
     distinct(polygon_id_ws, polygon_id_habitatmap, description_orig) %>%
     mutate(type = "2190_a") %>%
@@ -252,7 +252,7 @@ intersection_ws_standw <- watersurfaces_standw %>%
 
 watersurfaces_standw_types <- intersection_ws_standw %>%
     st_drop_geometry() %>%
-    left_join(habitatmap_standw_types, by = "polygon_id") %>%
+    left_join(habitatmap_standw_types, by = "polygon_id", relationship = "many-to-many") %>%
     rename(polygon_id_habitatmap = polygon_id) %>%
     distinct(polygon_id_ws, polygon_id_habitatmap, description_orig, code_orig, certain, type) %>%
     group_by(polygon_id_ws, code_orig, certain, type) %>%
