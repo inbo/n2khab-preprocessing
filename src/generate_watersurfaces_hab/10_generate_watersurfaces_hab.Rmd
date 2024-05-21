@@ -84,16 +84,17 @@ if (!all.equal(hashes$md5, hashes$md5_ref)) {
     stop(cat("The source map is NOT up to date ! Please check the datasource. "))
 }
 
-watersurfaces <- st_read(filepath,
-                  layer = "Watervlakken",
-                  crs = 31370)
 
-unique_id <- nrow(watersurfaces) == n_distinct(watersurfaces$WVLC)
+# load watersurfaces with corrected geometry 
+# (argument fix_geom available since n2khab 0.9.0) 
+watersurfaces <- read_watersurfaces(fix_geom = TRUE)
+
+unique_id <- nrow(watersurfaces) == n_distinct(watersurfaces$polygon_id)
 #TRUE
 # we will call this id polygon_id_ws
 
 watersurfaces <- watersurfaces %>% 
-  rename(polygon_id_ws = WVLC)
+  rename(polygon_id_ws = polygon_id)
 
 ```
 
@@ -133,56 +134,24 @@ For each watersurface (that is situated in coastal dune habitat) we create follo
 
 To create the attributes 'polygon_id_habitatmap' and 'description_orig', we make a spatial intersection between the watersurfaces within  coastal dunes and the habitatmap. Next we summarise for each watersurface and paste the different polygon_id_habitatmap's and description_orig's.  
 
-#### Tidying feature geometries
 
-Unfortunately the intersection step would be hampered by a faulty geometry in habitatmap_21xx_polygons
-"Error in CPL_geos_op2(op, x, y) : 
-  Evaluation error: TopologyException: Input geom 1 is invalid: Ring Self-intersection at or near point 78082.684000000358 228483.7210999988 at 78082.684000000358 228483.7210999988.".
 
-We solve the problem based on this [article: Tidying feature geometries with sf](https://www.r-spatial.org/r/2017/03/19/invalid.html).
+#### Checking feature geometries
 
-The following polygons have an invalid geometry.
+The intersection step could be hampered by a faulty geometry, so we could need to fix it.
+Let us check the geometry of the habitat map and watersurfaces for 21xx.
 
-```{r inspect geometry habmap, out.width='800px', out.height='500px'}
+```{r inspect geometry 21xx}
 
-geom_validity_habmap <- 
-  st_is_valid(habitatmap_21xx_polygons %>% 
-                   st_transform(crs = 4326), 
-              reason = TRUE) %>% 
-  as_tibble() %>% 
-  mutate(id = rownames(.)) %>% 
-  left_join(habitatmap_21xx_polygons %>% 
-              # rownames_to_column(var = "id") %>% 
-              mutate(id = as.character(row_number())), 
-            by = "id") %>% 
-  filter(value != "Valid Geometry")
+# habitatmap 21xx
+n_invalid_hms <- sum(!st_is_valid(habitatmap_21xx_polygons) | is.na(st_is_valid(habitatmap_21xx_polygons))) 
+# expected: 0 - since version 2023, habitatmap_stdized has its geometry corrected
+cat(paste0("Habitatmap 21xx: there are ", n_invalid_hms, " polygons with invalid geometry"))
 
-kable(geom_validity_habmap %>% 
-        select(id, value, polygon_id, description_orig, geom)) %>% 
-  kable_styling()
-
-```
-
-We correct the geometry using the function `st_make_valid` and check the results.
-
-```{r}
-habitatmap_21xx_polygons <- st_make_valid(habitatmap_21xx_polygons)
-
-geom_validity_habmap_corrected <- 
-  st_is_valid(habitatmap_21xx_polygons %>% 
-                   st_transform(crs = 4326), 
-              reason = TRUE) %>% 
-  as_tibble() %>% 
-  mutate(id = rownames(.)) %>% 
-  left_join(habitatmap_21xx_polygons %>% 
-              # rownames_to_column(var = "id") %>% 
-              mutate(id = as.character(row_number())), 
-            by = "id") %>% 
-  filter(polygon_id %in% geom_validity_habmap$polygon_id)
-
-kable(geom_validity_habmap_corrected %>% 
-        select(id, value, polygon_id, description_orig, geom)) %>% 
-  kable_styling()
+# watersurfaces 21xx
+n_invalid_ws <- sum(!st_is_valid(watersurfaces_21xx) | is.na(st_is_valid(watersurfaces_21xx))) 
+# expected: 0 - since version 1.2 and n2khab 0.9.0 we can import watersurfaces with a corrected geometry
+cat(paste0("Watersurfaces 21xx: there are ", n_invalid_ws," polygons with invalid geometry"))
 ```
 
 #### Create 2190_a map 
@@ -257,24 +226,20 @@ We create the water surface map with standing water habitat in a very similar wa
 For each water surface we will create a record for every standing water habitat type that occurs in the water surface according to the habitat map. We do not attempt to calculate a phab for the different types.
 
 But let's first check if all geometries are valid. 
-They are!
+
+#### Checking feature geometries
 
 ```{r inspect geometry}
-geom_validity_ws_standw <- 
-  st_is_valid(watersurfaces_standw %>% 
-                   st_transform(crs = 4326), 
-              reason = TRUE) %>% 
-  as_tibble() %>% 
-  mutate(id = rownames(.)) %>% 
-  left_join(watersurfaces_standw %>% 
-              # rownames_to_column(var = "id") %>% 
-              mutate(id = as.character(row_number())), 
-                     by = "id") %>% 
-  filter(value != "Valid Geometry")
+# watersurfaces 21xx
+n_invalid_hmsw <- sum(!st_is_valid(habitatmap_standw_polygons) | is.na(st_is_valid(habitatmap_standw_polygons))) # expected: 0
+cat(paste0("habitatmap_standw_polygons: there are ", n_invalid_hmsw," polygons with invalid geometry"))
 
-geometry_valid <- nrow(geom_validity_ws_standw) == 0
+# watersurfaces_standw
+n_invalid_wssw <- sum(!st_is_valid(watersurfaces_standw) | is.na(st_is_valid(watersurfaces_standw))) # expected: 0
+cat(paste0("watersurfaces_standw: there are ", n_invalid_wssw," polygons with invalid geometry"))
 
 ```
+
 
 #### Create map 
 
