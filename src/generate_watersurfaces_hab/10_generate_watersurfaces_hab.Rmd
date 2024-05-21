@@ -4,11 +4,11 @@ We will create a map with watersurfaces that contain aquatic habitat and rib. Th
 
 ## Data sources
 
-* The processed habitatmap of Flanders
+* The processed habitatmap of Flanders `habitatmap_stdized`
 
-* The water surfaces map of Flanders
+* The water surfaces map of Flanders `watersurfaces`
 
-To be sure we will use the correct version of the data sources (version 2023 for the processed habitatmap and version 1.2 for watersurfaces), we will first derive the xxh64 file hashes and compare them to the file hashes in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853) and [here](https://github.com/inbo/n2khab/pull/122#issuecomment-805940739)
+To be sure we will use the correct version of the data sources (version 2023 for the processed habitatmap and version 1.2 for watersurfaces), we will first derive the md5 file hashes and compare them to the file hashes in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853)
 
 ### Processed habitatmap
 
@@ -43,6 +43,7 @@ if (!all.equal(hashes$md5, hashes$md5_ref)) {
     stop(cat("The source map is NOT up to date ! Please check the datasource. "))
 }
 
+# load standardized habitatmap (since version 2023: with corrected geometry)
 habmap <- read_habitatmap_stdized() 
 
 ```
@@ -51,7 +52,7 @@ habmap <- read_habitatmap_stdized()
 
 Control the file hashes and read watersurfaces.
 
-In previous versions (until v1.0) the watersurface map did not have an attribute that contained a unique id. Since v1.1 the WVLC attribute is unique and can be used as identifier. 
+In previous versions (until v1.0) the watersurface map did not have an attribute that contained a unique id. Since v1.1 the WVLC attribute is unique and can be used as identifier (field polygon_id). 
 
 ```{r read watersurfaces map}
 
@@ -98,7 +99,7 @@ watersurfaces <- watersurfaces %>%
 
 ## Habitatmap 2190_a
 
-For habitat sutbtype 2190_a we select all water surfaces within habitat map polygons that contain coastal dune habitat types. In a next step, this selection will have to be manually screened, as some of the larger (artificial) water surfaces within dune habitat polygons might not correspond with the 2190_a subtype.
+For habitat subtype 2190_a we select all water surfaces within habitat map polygons that contain coastal dune habitat types. In a next step, this selection will have to be manually screened, as some of the larger (artificial) water surfaces within dune habitat polygons might not correspond with the 2190_a subtype.
 
 ### Selection of dune habitat polygons
 
