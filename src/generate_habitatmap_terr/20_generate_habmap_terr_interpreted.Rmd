@@ -358,6 +358,7 @@ habmap_types_interpreted <- habmap_types_interpreted %>%
     source = str_c(source, collapse = "; "),
     .by = c(polygon_id, type, certain)
   )
+
 ```
 
 ## Write results into a geopackage

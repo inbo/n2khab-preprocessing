@@ -2,6 +2,7 @@
 
 Checksums:
 
+
 ```{r}
 c("xxh64", "md5", "sha256") %>% 
   map_dfr(~tibble(algorithm = ., 
@@ -74,3 +75,4 @@ types %>%
 ```{r}
 sum(!st_is_valid(pol) | is.na(st_is_valid(pol))) == 0
 ```
+
