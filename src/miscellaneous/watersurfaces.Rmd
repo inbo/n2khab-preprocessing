@@ -1,5 +1,5 @@
 ---
-title: "Handling the watersurfaces data source"
+title: "Inspecting an internal draft of the watersurfaces data source"
 date: "`r paste('Version',lubridate::now())`"
 output:
   html_document:
@@ -27,52 +27,88 @@ opts_chunk$set(
 )
 ```
 
-# Exploring the watersurfaces data source
+# Exploring an internal draft of the watersurfaces data source
 
-The previous versions were 1.0 (10.5281/zenodo.3386859) and 1.1 (10.5281/zenodo.4117543).
-We want to explore the changes in the most recent version: 1.2 (10.5281/zenodo.7440931).
+Prior to publication, updates of the watersurfaces happen in a MS SQL Server database.
 
-```{r v1.2}
-filepath <- file.path(fileman_up("n2khab_data"), "10_raw/watersurfaces/watersurfaces.gpkg")
+Here we do some checks from R in order to prevent possible problems in a released version of the data source.
+
+Make the database connection and the query:
+
+```{r dev-after-v1.2}
+con <- inbodb::connect_inbo_dbase("G0102_00_AquaMorf")
+query <- sql("SELECT P.CodePlas AS WVLC, 
+                  plasnaamalt AS WTRLICHC,
+                  NP_ID AS HYLAC,
+                  plasnaam AS NAAM, 
+                  P.gebied AS GEBIED,
+                  P.watertype AS KRWTYPE,
+                  P.watertypeAlt AS KRWTYPEA,
+                  P.statuswatertype AS KRWTYPES,
+                  P.DiepteKlasse AS DIEPKL, 
+                  P.connectiviteit11 AS CONNECT, 
+                  P.peilbeheer AS PEILBEHEER,
+                  shape.STArea() AS OPPWVL,
+                  shape.STLength() AS OMTWVL,
+                  P.DiepteGem_m AS diepte_gem, 
+                  P.DiepteMax_m AS diepte_max, 
+                  P.gebiedalternatief AS gebied_alt,
+                  connectiviteit AS connect_old,
+                  P.jaaraanleg AS aanleg,
+                  P.status AS status, 
+                  shape.STAsBinary() AS geometry
+          FROM AquaMorf.PLAS P
+          WHERE GDB_TO_DATE >= '9999'")
+# show all columns of the database table with:
+# tbl(con, I("AquaMorf.PLAS")) |> glimpse()
 ```
 
-Checksums:
-
-```{r}
-filepath %>% 
-  n2khab::md5sum() %>% 
-  `names<-`("md5sum")
-filepath %>% 
-  n2khab::sha256sum() %>% 
-  `names<-`("sha256sum")
-filepath %>% 
-  n2khab::xxh64sum() %>% 
-  `names<-`("xxh64sum")
-```
+Note that we map variable names of version 1.2 in capitals to database column names.
+Some other available names have been kept lowercase.
 
 Import the spatial layer:
 
-```{r}
-st_layers(filepath)
-```
-
-```{r spatial-layer-v12}
-(ws <- read_sf(filepath, stringsAsFactors = TRUE, layer = "Watervlakken"))
+```{r spatial-layer}
+ws <- read_sf(con, query = query, crs = 31370) |> 
+  mutate(across(where(is.character), factor))
+glimpse(ws)
 ```
 
 The number of rows is `r nrow(ws)`.
 
-Other (aspatial) layers were only available in version 1.1.
+Sidenote: `read_sf()` downloads the data, but it is also possible to define a lazy object, execute database-level queries using dplyr verbs on this object (before collecting), and then convert to sf after collecting a filtered result.
+Example below:
+
+```{r paged.print=FALSE, collapse=TRUE}
+ws_db <- tbl(con, query)
+# without conversion to sf
+ws_db |> 
+  filter(row_number() <= 25) |> 
+  select(WVLC, geometry) |> 
+  collect()
+# one can still convert the binary geometries to WKB; see
+# https://hydroecology.net/reading-spatial-data-from-sql-server-without-sf/
+ws_db |> 
+  filter(row_number() <= 25) |> 
+  select(WVLC, geometry) |> 
+  collect() |> 
+  mutate(geometry = wk::as_wkb(geometry))
+# conversion to sf:
+ws_db |> 
+  filter(row_number() <= 25) |> 
+  select(WVLC, geometry) |> 
+  collect() |>
+  st_as_sf(crs = 31370)
+```
+
+```{r}
+DBI::dbDisconnect(con)
+```
+
 
 ## Step-by-step exploration
 
-### Encoding problems (Windows only)
-
-This has been explored for version 1.1, and handled where needed by `n2khab::read_watersurfaces()`.
-Given the factor levels explored below, it does not appear that more changes are needed.
-Hence this exploratory code has been dropped (2023-11-09).
-
-### A summary of the spatial layer for version 1.2
+### A summary of the spatial layer
 
 ```{r}
 ws %>% 
@@ -80,9 +116,15 @@ ws %>%
   summary
 ```
 
-`PEILBEHEER` is a new column in version 1.2!
+Compared to version 1.2:
 
-Let us look for a few typical errors more systematically in version 1.2.
+- `FUNCTION` is absent from the query.
+- `KRWTYPEA` is a new variable.
+- `CONNECT` has new levels.
+- Note: `HYLAC` is going to be removed in the official version.
+- Several columns are available (lowercase names in the query) which haven't been part of the official version yet (except for `connect_old`, which was `CONNECT` in previous versions).
+
+Let us look for a few typical errors more systematically.
 
 ### Are there `NA` values?
 
@@ -92,21 +134,41 @@ There are plenty of `NA`'s but only in fields where we expect them.
 sapply(ws, function(x) sum(is.na(x)))
 ```
 
-We see a missing value in `KRWTYPES` for `KRWTYPE == "Ad"`, while all other `KRWTYPE` values are accompanied by a value for `KRWTYPES`.
+`KRWTYPE` / `KRWTYPEA` / `KRWTYPES` consistency:
 
 ```{r}
 ws |> 
   st_drop_geometry() |> 
-  count(KRWTYPE, KRWTYPES)
+  count(KRWTYPE, KRWTYPES) |> 
+  print()
+ws |> 
+  st_drop_geometry() |> 
+  filter(!is.na(KRWTYPEA), KRWTYPEA != "-") |> 
+  count(KRWTYPE, KRWTYPEA) |> 
+  print(n = Inf)
+```
+
+One record has `KRWTYPES` set to 'voorlopig':
+
+```{r}
+ws |> filter(KRWTYPES == "voorlopig") |> as.matrix() |> t()
 ```
 
 
 ### Are there `<Null>` values?
 
-One `<Null>` string is present in `GEBIED` column:
+None:
 
 ```{r}
 sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == '<Null>', na.rm = TRUE))
+```
+
+### Are there `-` values?
+
+Yes, in `KRWTYPEA`:
+
+```{r}
+sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == '-', na.rm = TRUE))
 ```
 
 ### Are there Zero (0) values?
@@ -116,8 +178,6 @@ None:
 ```{r}
 sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == '0', na.rm = TRUE))
 ```
-
-Previously, `HYLAC` was zero if missing!
 
 Number of unique values of numeric variable `HYLAC`:
 
@@ -135,17 +195,25 @@ ws$HYLAC %>% is.na %>% sum
 
 ### Are WVLC codes unique?
 
-Yes. It was not the case in version 1.0, but it has been corrected since v1.1.
+No:
 
 ```{r}
 ws$WVLC %>% unique %>% length == nrow(ws)
 ```
 
+Which codes are duplicated?
+
+```{r}
+ws |> 
+  st_drop_geometry() |> 
+  count(WVLC) |> 
+  filter(n > 1)
+```
 
 ### Levels for each factor
 
 We can compare the levels for each factor variable with the information given in 
-[Scheers et al. (2022)](https://pureportal.inbo.be/nl/publications/watervlakken-versie-12-polygonenkaart-van-stilstaand-water-in-vla).
+a draft metadata report.
 
 We do not check `NAAM` and `GEBIED` since there are many possible options.
 
@@ -161,7 +229,7 @@ levels(ws$KRWTYPE)
 levels(ws$KRWTYPES)
 ```
 
-**DIEPKL**: there are extra codes in the dataset ("0 - 2 m", "2 - 4 m", "4 - 6 m" and "> 6 m") and the ordering of the levels could be more logical.
+**DIEPKL**: the only codes in the dataset are "0 - 2 m", "2 - 4 m", "4 - 6 m" and "> 6 m"; the codes are different in the metadata report.
 
 ```{r}
 levels(ws$DIEPKL)
@@ -182,25 +250,15 @@ levels(ws$DIEPKL) <- gsub(pattern = "\u2265", ">=", levels(ws$DIEPKL))
 levels(ws$DIEPKL)
 ```
 
-**CONNECT**: the codes differ from those in the report, which have the codes from version 1.1.
+**CONNECT**: the codes in the spatial layer are the same as in the metadata report (and they differ from previous official versions).
 
 ```{r}
 levels(ws$CONNECT)
 ```
 
-These are the categories in the metadata report for `CONNECT`:
+**FUNCTIE**: not present in the database.
 
-- geïsoleerd: niet verbonden met een waterloop 
-- permanent: het watervlak staat permanent in verbinding met minstens één
-waterloop 
-- periodiek: het watervlak staat tijdelijk (door peilbeheer of droogte) in verbinding
-met minstens één waterloop
-
-**FUNCTIE**: the code "veedrenk" is not mentioned in the metadata report and 
-there are many more codes in the report than in the 
-dataset
-
-```{r}
+```{r collapse=TRUE}
 levels(ws$FUNCTIE)
 ```
 
@@ -216,15 +274,15 @@ tuin/park                     esthetisch (verblijfsrecreatie, tuin- en parkvijve
 vogel                         waterpartij voor gedomesticeerde watervogels
 viskweek                      opkweken van vis
 zwemmen                       zwemmen
-duiken                        duiken
-zachterecreatie               niet gemotoriseerde watersport
-motorrecreatie                gemotoriseerde watersport
-berging                       waterberging ten behoeve van overstromings- of peilbeheer
+duik                          duiken
+zachterecreatie               niet gemotoriseerde waterrecreatie
+motorrecreatie                gemotoriseerde waterrecreatie
+waterberging                       waterberging ten behoeve van overstromings- of peilbeheer
 opslag                        reservoir voor water (industrie, landbouw, bluswater, waterkracht…)
 drinkwater                    drinkwaterwinning
 zuivering                     (kleinschalige) waterzuivering, infiltratie
 bezinking                     bezinking van proceswater
-drinkplaats                   watervoorziening voor vee
+veedrenk                      watervoorziening voor vee
 geen                          geen specifieke functie
 
 **PEILBEHEER**: one code less than in the report.
@@ -235,14 +293,15 @@ levels(ws$PEILBEHEER)
 
 ## Potential issues
 
-- `KRWTYPE`, `FUNCTIE`, `PEILBEHEER`: more levels in the metadata report than in the dataset.
+- There is a duplicated value of `WVLC`.
+- `KRWTYPEA`: quite some missing values are set as a string `"-"` instead of missing.
+- One record has `KRWTYPES` as 'voorlopig'
+- `DIEPKL`: codes in the dataset differ from those in the report.
+- `KRWTYPE`, `PEILBEHEER`: more levels in the metadata report than in the dataset.
 This is not necessarily a problem.
-- `DIEPKL`, `FUNCTIE`: extra codes in the dataset that are not present in the report
-- `CONNECT`: codes differ between dataset and report
-- a missing value in `KRWTYPES` for `KRWTYPE == "Ad"`
-- One `<Null>` string is present in `GEBIED` column
+- `FUNCTIE`: not available in the database.
 
-The extra codes will be discussed with the authors of the layers.
+These will be discussed with the authors of the layers.
 
 
 ## Validity of the geometries
@@ -250,13 +309,22 @@ The extra codes will be discussed with the authors of the layers.
 Let's inspect features with invalid or corrupt geometry:
 
 ```{r}
-st_is_valid(ws) %>% table
-invalid_geoms <- ws[!st_is_valid(ws) | is.na(st_is_valid(ws)), ]
-st_is_valid(invalid_geoms, reason = TRUE)
+ws_validity <- st_is_valid(ws)
+ws_validity %>% table
+invalid_geoms <- ws[!ws_validity | is.na(ws_validity), ]
+```
+
+Identifying the invalid geometries:
+
+```{r}
+invalid_geoms |> 
+  select(WVLC) |> 
+  mutate(reason = st_is_valid(invalid_geoms, reason = TRUE)) |> 
+  st_drop_geometry()
 ```
 
 ```{r}
-tm_shape(invalid_geoms) + tm_borders() + tm_facets(by = "OBJECTID")
+tm_shape(invalid_geoms) + tm_borders() + tm_facets(by = "WVLC")
 ```
 
 The geometry invalidity is the consequence of self-intersecting rings, as a consequence of digitalization errors.
@@ -265,7 +333,7 @@ Let's compare with the same geoms after fixing the self-intersecting rings:
 
 ```{r}
 valid_geoms <- st_make_valid(invalid_geoms)
-tm_shape(valid_geoms) + tm_borders() + tm_facets(by = "OBJECTID")
+tm_shape(valid_geoms) + tm_borders() + tm_facets(by = "WVLC")
 ```
 
 Are all geometries valid now?
@@ -280,7 +348,7 @@ We might also consider an optional geometry reparation step in `read_watersurfac
 We also check that no empty geometries are present:
 
 ```{r}
-all(!is.na(st_dimension(ws$geom)))
+all(!is.na(st_dimension(ws$geometry)))
 ```
 
 
@@ -290,7 +358,7 @@ Refer to <https://github.com/inbo/n2khab-preprocessing/issues/60> and <https://r
 
 ```{r plot}
 
-# plot watersurfaces v1.2
+# plot watersurfaces
  p <- ggplot() +
   geom_sf(data = ws, aes(), color = "blue")
 
@@ -337,6 +405,7 @@ data source variable          data frame variable
 `NAAM`                        `name`
 `GEBIED`                      `area_name`
 `KRWTYPE`                     `wfd_type `
+`KRWTYPEA`                    `wfd_type_alternative`
 `KRWTYPES`                    `wfd_type_certain`
 `DIEPKL`                      `depth_class`
 `CONNECT`                     `connectivity`
