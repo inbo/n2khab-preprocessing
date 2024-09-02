@@ -9,17 +9,17 @@ output:
       collapsed: no
       smooth_scroll: no
     number_sections: yes
-    code_folding: hide
+    code_folding: show
     includes:
       in_header: ../header.html
 ---
 
 ```{r setup, message=FALSE, echo=FALSE}
-options(stringsAsFactors = FALSE)
 library(sf)
-library(tidyverse)
+library(dplyr)
 library(tmap)
 library(n2khab)
+library(ggplot2)
 library(knitr)
 opts_chunk$set(
   echo = TRUE,
@@ -361,8 +361,15 @@ si <- sessioninfo::session_info()
 p <- si$platform %>%
   do.call(what = "c")
 if ("sf" %in% si$packages$package) {
-  p <- c(p, sf_extSoftVersion())
-  names(p)[names(p) == "proj.4"] <- "PROJ"
+  p2 <- sf::sf_extSoftVersion()
+  p2 <- p2[names(p2) != "proj.4"]
+  names(p2) <- paste("sf", names(p2))
+  p <- c(p, p2)
+}
+if ("terra" %in% si$packages$package) {
+  p2 <- terra::gdal(lib = "all")
+  names(p2) <- paste("terra", names(p2) %>% toupper())
+  p <- c(p, p2)
 }
 if ("rgrass" %in% si$packages$package) {
   p <- c(p, GRASS = link2GI::findGRASS()[1, "version"])
