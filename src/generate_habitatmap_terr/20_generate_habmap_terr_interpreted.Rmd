@@ -165,7 +165,7 @@ habmap_types_interpreted <- habmap_types %>%
 Code 2190 in the habitatmap refers to the sum of 2190_a and 2190_overig. 
 How can we determine which polygons are actually the aquatic variant 2190_a?
 
-As the `watersurfaces_hab` data source also covers (semi-)terrestrial areas (see introduction), it is not such a good idea to use that data source and consider all the areas overlapping with `watersurfaces_hab` as stricly aquatic.^[
+As the `watersurfaces_hab` data source also covers (semi-)terrestrial areas (see introduction), it is not such a good idea to use that data source and consider all the areas overlapping with `watersurfaces_hab` as strictly aquatic.^[
 Note that also some topological difficulties arise in intersecting the habitatmap and the watersurfaces-map, encountered in the notebook 
 `explore_clipping_watsurf_from_habmap.Rmd`:
 "Is clipping watersurfaces out of habitatmap_stdized a sensible step in generating a derived data source `habitatmap_terr`?".

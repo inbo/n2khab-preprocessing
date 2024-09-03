@@ -152,7 +152,7 @@ In several cases the code contains 2 or 3 possible vegetation types which are se
 We will split the different possible vegetation types and create one row for each of them. 
 An additional variable 'certain' will be FALSE if the orginal habitatmap code consists of 2 or 3 possible vegetation types, and TRUE if only one vegetation type is provided.
 
-An exception to this rule are following codes: `3130_rbbmr`, `3140_rbbmr`, `3150_rbbmr` and `3160_rbbmr` (converted in the previous step into `31x0,rbbms`).
+An exception to this rule are following codes: `3130_rbbmr`, `3140_rbbmr`, `3150_rbbmr` and `3160_rbbmr` (converted in the previous step into `31x0,rbbmr`).
 These are standing water bodies that contain both `rbbmr` and the habitat type.
 Therefore `certain` will be set to `TRUE` for both types included in `code`.
 

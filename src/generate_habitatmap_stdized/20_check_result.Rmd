@@ -71,5 +71,6 @@ types %>%
 - Are the geometries valid?
 
 ```{r}
-sum(!st_is_valid(pol) | is.na(st_is_valid(pol))) == 0
+validities <- st_is_valid(pol)
+sum(!validities | is.na(validities)) == 0
 ```
