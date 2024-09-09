@@ -89,6 +89,7 @@ Query the values of `FUNCTIE` that are available for specific watersurfaces:
 ws_functie <- tbl(con, query_functie) |> 
   collect() |> 
   mutate(across(where(is.character), factor))
+glimpse(ws_functie)
 ```
 
 The number of rows is `r nrow(ws_functie)`.
@@ -135,7 +136,7 @@ ws %>%
 
 Compared to version 1.2:
 
-- `FUNCTION` is absent from the query.
+- `FUNCTIE` is absent from the query (it has to be retrieved via a separate query).
 - `KRWTYPEA` is a new variable.
 - `CONNECT` has new levels.
 - Note: `HYLAC` is going to be removed in the official version.
@@ -281,7 +282,7 @@ levels(ws$CONNECT)
 
 **FUNCTIE**: the codes are correct but there are more codes mentioned in the metadata report.
 
-```{r collapse=TRUE}
+```{r}
 levels(ws_functie$FUNCTIE)
 ```
 
