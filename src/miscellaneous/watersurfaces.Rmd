@@ -279,10 +279,10 @@ levels(ws$DIEPKL)
 levels(ws$CONNECT)
 ```
 
-**FUNCTIE**: not present in the database.
+**FUNCTIE**: the codes are correct but there are more codes mentioned in the metadata report.
 
 ```{r collapse=TRUE}
-levels(ws$FUNCTIE)
+levels(ws_functie$FUNCTIE)
 ```
 
 And here are the categories in the metadata report for `FUNCTIE`:
@@ -319,9 +319,8 @@ levels(ws$PEILBEHEER)
 - There is a duplicated value of `WVLC`.
 - One record has `KRWTYPES` as 'voorlopig' (after discussion with the authors, this seems to be correct).
 - `DIEPKL`: codes in the dataset differ from those in the report.
-- `KRWTYPE`, `PEILBEHEER`: more levels in the metadata report than in the dataset.
+- `KRWTYPE`, `PEILBEHEER`, `FUNCTIE`: more levels in the metadata report than in the dataset.
 This is not necessarily a problem.
-- `FUNCTIE`: not available in the database.
 
 These will be discussed with the authors of the layers.
 
