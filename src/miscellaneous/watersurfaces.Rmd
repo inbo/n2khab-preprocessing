@@ -165,7 +165,7 @@ sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == '<Null>', na
 
 ### Are there `-` values?
 
-Yes, in `KRWTYPEA`:
+Yes, in `KRWTYPEA`, but it's expected (see further):
 
 ```{r}
 sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == '-', na.rm = TRUE))
@@ -221,6 +221,12 @@ We do not check `NAAM` and `GEBIED` since there are many possible options.
 
 ```{r}
 levels(ws$KRWTYPE)
+```
+
+**KRWTYPEA** (alternative type): the codes in the spatial layer comply with the metadata report.
+
+```{r}
+levels(ws$KRWTYPEA)
 ```
 
 **KRWTYPES** (status): the codes in the spatial layer are the same as in the metadata report.
@@ -294,7 +300,6 @@ levels(ws$PEILBEHEER)
 ## Potential issues
 
 - There is a duplicated value of `WVLC`.
-- `KRWTYPEA`: quite some missing values are set as a string `"-"` instead of missing.
 - One record has `KRWTYPES` as 'voorlopig'
 - `DIEPKL`: codes in the dataset differ from those in the report.
 - `KRWTYPE`, `PEILBEHEER`: more levels in the metadata report than in the dataset.
