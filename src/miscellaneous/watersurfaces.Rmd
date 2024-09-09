@@ -300,7 +300,7 @@ levels(ws$PEILBEHEER)
 ## Potential issues
 
 - There is a duplicated value of `WVLC`.
-- One record has `KRWTYPES` as 'voorlopig'
+- One record has `KRWTYPES` as 'voorlopig' (after discussion with the authors, this seems to be correct).
 - `DIEPKL`: codes in the dataset differ from those in the report.
 - `KRWTYPE`, `PEILBEHEER`: more levels in the metadata report than in the dataset.
 This is not necessarily a problem.
