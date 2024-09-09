@@ -58,7 +58,7 @@ query <- sql("SELECT P.CodePlas AS WVLC,
                   P.status AS status, 
                   shape.STAsBinary() AS geometry
           FROM AquaMorf.PLAS P
-          WHERE GDB_TO_DATE >= '9999'")
+          WHERE GDB_TO_DATE >= '9999' AND status IS NULL")
 # show all columns of the database table with:
 # tbl(con, I("AquaMorf.PLAS")) |> glimpse()
 ```
