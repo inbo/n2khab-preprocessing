@@ -33,7 +33,7 @@ Prior to publication, updates of the watersurfaces happen in a MS SQL Server dat
 
 Here we do some checks from R in order to prevent possible problems in a released version of the data source.
 
-Make the database connection and the query:
+Make the database connection and the queries:
 
 ```{r dev-after-v1.2}
 con <- inbodb::connect_inbo_dbase("G0102_00_AquaMorf")
@@ -56,11 +56,18 @@ query <- sql("SELECT P.CodePlas AS WVLC,
                   connectiviteit AS connect_old,
                   P.jaaraanleg AS aanleg,
                   P.status AS status, 
+                  P.globalid AS id_plas,
                   shape.STAsBinary() AS geometry
           FROM AquaMorf.PLAS P
           WHERE GDB_TO_DATE >= '9999' AND status IS NULL")
 # show all columns of the database table with:
 # tbl(con, I("AquaMorf.PLAS")) |> glimpse()
+query_functie <- sql("SELECT PG.gebruiksfunctie AS FUNCTIE,
+                      PG.globalid AS id_functie, 
+                      PG.CodePlas AS codeplas, 
+                      PG.globalid_plas AS id_plas
+                      FROM AquaMorf.PLAS_GEBRUIKSFUNCTIE PG
+                      WHERE GDB_TO_DATE >= '9999'")
 ```
 
 Note that we map variable names of version 1.2 in capitals to database column names.
@@ -75,6 +82,16 @@ glimpse(ws)
 ```
 
 The number of rows is `r nrow(ws)`.
+
+Query the values of `FUNCTIE` that are available for specific watersurfaces:
+
+```{r}
+ws_functie <- tbl(con, query_functie) |> 
+  collect() |> 
+  mutate(across(where(is.character), factor))
+```
+
+The number of rows is `r nrow(ws_functie)`.
 
 Sidenote: `read_sf()` downloads the data, but it is also possible to define a lazy object, execute database-level queries using dplyr verbs on this object (before collecting), and then convert to sf after collecting a filtered result.
 Example below:
