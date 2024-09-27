@@ -2,9 +2,9 @@
 
 ## Data source
 
-The shapefile of the BWK and Natura 2000 habitat map of Flanders can be downloaded [here](https://zenodo.org/record/4428002#.YBqzu-hKigY).
+The shapefile of the BWK and Natura 2000 habitat map of Flanders can be downloaded [here](https://zenodo.org/record/10167695).
 
-To be sure we will use the correct version of the data source (habitatmap_2020), we will derive the md5 file hashes and compare it to the file hashes in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
+To be sure we will use the correct version of the data source (habitatmap_2023), we will derive the md5 file hashes and compare it to the file hashes in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
 
 ```{r}
 
@@ -22,11 +22,12 @@ hashes <-
            md5 = map(filepath, function(x) {
                            file(x) %>% md5 %>% str_c(collapse = '')
                          }) %>% as.character,
-           md5_ref = c("f767a12540b2bde435c6709c9c9675ad",
-                      "358ff672c2fae48eba5bd09f8a671675",
+           md5_ref = c("8d436686b2ad4bc9355bf1c403b5ba43",
+                       "358ff672c2fae48eba5bd09f8a671675",
                       "f881f61a6c07741b58cb618d8bbb0b99",
-                      "1da89a5dc267bbd427c8c07fcf63f344",
-                      "79ae8b4b3c6d970a1f10e78f3eca9ef7"),
+                      "8c6999e914d7f95948d84d5221f58e6f",
+                      "8e9c2c1ef888ce085e027d32f7c73b8c",
+                      "7ff6cc0efbd34f4cfef52d73e466df0d"),
            match = md5 == md5_ref) %>%
     select(filename,
            md5,
@@ -89,6 +90,17 @@ habmap_longHAB <- habmap_sf %>%
 
 ```
 
+Here are the vegetation codes used in this version of the habitatmap:
+
+```{r showListHabitats}
+habmap_longHAB %>%
+  distinct(code) %>% 
+  arrange(code) %>% 
+  kable(caption = "List codes in habitat map", label = NA) %>%
+  kable_styling() %>% 
+  scroll_box(height = "300px")
+```
+
 ## Correction of some of the codes in the Habitat map
 
 Some polygons in the habitat map contain codes that do not correspond with the standardized list of habitat types. 
@@ -111,7 +123,7 @@ overview_habmap_correction <- habmap_longHAB %>%
 
 ```{r codeCorrected}
 overview_habmap_correction %>%
-  kable(caption = "Corrected codes in habitat map") %>%
+  kable(caption = "Corrected codes in habitat map", label = NA) %>%
   kable_styling()
 ```
 
@@ -139,7 +151,8 @@ if(sum(habmap_correction$code %in% habmap_longHAB$code) > 0){
 In several cases the code contains 2 or 3 possible vegetation types which are separated with a ','. 
 We will split the different possible vegetation types and create one row for each of them. 
 An additional variable 'certain' will be FALSE if the orginal habitatmap code consists of 2 or 3 possible vegetation types, and TRUE if only one vegetation type is provided.
-An exception to this rule are following codes: `3130,rbbmr`, `3140,rbbmr`, `3150,rbbmr` and `3160,rbbmr`.
+
+An exception to this rule are following codes: `3130_rbbmr`, `3140_rbbmr`, `3150_rbbmr` and `3160_rbbmr` (converted in the previous step into `31x0,rbbmr`).
 These are standing water bodies that contain both `rbbmr` and the habitat type.
 Therefore `certain` will be set to `TRUE` for both types included in `code`.
 
@@ -148,7 +161,10 @@ Therefore `certain` will be set to `TRUE` for both types included in `code`.
 habmap_long <- habmap_longHAB %>%
     left_join(habmap_longPHAB, by = c("polygon_id", "patch_id")) %>%
     mutate(certain = !str_detect(code, ","),
-           certain = ifelse(code_orig %in% c("3130_rbbmr", "3140_rbbmr", "3150_rbbmr", "3160_rbbmr"), TRUE, certain)) %>%
+           certain = ifelse(code_orig %in% 
+                              c("3130_rbbmr", "3140_rbbmr", "3150_rbbmr", "3160_rbbmr"), 
+                            TRUE, 
+                            certain)) %>%
     separate(code,
              into = c("type1", "type2", "type3"),
              sep = ",",
@@ -175,8 +191,18 @@ In this case we will sum the phab-values and create one record for each type.
 + a certain and an uncertain record of the same type, for example:
 
 ```{r}
+
+example <- habmap_long %>%
+  group_by(polygon_id, type) %>%
+  filter(n() > 1) %>%
+  filter(any(certain) & any(!certain)) %>%
+  ungroup()
+
+polygon_id_example <- (example %>%
+  slice_head(n = 1))$polygon_id
+
 habmap_long %>%
-  filter(polygon_id == "639375_v2014")
+  filter(polygon_id == polygon_id_example)
 ```
 
 We will not aggregate the certain and uncertain record, because we will loose some information used to create `habitatmap_terr`. It is some of the uncertain records (such as `9120, gh`) are eliminated when processing `habitatmap_terr`. 
@@ -202,22 +228,19 @@ habmap_long_aggr <- habmap_long %>%
               certain = all(certain)) %>%
     ungroup() 
 ```
-See below the result of the aggregation for both examples. 
+See below the result of the aggregation for the first example. 
 
 ```{r}
 habmap_long_aggr %>%
   filter(polygon_id == "357179_v2020")
 ```
 
-```{r}
-habmap_long_aggr %>%
-  filter(polygon_id == "639375_v2014")
-```
-
-
 ## Select vegetation types that belong to the standard list of habitat and rbb types  
 
-Table \@ref(tab:selectTypes) shows the records with habitat types that do not belong to the standard list of habitat and rbb types. These records are filtered out. 
+Table \@ref(tab:selectTypes) shows the records with habitat types that do not belong to the standard list of habitat and rbb types.
+
+Good news! 
+The table is empty
 
 ```{r selectTypes}
 
@@ -241,7 +264,8 @@ habmap_other_type <- habmap_long_aggr %>%
 
 habmap_other_type %>%
   select(polygon_id, type, certain, code_orig, phab) %>%
-  kable(caption = "Polygons with types that do not coorspond with the standard list of types and rbb") %>%
+  kable(caption = "Polygons with types that do not correspond with the standard list of types and rbb",
+        label = NA) %>%
   kable_styling()
 
 ```
@@ -256,6 +280,121 @@ habmap_types_sf <- habmap_sf %>%
   filter(polygon_id %in% habmap_types$polygon_id)
 
 ```
+
+## Let 's have a quick look at the result
+
+The ID of each polygon in the habitatmap contains the year in which the polygon
+was last updated.
+In the table below we show the number of records per type and per update year.
+
+```{r}
+habmap_types %>%
+  mutate(polygon_version = str_sub(polygon_id, start = -4)) %>%
+  group_by(type, polygon_version) %>%
+  summarise(n_records = n()) %>%
+  ungroup() %>%
+  pivot_wider(names_from = "polygon_version", values_from = "n_records", values_fill = 0) %>%
+  kable() %>%
+  kable_styling()
+```
+
+## Control and fix geometries
+
+We want to make sure that the layer has valid geometries so that we can use it 
+in spatial analysis in GIS. 
+
+First, we search for polygons with invalid geometries. 
+
+```{r}
+habmap_types_geom_invalid <- st_is_valid(habmap_types_sf, reason = TRUE) %>%
+  as_tibble() %>%
+  mutate(id = rownames(.)) %>% 
+  left_join(habmap_types_sf %>% 
+              mutate(id = as.character(row_number())), 
+            by = "id") %>%
+  filter(value != "Valid Geometry") %>% 
+  mutate(problem = str_extract(string = value, 
+                                pattern = "[^\\[]+"))
+
+cat(paste0("There are ", habmap_types_geom_invalid %>% nrow() , 
+           " polygons with invalid geometry"))
+```
+
+```{r}
+habmap_types_geom_invalid  %>%
+  select(id, polygon_id, description_orig, problem) %>% 
+  kable(caption = "Polygons with faulty geometries", label = NA) %>%
+  kable_styling() %>% 
+  scroll_box(height = "300px")
+```
+
+```{r}
+# show the invalid polygons on a map
+habmap_types_geom_invalid_wgs84 <- habmap_types_sf %>% 
+  inner_join(habmap_types_geom_invalid %>% 
+               select(polygon_id, problem), 
+             by = join_by(polygon_id)) %>%
+  st_transform(crs = 4326) 
+
+leaflet(height = "600px", width = "700px") %>%
+  addTiles(group = "OSM (default)") %>%
+  addPolygons(data = habmap_types_geom_invalid_wgs84,
+              color = "darkred",
+              popup = paste("polygon_id:", 
+                          habmap_types_geom_invalid_wgs84$polygon_id, "<br>",
+                           "description_orig:",
+                          habmap_types_geom_invalid_wgs84$description_orig, 
+                          "<br>", 
+                          habmap_types_geom_invalid_wgs84$problem)) 
+```
+
+We correct the geometry using the function `st_make_valid` and check the results.
+
+```{r}
+# correct geometries
+habmap_types_sf <- st_make_valid(habmap_types_sf)
+```
+
+```{r}
+# list the corrected polygons and check the geometry again
+habmap_types_geom_corrected <- st_is_valid(habmap_types_sf, reason = TRUE) %>% 
+  as_tibble() %>% 
+  mutate(id = rownames(.)) %>% 
+  left_join(habmap_types_sf %>% 
+              mutate(id = as.character(row_number())), 
+            by = "id") %>% 
+  filter(polygon_id %in% habmap_types_geom_invalid$polygon_id)
+
+habmap_types_geom_corrected %>% 
+        select(id, polygon_id, description_orig, problem = value) %>% 
+  kable(caption = "Polygons with faulty geometries after correction", 
+        label = NA) %>% 
+  kable_styling() %>% 
+  scroll_box(height = "300px")
+```
+
+
+```{r}
+# show the corrected polygons on a map
+habmap_types_geom_corrected_wgs84 <- habmap_types_sf %>% 
+  filter(polygon_id %in% habmap_types_geom_invalid$polygon_id) %>% 
+  st_transform(crs = 4326) 
+
+leaflet(height = "600px", width = "700px") %>%
+  addTiles(group = "OSM (default)") %>%
+    addPolygons(data = habmap_types_geom_invalid_wgs84, 
+                group = "before correction (red)",
+                color = "darkred") %>% 
+  addPolygons(data = habmap_types_geom_corrected_wgs84,
+              group = "after correction (blue)",
+              popup = paste("polygon_id:", 
+                          habmap_types_geom_corrected_wgs84$polygon_id, "<br>",
+                           "description_orig:",
+                          habmap_types_geom_corrected_wgs84$description_orig)) %>%
+    addLayersControl(overlayGroups = c("before correction (red)", "after correction (blue)"),
+                     options = layersControlOptions(collapsed = FALSE))
+```
+
 
 ## Write results into a geopackage
 

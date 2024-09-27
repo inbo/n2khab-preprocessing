@@ -3,14 +3,10 @@
 Checksums:
 
 ```{r}
-file(filepath) %>% 
-  openssl::md5() %>% 
-  str_c(collapse = '') %>% 
-  `names<-`("md5sum")
-file(filepath) %>% 
-  openssl::sha256() %>% 
-  str_c(collapse = '') %>% 
-  `names<-`("sha256sum")
+c("xxh64", "md5", "sha256") %>% 
+  map_dfr(~tibble(algorithm = ., 
+                  checksum = checksum(filepath, .))) %>% 
+  kable
 ```
 
 
@@ -51,9 +47,30 @@ nrow(check_polygon_id_polygons) == 0
    nrow == nrow(pol) 
 ``` 
 
-
 - Is the CRS conform EPSG:31370?
 
 ```{r} 
  st_crs(pol) == st_crs(31370) 
+```
+
+- Is phab always between 0 and 100?
+
+```{r}
+all(between(types$phab, 0, 100))
+```
+
+- Is the primary key unique?
+
+```{r}
+types %>% 
+  select(polygon_id, type, certain) %>% 
+  duplicated() %>% 
+  negate(any)(.)
+```
+
+- Are the geometries valid?
+
+```{r}
+validities <- st_is_valid(pol)
+sum(!validities | is.na(validities)) == 0
 ```
