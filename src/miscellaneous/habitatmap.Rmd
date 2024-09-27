@@ -17,8 +17,11 @@ output:
 options(stringsAsFactors = FALSE)
 library(sf)
 library(dplyr)
+library(stringr)
 library(n2khab)
 library(knitr)
+library(tmap)
+library(leaflet)
 opts_chunk$set(
   echo = TRUE,
   dpi = 300
@@ -26,60 +29,261 @@ opts_chunk$set(
 ```
 
 
-# A few checks of the habitatmap_stdized data source
+# A few checks of the habitatmap data source
+
 
 ```{r}
 filepath <- file.path(fileman_up("n2khab_data"),
-                      "20_processed/habitatmap_stdized/habitatmap_stdized.gpkg")
-habitatmap_polygons <- st_read(filepath, layer = "habitatmap_polygons")
-habitatmap_types <- st_read(filepath, layer = "habitatmap_types")
+                      "10_raw/habitatmap/habitatmap.shp")
+habitatmap <- st_read(filepath, layer = "habitatmap")
+
 ```
 
-Checking the CRS stated in the file as "`r st_crs(habitatmap_polygons)$input`": does it actually conform to the EPSG standard (in order to prevent CRS clashes in workflows)?
+The number of rows is `r nrow(habitatmap)`.
 
-- can the EPSG code be exported?
-
+Checksums:
 ```{r}
-!is.na(st_crs(habitatmap_polygons)$epsg)
+filepath %>% 
+  n2khab::md5sum() %>% 
+  `names<-`("md5sum")
+filepath %>% 
+  n2khab::sha256sum() %>% 
+  `names<-`("sha256sum")
+filepath %>% 
+  n2khab::xxh64sum() %>% 
+  `names<-`("xxh64sum")
 ```
 
-- does it conform to EPSG:31370?
+## A summary of the layer for version 2023
 
 ```{r}
-st_crs(habitatmap_polygons) == st_crs(31370)
-```
-
-Do all polygons from the sf object have a unique ID?
-
-```{r}
-habitatmap_polygons %>% 
+habitatmap %>% 
   st_drop_geometry %>% 
-  count(polygon_id) %>% 
-  filter(n > 1) %>% 
-  nrow == 0
+  summary
 ```
+Let us look for possible errors.
 
-Is the number of unique IDs in the dataframe the same as the number of polygons in the sf object?
+## Are there `NA` values?
+
+There are plenty of `NA`'s but only in fields where we expect them.
 
 ```{r}
-habitatmap_types %>% 
-  distinct(polygon_id) %>% 
-  nrow == nrow(habitatmap_polygons)
+sapply(habitatmap, function(x) sum(is.na(x)))
 ```
 
-Do all polygon IDs from the dataframe coincide with those of the sf object?
+## Are there `<Null>` values?
 
-```{r message=FALSE}
-habitatmap_types %>% 
-  inner_join(habitatmap_polygons) %>% 
-  nrow == nrow(habitatmap_types)
-```
-
-Number of polygons with phab = 0:
+No `<Null>` string.
 
 ```{r}
-habitatmap_types %>% 
-  filter(phab == 0) %>% 
-  nrow()
+sapply(habitatmap |> st_drop_geometry(), function(x) sum(as.character(x) == '<Null>', na.rm = TRUE))
 ```
 
+## Are there Zero (0) values?
+
+Yes, but only in PHAB2, PHAB3, PHAB4, PHAB5.
+
+```{r}
+sapply(habitatmap |> st_drop_geometry(), function(x) sum(as.character(x) == '0', na.rm = TRUE))
+```
+## Are TAG codes unique?
+
+Yes. 
+
+```{r}
+habitatmap$TAG %>% unique %>% length == nrow(habitatmap)
+```
+
+## Is the CRS correct?
+
+Checking the CRS stated in the file as "`r st_crs(habitatmap)$input`": does it actually conform to the EPSG standard (in order to prevent CRS clashes in workflows)?
+
+Does it conform to EPSG:31370?
+
+No, but it is a known issue: the CRS of the raw data source is numerically identical to ESRI:102499 with a tiny difference (sub-millimeter level) with EPSG:31370. 
+Chosen solution: set the CRS to 31370 without changing the coordinates of these geospatial objects, rather than transform (reproject) the data.
+This happens in the `read_habitatmap` function with `suppressWarnings(st_crs(habitatmap) <- 31370)`
+
+
+```{r}
+st_crs(habitatmap) == st_crs(31370)
+
+st_crs(habitatmap)
+```
+
+
+## Validity of the geometries
+
+Let's inspect features with invalid or corrupt geometry:
+
+```{r check geometry}
+# can run for a while! (40 min for version 2023)
+
+start_time <- Sys.time()
+
+#st_is_valid(habitatmap) %>% table
+validities <- st_is_valid(habitatmap)
+invalid_geoms <- habitatmap[!validities | is.na(validities), ]
+end_time <- Sys.time()
+end_time - start_time
+
+# important: since we need 40 minutes to calculate invalid_geoms, it is probably not 
+# an option to use the same code as in read_watersurfaces
+# the calculation of n_invalid would be too slow, so probably better to drop the if
+# taken from read_watersurfaces: 
+ # if (fix_geom) {
+ #      n_invalid <- sum(
+ #        !st_is_valid(watersurfaces) | is.na(st_is_valid(watersurfaces))
+ #      )
+ #      if (n_invalid > 0) {
+ #        watersurfaces <- st_make_valid(watersurfaces)
+ #        message("Fixed ", n_invalid, " invalid or corrupt geometries.")
+ #      }
+ #    }
+
+```
+
+```{r}
+st_is_valid(invalid_geoms, reason = TRUE) %>%
+  as_tibble() %>%
+  filter(value != "Valid Geometry") %>% 
+  mutate(problem = str_extract(string = value, 
+                                pattern = "[^\\[]+")) %>% 
+  count(problem) 
+
+```
+The geometry invalidity is the consequence of self-intersecting rings, as a consequence of digitalization errors.
+
+Let us take a look at the invalid polygons:
+
+```{r eval = FALSE}
+# only use this if there are not too many invalid polygons
+tm_shape(invalid_geoms) + tm_borders() + tm_facets(by = "TAG")
+```
+
+```{r}
+# there are many invalid polygons, so we show them with leaflet:
+invalid_geoms_wgs84 <- invalid_geoms %>% 
+  st_transform(crs = 4326) 
+
+leaflet(height = "600px", width = "700px") %>%
+  addTiles(group = "OSM (default)") %>%
+  addPolygons(data = invalid_geoms_wgs84,
+              color = "darkred",
+              popup = paste("TAG:", 
+                          invalid_geoms_wgs84$TAG)) 
+```
+
+Let's compare with the same geoms after fixing the self-intersecting rings:
+
+```{r}
+valid_geoms <- st_make_valid(invalid_geoms)
+```
+
+```{r eval = FALSE}
+# only use this if there are not too many invalid polygons
+tm_shape(valid_geoms) + tm_borders() + tm_facets(by = "TAG")
+```
+
+```{r}
+# there were many invalid polygons, so we show them with leaflet:
+valid_geoms_wgs84 <- valid_geoms %>% 
+  st_transform(crs = 4326) 
+
+leaflet(height = "600px", width = "700px") %>%
+  addTiles(group = "OSM (default)") %>%
+    addPolygons(data = invalid_geoms_wgs84, 
+                group = "before correction (red)",
+                color = "darkred") %>% 
+  addPolygons(data = valid_geoms_wgs84,
+              group = "after correction (blue)",
+              popup = paste(
+                           "TAG:",
+                          valid_geoms_wgs84$TAG)) %>%
+    addLayersControl(overlayGroups = c("before correction (red)", "after correction (blue)"),
+                     options = layersControlOptions(collapsed = FALSE))
+```
+
+Are all geometries valid now?
+
+```{r}
+all(st_is_valid(valid_geoms))
+```
+
+
+So this works well. Inthe derived data (habitatmap_stdized) we will fix these geometries.
+
+We also consider an optional geometry reparation step in `read_habitatmap(fix_geom = TRUE)`.
+
+How long would it take to repair the geometries 'on the fly' while importing the habitatmap? 
+
+```{r fix geometry}
+
+start_time <- Sys.time()
+hmv <- st_make_valid(habitatmap)
+end_time <- Sys.time()
+
+end_time - start_time
+
+```
+
+OK, less than 1 minute sounds acceptable.
+
+We also check that no empty geometries are present:
+
+```{r}
+all(!is.na(st_dimension(habitatmap$geom)))
+```
+
+Refer to <https://github.com/inbo/n2khab-preprocessing/issues/60> and <https://r-spatial.org/r/2017/03/19/invalid.html> for more information!
+
+# Tidyverse-styled, internationalized column names when using the data source in R
+
+```{r eval = FALSE}
+habitatmap %>% colnames %>% cat(sep = "\n")
+
+```
+
+data source variable          data frame variable
+----------------------        ---------------------
+`TAG`                         `polygon_id` 
+`EVAL`                        `eval`
+`EENH1`                       `eenh1`
+`V1`                          `v1`
+`HERK`                        `source`
+`INFO`                        `info `
+`BWKLABEL`                    `bwk_label`
+`HAB1`                        `hab1`
+`PHAB1`                       `phab1`
+`HERKHAB`                     `source_hab`
+`HERKPHAB`                    `source_phab`
+`OPPERVL`                     `area_m2`
+
+# Other considerations for the R object returned by `read_habitatmap()`
+
+- not uptaking `OIDN`, `UIDN`, `HABLEGENDE`, `LENGTE`
+
+# Used environment
+
+```{r session-info, results = "asis", echo=FALSE}
+si <- sessioninfo::session_info()
+p <- si$platform %>%
+  do.call(what = "c")
+if ("sf" %in% si$packages$package) {
+  p <- c(p, sf_extSoftVersion())
+  names(p)[names(p) == "proj.4"] <- "PROJ"
+}
+if ("rgrass" %in% si$packages$package) {
+  p <- c(p, GRASS = link2GI::findGRASS()[1, "version"])
+}
+sprintf("- **%s**: %s\n", names(p), p) %>%
+  cat(sep = "")
+```
+
+```{r results = "asis", echo=FALSE}
+si$packages %>%
+    as_tibble %>%
+    select(package, loadedversion, date, source) %>%
+pander::pandoc.table(caption = "Loaded R packages",
+                     split.table = Inf)
+```

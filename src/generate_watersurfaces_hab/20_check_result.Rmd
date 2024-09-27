@@ -7,15 +7,10 @@ Based on habitatmap_stdized_2023_v1 and watersurfaces_v1.2
 Checksums:
 
 ```{r}
-filepath %>% 
-  n2khab::md5sum() %>% 
-  `names<-`("md5sum")
-filepath %>% 
-  n2khab::sha256sum() %>% 
-  `names<-`("sha256sum")
-filepath %>% 
-  n2khab::xxh64sum() %>% 
-  `names<-`("xxh64sum")
+c("xxh64", "md5", "sha256") %>% 
+  map_dfr(~tibble(algorithm = ., 
+                  checksum = checksum(filepath, .))) %>% 
+  kable
 ```
 
 Read file:
@@ -62,6 +57,13 @@ nrow(check_polygon_id_polygons) == 0
  st_crs(pol) == st_crs(31370) 
 ```
 
+- Are the geometries valid?
+
+```{r}
+validities <- st_is_valid(pol)
+sum(!validities | is.na(validities)) == 0
+```
+
 ## Compare with the previous version 
 
 We load the previous version of watersurfaces_hab (version 4 based on watersurfaces_v1.1 and habitatmap_stdized_2020_v1)
@@ -99,7 +101,7 @@ In the table below we check the differences between both versions.
 Note that for a large number of records only polygon_habitatmap_id changes, but the geometry and the type description remain the same.
 
 ```{r}
-# polygons with polygon_id in v5 butnot in version v4
+# polygons with polygon_id in v5 but not in version v4
 check_polygon_id_v5_v4 <- pol %>%
   anti_join(pol_v4 %>%
               st_drop_geometry(), 
