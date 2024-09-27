@@ -100,8 +100,10 @@ Checking the CRS stated in the file as "`r st_crs(habitatmap)$input`": does it a
 
 Does it conform to EPSG:31370?
 
-Apparently NOT?!
-Something to do with ESRI? https://github.com/OSGeo/PROJ/issues/1781
+No, but it is a known issue: the CRS of the raw data source is numerically identical to ESRI:102499 with a tiny difference (sub-millimeter level) with EPSG:31370. 
+Chosen solution: set the CRS to 31370 without changing the coordinates of these geospatial objects, rather than transform (reproject) the data.
+This happens in the `read_habitatmap` function with `suppressWarnings(st_crs(habitatmap) <- 31370)`
+
 
 ```{r}
 st_crs(habitatmap) == st_crs(31370)
