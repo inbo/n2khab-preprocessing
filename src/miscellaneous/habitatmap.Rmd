@@ -122,7 +122,8 @@ Let's inspect features with invalid or corrupt geometry:
 start_time <- Sys.time()
 
 #st_is_valid(habitatmap) %>% table
-invalid_geoms <- habitatmap[!st_is_valid(habitatmap) | is.na(st_is_valid(habitatmap)), ]
+validities <- st_is_valid(habitatmap)
+invalid_geoms <- habitatmap[!validities | is.na(validities), ]
 end_time <- Sys.time()
 end_time - start_time
 
@@ -261,8 +262,6 @@ data source variable          data frame variable
 # Other considerations for the R object returned by `read_habitatmap()`
 
 - not uptaking `OIDN`, `UIDN`, `HABLEGENDE`, `LENGTE`
-- added the attribute `fix_geom` to correct the invalid geometries 
-
 
 # Used environment
 
