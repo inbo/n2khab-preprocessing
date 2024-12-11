@@ -29,10 +29,12 @@ opts_chunk$set(
 
 # Exploring the watersurfaces data source
 
-The previous versions were 1.0 (10.5281/zenodo.3386859) and 1.1 (10.5281/zenodo.4117543).
-We want to explore the changes in the most recent version: 1.2 (10.5281/zenodo.7440931).
+The previous versions were 1.0 (10.5281/zenodo.3386859), 1.1 (10.5281/zenodo.4117543)
+and 1.2 (10.5281/zenodo.7440931)
 
-```{r v1.2}
+We want to explore the changes in the most recent version: 2024 (10.5281/zenodo.14203168)
+
+```{r v2024}
 filepath <- file.path(fileman_up("n2khab_data"), "10_raw/watersurfaces/watersurfaces.gpkg")
 ```
 
@@ -56,7 +58,7 @@ Import the spatial layer:
 st_layers(filepath)
 ```
 
-```{r spatial-layer-v12}
+```{r spatial-layer-v2024}
 (ws <- read_sf(filepath, stringsAsFactors = TRUE, layer = "Watervlakken"))
 ```
 
@@ -72,7 +74,7 @@ This has been explored for version 1.1, and handled where needed by `n2khab::rea
 Given the factor levels explored below, it does not appear that more changes are needed.
 Hence this exploratory code has been dropped (2023-11-09).
 
-### A summary of the spatial layer for version 1.2
+### A summary of the spatial layer for version 2024
 
 ```{r}
 ws %>% 
@@ -80,30 +82,35 @@ ws %>%
   summary
 ```
 
-`PEILBEHEER` is a new column in version 1.2!
+`PEILBEHEER` was a new column in version 1.2 and is still present in version 2024.
+The column HYLAC was dropped in version 2024 (since the Hyla-codes are not used anymore by Natuurpunt)
 
-Let us look for a few typical errors more systematically in version 1.2.
+Let us look for a few typical errors more systematically in version 2024
 
 ### Are there `NA` values?
 
-There are plenty of `NA`'s but only in fields where we expect them.
+There are no `NA` values at all in version 2024 but ... see below! 
+
 
 ```{r}
 sapply(ws, function(x) sum(is.na(x)))
 ```
 
-We see a missing value in `KRWTYPES` for `KRWTYPE == "Ad"`, while all other `KRWTYPE` values are accompanied by a value for `KRWTYPES`.
+### Are there `""` values?
+
+Yes, plenty of them. 
+The empty fields are actually coded as an empty string ("")
+(or more accurately, since all those fields are factors: as a factor level  "") 
+
+The "" are in fields where `NA` can be expected.
 
 ```{r}
-ws |> 
-  st_drop_geometry() |> 
-  count(KRWTYPE, KRWTYPES)
+sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == '', na.rm = TRUE))
 ```
-
 
 ### Are there `<Null>` values?
 
-One `<Null>` string is present in `GEBIED` column:
+None: 
 
 ```{r}
 sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == '<Null>', na.rm = TRUE))
@@ -117,20 +124,21 @@ None:
 sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == '0', na.rm = TRUE))
 ```
 
-Previously, `HYLAC` was zero if missing!
+### Are there any "/" values?
 
-Number of unique values of numeric variable `HYLAC`:
+None 
 
 ```{r}
-n_distinct(ws$HYLAC)
+sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == "/", na.rm = TRUE))
 ```
 
-How many `NA` values for numeric variable `HYLAC`?
 
-Many! So the zeroes were replaced by `NA`.
+### Are there any "-" values?
+
+Yes there are "-" in `KRWTYPEA`, but it is expected (described in the metadata). 
 
 ```{r}
-ws$HYLAC %>% is.na %>% sum
+sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == "-", na.rm = TRUE))
 ```
 
 ### Are WVLC codes unique?
@@ -145,15 +153,43 @@ ws$WVLC %>% unique %>% length == nrow(ws)
 ### Levels for each factor
 
 We can compare the levels for each factor variable with the information given in 
-[Scheers et al. (2022)](https://pureportal.inbo.be/nl/publications/watervlakken-versie-12-polygonenkaart-van-stilstaand-water-in-vla).
+[Leyssen et al. (2024)](https://pureportal.inbo.be/nl/publications/watervlakken-2024-polygonenkaart-van-stilstaand-water-in-vlaander).
 
 We do not check `NAAM` and `GEBIED` since there are many possible options.
+
+**WVLC** 
+
+Similar problem for the `WVLC` but we can check whether the structure of the codes is correct:
+
+Does `WVLC`  start with a province code?
+
+```{r}
+substr(levels(ws$WVLC),1 ,3) %>% unique()
+```
+
+How many records with an unexpected length? (not 10 characters)?
+
+```{r}
+ws %>% filter(str_length(WVLC) != 10) %>% nrow()
+```
+
+There is one problem: 
+
+```{r}
+ws |> filter(str_detect(WVLC, pattern = "d")) |> as.matrix() |> t()
+```
 
 **KRWTYPE**: the codes are correct but there are more codes mentioned in the metadata report.
 
 ```{r}
 levels(ws$KRWTYPE)
 ```
+**KRWTYPEA**: the codes are correct but there are more codes mentioned in the metadata report.
+
+```{r}
+levels(ws$KRWTYPEA)
+```
+
 
 **KRWTYPES** (status): the codes in the spatial layer are the same as in the metadata report.
 
@@ -161,7 +197,32 @@ levels(ws$KRWTYPE)
 levels(ws$KRWTYPES)
 ```
 
-**DIEPKL**: there are extra codes in the dataset ("0 - 2 m", "2 - 4 m", "4 - 6 m" and "> 6 m") and the ordering of the levels could be more logical.
+`KRWTYPE` / `KRWTYPEA` / `KRWTYPES` consistency:
+
+```{r}
+ws |> 
+  st_drop_geometry() |> 
+  count(KRWTYPE, KRWTYPES) |> 
+  print()
+```
+
+```{r}
+ws |> 
+  st_drop_geometry() |> 
+  filter(!is.na(KRWTYPEA), KRWTYPEA != "-") |> 
+  count(KRWTYPE, KRWTYPEA) |> 
+  print(n = Inf)
+```
+
+One record has `KRWTYPES` set to ‘voorlopig’:
+
+```{r}
+ws |> filter(KRWTYPES == "voorlopig") |> as.matrix() |> t()
+```
+
+After discussion with the authors, this seems to be correct.
+
+**DIEPKL**: the codes in the spatial layer are the same as in the metadata report but the ordering of the levels could be more logical.
 
 ```{r}
 levels(ws$DIEPKL)
@@ -174,37 +235,29 @@ However this was just for exploratory purposes as it was not the purpose to alwa
 - also in the future we will not rectify this (by default) in reading functions for raw data sources: problems in the data will be returned as-is and should be solved in a future version of the data source.
 By default we just streamline column names and variable types, we make sure that values referring to `NA` are effectively returned as `NA` and we try to avoid some encoding problems.
 
-Because on Windows the ≥/\u2265 character is not well displayed, we will recode it into '=>'
-(otherwise "≥" in ws$DIEPKL are rendered as "=" in the html output):
+Because on Windows the ≥/\u2265 character is not well displayed, we had to recode it into '=>'
+(otherwise "≥" in ws$DIEPKL was rendered as "=" in the html output). 
+Note that this is not needed anymore for version 2024 that does not contain the character ≥ anymore 
+but we will keep this in the read fucntion for the previous versions
 
 ```{r}
 levels(ws$DIEPKL) <- gsub(pattern = "\u2265", ">=", levels(ws$DIEPKL))
 levels(ws$DIEPKL)
 ```
 
-**CONNECT**: the codes differ from those in the report, which have the codes from version 1.1.
+**CONNECT**: the codes in the spatial layer are the same as in the metadata report.
 
 ```{r}
 levels(ws$CONNECT)
 ```
 
-These are the categories in the metadata report for `CONNECT`:
-
-- geïsoleerd: niet verbonden met een waterloop 
-- permanent: het watervlak staat permanent in verbinding met minstens één
-waterloop 
-- periodiek: het watervlak staat tijdelijk (door peilbeheer of droogte) in verbinding
-met minstens één waterloop
-
-**FUNCTIE**: the code "veedrenk" is not mentioned in the metadata report and 
-there are many more codes in the report than in the 
-dataset
+**FUNCTIE**: there are many more codes in the report than in the dataset
 
 ```{r}
 levels(ws$FUNCTIE)
 ```
 
-And here are the categories in the metadata report for `FUNCTIE`:
+Here are the categories in the metadata report for `FUNCTIE`:
 
 functie                       toewijzing
 ----------------------        ---------------------
@@ -212,19 +265,19 @@ natuur                        doelstelling natuurbehoud
 hengelintensief               intensief hengelen (met infrastructuur, bepoting of gebruikt voor wedstrijdhengelen)
 hengelextensief               extensief hengelen (geen infrastructuur, bepoting of wedstrijdhengelen)
 jacht                         jagen
-tuin/park                     esthetisch (verblijfsrecreatie, tuin- en parkvijvers)
+tuin_park                     esthetisch (verblijfsrecreatie, tuin- en parkvijvers)
 vogel                         waterpartij voor gedomesticeerde watervogels
 viskweek                      opkweken van vis
 zwemmen                       zwemmen
-duiken                        duiken
-zachterecreatie               niet gemotoriseerde watersport
-motorrecreatie                gemotoriseerde watersport
-berging                       waterberging ten behoeve van overstromings- of peilbeheer
+duik                          duiken
+zachteRecreatie               niet gemotoriseerde waterrecreatie
+motorrecreatie                gemotoriseerde waterrecreatie
+waterberging                  waterberging ten behoeve van overstromings- of peilbeheer
 opslag                        reservoir voor water (industrie, landbouw, bluswater, waterkracht…)
 drinkwater                    drinkwaterwinning
 zuivering                     (kleinschalige) waterzuivering, infiltratie
 bezinking                     bezinking van proceswater
-drinkplaats                   watervoorziening voor vee
+veedrenk                      watervoorziening voor vee
 geen                          geen specifieke functie
 
 **PEILBEHEER**: one code less than in the report.
@@ -233,16 +286,14 @@ geen                          geen specifieke functie
 levels(ws$PEILBEHEER)
 ```
 
+
 ## Potential issues
 
-- `KRWTYPE`, `FUNCTIE`, `PEILBEHEER`: more levels in the metadata report than in the dataset.
+- there is a new field: `KRWTYPEA` and one field was dropped `HYLAC`
+- `KRWTYPE`, `KRWTYPEA`, `FUNCTIE`, `PEILBEHEER`: more levels in the metadata report than in the dataset.
 This is not necessarily a problem.
-- `DIEPKL`, `FUNCTIE`: extra codes in the dataset that are not present in the report
-- `CONNECT`: codes differ between dataset and report
-- a missing value in `KRWTYPES` for `KRWTYPE == "Ad"`
-- One `<Null>` string is present in `GEBIED` column
-
-The extra codes will be discussed with the authors of the layers.
+- All the missing values for the factors are coded as level empty string ""  
+- One wrong WVLC code ("d") in de Kleiputten van Heist (Palingpot)
 
 
 ## Validity of the geometries
@@ -250,8 +301,9 @@ The extra codes will be discussed with the authors of the layers.
 Let's inspect features with invalid or corrupt geometry:
 
 ```{r}
-st_is_valid(ws) %>% table
-invalid_geoms <- ws[!st_is_valid(ws) | is.na(st_is_valid(ws)), ]
+validities <- st_is_valid(ws)
+validities %>% table
+invalid_geoms <- ws[!validities | is.na(validities), ]
 st_is_valid(invalid_geoms, reason = TRUE)
 ```
 
@@ -275,7 +327,7 @@ all(st_is_valid(valid_geoms))
 ```
 
 So this works well; in derived data we will fix these geometries.
-We might also consider an optional geometry reparation step in `read_watersurfaces()`.
+We can use the optional geometry reparation step in `read_watersurfaces()`.
 
 We also check that no empty geometries are present:
 
@@ -290,7 +342,7 @@ Refer to <https://github.com/inbo/n2khab-preprocessing/issues/60> and <https://r
 
 ```{r plot}
 
-# plot watersurfaces v1.2
+# plot watersurfaces v2024
  p <- ggplot() +
   geom_sf(data = ws, aes(), color = "blue")
 
@@ -304,24 +356,25 @@ print(p)
 
 ```
 
-<!-- ### Are all the watersurfaces in Flanders? -->
+<!-- ### Are all the watersurfaces in Flanders?  -->
 
 <!-- ```{r streams-in-fl} -->
 <!-- in_vl <- st_contains(x = sf_vl, y = ws) -->
 
-<!-- not_contained <- ws %>%  -->
-<!--   st_drop_geometry() %>%  -->
-<!--   mutate(orig_rowname = rownames(.)) %>%  -->
+<!-- not_contained <- ws %>% -->
+<!--   st_drop_geometry() %>% -->
+<!--   mutate(orig_rowname = rownames(.)) %>% -->
 <!--   filter(!rownames(.) %in% in_vl[[1]]) -->
 
-<!-- # 61 watersurfaces -->
+<!-- # 62 watersurfaces -->
 <!-- print(not_contained %>% nrow()) -->
 
-<!-- not_contained %>%  -->
-<!--   distinct(WVLC, NAAM) %>%  -->
+<!-- not_contained %>% -->
+<!--   distinct(WVLC, NAAM) %>% -->
 <!--   kable() -->
 <!-- ``` -->
-<!-- 61 watersurfaces are not 'contained' within the polygon for Flanders (see list above) -->
+
+<!-- 62 watersurfaces are not 'contained' within the polygon for Flanders (see list above) -->
 
 # Tidyverse-styled, internationalized column names when using the data source in R
 
@@ -333,10 +386,10 @@ data source variable          data frame variable
 ----------------------        ---------------------
 `WVLC`                        `polygon_id` 
 `WTRLICHC`                    `wfd_code`
-`HYLAC`                       `hyla_code`
 `NAAM`                        `name`
 `GEBIED`                      `area_name`
 `KRWTYPE`                     `wfd_type `
+`KRWTYPEA`                    `wfd_type_alternative`
 `KRWTYPES`                    `wfd_type_certain`
 `DIEPKL`                      `depth_class`
 `CONNECT`                     `connectivity`
@@ -347,12 +400,14 @@ data source variable          data frame variable
 
 - not uptaking `OPPWVL`, `OMTWVL`, `SHAPE_Length`, `SHAPE_Area` (area & perimeter are easily calculated etc) -- OK
 - sort by `polygon_id` -- OK
-- add translations to long text for `wfd_type ` and `connectivity`  -- OK but not by default
+- add translations to long text for `wfd_type `, `wfd_type_alternative `, `connectivity`  -- OK but not by default
 - add translations to long text for  `usage`? -- for a later version (as more 
 codes will be used)
-- converting null / 0 values to `NA` -- OK
-- support new variable `water_level_management` -- OK
-
+- converting null / 0 / "" values to `NA` -- OK
+- support variable water_level_management (since 1.2) – OK
+- support variable wfd_type_alternative (since v2024) – OK
+- made variable hyla_code optional (dropped in v2024) – OK
+- there is one wrong WVLC code ("d") in de Kleiputten van Heist (Palingpot) - should we stay true to source?
 
 # Used environment
 
