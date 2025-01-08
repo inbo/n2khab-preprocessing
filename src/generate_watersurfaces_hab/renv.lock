@@ -1398,11 +1398,14 @@
     },
     "n2khab": {
       "Package": "n2khab",
-      "Version": "0.11.0",
-      "Source": "Repository",
-      "Repository": "https://inbo.r-universe.dev",
-      "RemoteUrl": "https://github.com/inbo/n2khab",
-      "RemoteSha": "74bce510ca746c4f32c8807ba70ed482200ab180",
+      "Version": "0.11.0.9000",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteRepo": "n2khab",
+      "RemoteUsername": "inbo",
+      "RemoteRef": "bd784a5",
+      "RemoteSha": "bd784a5a7ff51b4081611383aa40ca0f36602483",
       "Requirements": [
         "R",
         "assertthat",
@@ -1418,9 +1421,10 @@
         "rprojroot",
         "sf",
         "stringr",
-        "tidyr"
+        "tidyr",
+        "tidyselect"
       ],
-      "Hash": "b90c634da91affa0afe269ae9761d035"
+      "Hash": "4d4724da4ef1f90717fa8587c66dd3bf"
     },
     "nlme": {
       "Package": "nlme",
