@@ -406,8 +406,8 @@ codes will be used)
 - converting null / 0 / "" values to `NA` -- OK
 - support variable water_level_management (since 1.2) – OK
 - support variable wfd_type_alternative (since v2024) – OK
-- made variable hyla_code optional (dropped in v2024) – OK
-- there is one wrong WVLC code ("d") in de Kleiputten van Heist (Palingpot) - should we stay true to source?
+- make variable hyla_code optional (dropped in v2024) – OK
+- there is one wrong WVLC code ("d" should be "WVLKNO0072") in de Kleiputten van Heist (Palingpot) - should we stay true to source?  see <https://github.com/inbo/n2khab/pull/192>
 
 # Used environment
 
