@@ -1,8 +1,8 @@
 # Check results
 
-## The new version v5
+## The new version v6
 
-Based on habitatmap_stdized_2023_v1 and watersurfaces_v1.2
+Based on habitatmap_stdized_2023_v1 and watersurfaces_2024
 
 Checksums:
 
