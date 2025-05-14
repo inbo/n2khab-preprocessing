@@ -18,6 +18,7 @@ options(stringsAsFactors = FALSE)
 library(sf)
 library(dplyr)
 library(stringr)
+library(tidyr)
 library(n2khab)
 library(knitr)
 library(tmap)
@@ -32,7 +33,7 @@ opts_chunk$set(
 # A few checks of the habitatmap data source
 
 
-```{r}
+```{r read-habitatmap}
 filepath <- file.path(fileman_up("n2khab_data"),
                       "10_raw/habitatmap/habitatmap.shp")
 habitatmap <- st_read(filepath, layer = "habitatmap")
@@ -42,7 +43,7 @@ habitatmap <- st_read(filepath, layer = "habitatmap")
 The number of rows is `r nrow(habitatmap)`.
 
 Checksums:
-```{r}
+```{r checksums}
 filepath %>% 
   n2khab::md5sum() %>% 
   `names<-`("md5sum")
@@ -54,9 +55,15 @@ filepath %>%
   `names<-`("xxh64sum")
 ```
 
+## Field names
+
+```{r field-names}
+names(habitatmap)
+```
+
 ## A summary of the layer for version 2023
 
-```{r}
+```{r summary-habitatmap}
 habitatmap %>% 
   st_drop_geometry %>% 
   summary
@@ -67,7 +74,7 @@ Let us look for possible errors.
 
 There are plenty of `NA`'s but only in fields where we expect them.
 
-```{r}
+```{r na-values}
 sapply(habitatmap, function(x) sum(is.na(x)))
 ```
 
@@ -75,7 +82,7 @@ sapply(habitatmap, function(x) sum(is.na(x)))
 
 No `<Null>` string.
 
-```{r}
+```{r null-values}
 sapply(habitatmap |> st_drop_geometry(), function(x) sum(as.character(x) == '<Null>', na.rm = TRUE))
 ```
 
@@ -83,15 +90,100 @@ sapply(habitatmap |> st_drop_geometry(), function(x) sum(as.character(x) == '<Nu
 
 Yes, but only in PHAB2, PHAB3, PHAB4, PHAB5.
 
-```{r}
+```{r zero-values}
 sapply(habitatmap |> st_drop_geometry(), function(x) sum(as.character(x) == '0', na.rm = TRUE))
 ```
+
+## Are there empty strings or spaces instead of NA?
+
+No empty strings (""):
+
+```{r empty-strings}
+sapply(habitatmap |> st_drop_geometry(), function(x) sum(as.character(x) == '', na.rm = TRUE))
+```
+
+No spaces (one of more):
+
+```{r spaces}
+sapply(habitatmap |> st_drop_geometry(), function(x) sum(grepl(pattern = "^\\s+$", x), na.rm = TRUE))
+```
+
+
 ## Are TAG codes unique?
 
 Yes. 
 
-```{r}
+```{r TAG-unicity}
 habitatmap$TAG %>% unique %>% length == nrow(habitatmap)
+```
+
+## Are the habitat codes correct?
+
+rbbvos+ should be rbbvos, the rest seems ok.
+
+```{r check-types}
+# read standard types from n2khab
+list_habs <- n2khab::read_types()
+
+# long version with all the habitats in one column
+habitatmap_lg <- habitatmap %>% 
+  st_drop_geometry() %>% 
+  select(TAG, starts_with("HAB")|starts_with("PHAB"), -HABLEGENDE) %>% 
+  pivot_longer(cols = starts_with("HAB"), 
+               names_to = "HABNR", 
+               names_prefix = "HAB", 
+               values_to = "HAB") %>%
+  pivot_longer(cols = starts_with("PHAB"), 
+               names_to = "PHABNR", 
+               names_prefix = "PHAB", 
+               values_to = "PHAB") %>% 
+  filter(HABNR == PHABNR) %>% 
+  select(-PHABNR)
+
+# habitats in habitatmap but not in official list n2khab:
+habitatmap_lg %>% 
+  filter(!is.na(HAB) & 
+           !HAB %in% c("gh", "", '<Null>') & 
+           !grepl(pattern = "^\\s*$", HAB)) %>%  
+  mutate(HAB = gsub(HAB, pattern = ",gh", replacement = ""),
+         HAB = gsub(HAB, pattern = ",bos", replacement = "")) %>% 
+  anti_join(list_habs, by = c("HAB" = "type")) %>% 
+  count(HAB) 
+```
+## Is the sum of the pHAB 100%?
+
+There should not be any row returned with sum pHAB < 100% or > 100% 
+(excepted when habitat 1130 is present):
+
+```{r sum-phab-100}
+habitatmap %>% 
+  st_drop_geometry() %>% 
+  mutate(phab_tot = PHAB1 + PHAB2 + PHAB3 + PHAB4 + PHAB5) %>% 
+  filter(phab_tot < 100 |
+           (phab_tot > 100 & HAB1 != "1130")) %>% 
+  nrow()
+```
+
+
+## Are there habitats with PHAB = 0%?
+
+Yes: many!
+Mostly used for habitats only present on a small surface, for instance as small 
+landscape elements.
+
+```{r phab0}
+
+habitatmap_lg %>% 
+  filter(
+    !(
+      is.na(HAB) |
+        HAB %in% c("gh", "", '<Null>') |
+        grepl(pattern = "^\\s*$", HAB) 
+    )
+    & 
+      PHAB == 0 ) %>% 
+  nrow()
+
 ```
 
 ## Is the CRS correct?
@@ -105,7 +197,7 @@ Chosen solution: set the CRS to 31370 without changing the coordinates of these 
 This happens in the `read_habitatmap` function with `suppressWarnings(st_crs(habitatmap) <- 31370)`
 
 
-```{r}
+```{r check-crs}
 st_crs(habitatmap) == st_crs(31370)
 
 st_crs(habitatmap)
@@ -116,7 +208,7 @@ st_crs(habitatmap)
 
 Let's inspect features with invalid or corrupt geometry:
 
-```{r check geometry}
+```{r check-geometry}
 # can run for a while! (40 min for version 2023)
 
 start_time <- Sys.time()
@@ -143,7 +235,7 @@ end_time - start_time
 
 ```
 
-```{r}
+```{r count-invalid-geoms}
 st_is_valid(invalid_geoms, reason = TRUE) %>%
   as_tibble() %>%
   filter(value != "Valid Geometry") %>% 
@@ -161,7 +253,7 @@ Let us take a look at the invalid polygons:
 tm_shape(invalid_geoms) + tm_borders() + tm_facets(by = "TAG")
 ```
 
-```{r}
+```{r map-invalid-geoms}
 # there are many invalid polygons, so we show them with leaflet:
 invalid_geoms_wgs84 <- invalid_geoms %>% 
   st_transform(crs = 4326) 
@@ -176,7 +268,7 @@ leaflet(height = "600px", width = "700px") %>%
 
 Let's compare with the same geoms after fixing the self-intersecting rings:
 
-```{r}
+```{r make-valid-geom}
 valid_geoms <- st_make_valid(invalid_geoms)
 ```
 
@@ -185,7 +277,7 @@ valid_geoms <- st_make_valid(invalid_geoms)
 tm_shape(valid_geoms) + tm_borders() + tm_facets(by = "TAG")
 ```
 
-```{r}
+```{r map-fixed-invalid-geoms}
 # there were many invalid polygons, so we show them with leaflet:
 valid_geoms_wgs84 <- valid_geoms %>% 
   st_transform(crs = 4326) 
@@ -206,18 +298,18 @@ leaflet(height = "600px", width = "700px") %>%
 
 Are all geometries valid now?
 
-```{r}
+```{r recheck-geometry}
 all(st_is_valid(valid_geoms))
 ```
 
 
-So this works well. Inthe derived data (habitatmap_stdized) we will fix these geometries.
+So this works well. In the derived data (habitatmap_stdized) we will fix these geometries.
 
 We also consider an optional geometry reparation step in `read_habitatmap(fix_geom = TRUE)`.
 
 How long would it take to repair the geometries 'on the fly' while importing the habitatmap? 
 
-```{r fix geometry}
+```{r fix-geometry, eval = FALSE}
 
 start_time <- Sys.time()
 hmv <- st_make_valid(habitatmap)
