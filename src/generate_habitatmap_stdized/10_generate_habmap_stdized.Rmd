@@ -1,10 +1,30 @@
 # Generate standardized habitatmap
 
+Interim version of the habitatmap 3/2025
+
+The interim habitatmap has not been cleaned up as well as the official published 
+versions:
+it contains inconsistent field names, the TAG field does not contain unique 
+identifiers, the empty fields contain an empty string or one or more spaces, ...
+(please refer to miscellaneous > habitatmap.Rmd for an full overview of the 
+possible problems and needed corrections).
+
+Because of these problems, it does not seem a good idea to load the raw version 
+of the habitatmap with n2khab::read_habitatmap (there would be many corrections 
+needed in n2khab::read_habitatmap, and possibly different corrections for each 
+new interim version of the habitatmap).
+Therefore we decide to skip the raw habitatmap for the interim versions and to
+start directly with the standardized version.
+
 ## Data source
 
-The shapefile of the BWK and Natura 2000 habitat map of Flanders can be downloaded [here](https://zenodo.org/record/10167695).
+- adapt this when we know where the interim versions will be stored - 
+The shapefile of the interim versions of the BWK and Natura 2000 habitat map of 
+Flanders can be downloaded [here](https://zenodo.org/record/10167695).
 
-To be sure we will use the correct version of the data source (habitatmap_2023), we will derive the md5 file hashes and compare it to the file hashes in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
+To be sure we will use the correct version of the data source (habitatmap_2025_interim), 
+we will derive the md5 file hashes and compare it to the file hashes in the 
+[data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
 
 ```{r}
 
@@ -22,12 +42,7 @@ hashes <-
            md5 = map(filepath, function(x) {
                            file(x) %>% md5 %>% str_c(collapse = '')
                          }) %>% as.character,
-           md5_ref = c("8d436686b2ad4bc9355bf1c403b5ba43",
-                       "358ff672c2fae48eba5bd09f8a671675",
-                      "f881f61a6c07741b58cb618d8bbb0b99",
-                      "8c6999e914d7f95948d84d5221f58e6f",
-                      "8e9c2c1ef888ce085e027d32f7c73b8c",
-                      "7ff6cc0efbd34f4cfef52d73e466df0d"),
+           md5_ref = c("0421100ccd30f09f1060524324528232"),
            match = md5 == md5_ref) %>%
     select(filename,
            md5,
@@ -45,8 +60,52 @@ if (!all.equal(hashes$md5, hashes$md5_ref)) {
 
 ```{r read_raw_data}
 
-habitatmap_sf <- st_read(file.path(path, file),
-                  layer = "habitatmap", crs = 31370)
+habitatmap_sf <- st_read(file.path(path, file, "habitatmap.gpkg"),
+                  #layer = "habitatmap", 
+                  crs = 31370)
+
+```
+
+## Clean up of the interim version
+
+
+```{r clean_up_interim}
+# we want to make the interim version as similar as possible as the official one
+# to avoid too many changes in the other chunks
+habitatmap_sf <- habitatmap_sf %>% 
+  rename(PHAB1 = pHAB1, # field names
+         PHAB2 = pHAB2,
+         PHAB3 = pHAB3,
+         PHAB4 = pHAB4,
+         PHAB5 = pHAB5) %>% 
+  mutate(across(-geom, ~ifelse(grepl(pattern = "^\\s*$", .), NA, .)),
+         info = ifelse(info == '<Null>', NA, info)) %>%  # clean up empty fields
+   mutate(TAG = globalid_BWK) %>%  # add unique ID (we replace TAG by the unique globalid_BWK)
+  filter(!is.na(HAB1))
+
+```
+
+
+
+Are there NA? Yes, as expected
+```{r check_na}
+sapply(habitatmap_sf, function(x) sum(is.na(x)))
+```
+
+Are there <Null>? No, as expected.
+```{r check_null}
+sapply(habitatmap_sf |> st_drop_geometry(), function(x) sum(as.character(x) == '<Null>', na.rm = TRUE))
+```
+Are there empty strings? No, as expected.
+
+```{r check_empty_string}
+sapply(habitatmap_sf |> st_drop_geometry(), function(x) sum(as.character(x) == '', na.rm = TRUE))
+```
+
+Are there spaces? No, as expected.
+
+```{r check_space}
+sapply(habitatmap_sf |> st_drop_geometry(), function(x) sum(grepl(pattern = "^\\s+$", x), na.rm = TRUE))
 ```
 
 
@@ -82,11 +141,12 @@ habmap_longPHAB <- habmap_sf %>%
 
 habmap_longHAB <- habmap_sf %>%
     st_drop_geometry() %>%
-    select(polygon_id, polygon_area = OPPERVL, starts_with("HAB"), -HABLEGENDE) %>%
+    select(polygon_id, polygon_area = OPPERVL, 
+           starts_with("HAB"), -any_of(c("HABLEGENDE"))) %>%
     gather(HAB1, HAB2, HAB3, HAB4, HAB5, key = "hab", value = "code") %>%
     mutate(patch_id = substr(hab, 4, 4)) %>%
     filter(!is.na(code)) %>%
-    filter(! code %in% c("gh", "x"))
+    filter(!code %in% c("gh", "x"))
 
 ```
 
@@ -182,8 +242,17 @@ We distinguish two cases:
 + two certain or two uncertain records of the same type, for example:
 
 ```{r}
+example <- habmap_long %>%
+  group_by(polygon_id, type, certain) %>%
+  add_count() %>% 
+  filter(n > 1) %>%
+  ungroup()
+
+polygon_id_example_1 <- (example %>%
+  slice_head(n = 1))$polygon_id
+
 habmap_long %>%
-  filter(polygon_id == "357179_v2020")
+  filter(polygon_id == polygon_id_example_1)
 ```
 
 In this case we will sum the phab-values and create one record for each type.
@@ -198,11 +267,11 @@ example <- habmap_long %>%
   filter(any(certain) & any(!certain)) %>%
   ungroup()
 
-polygon_id_example <- (example %>%
+polygon_id_example_2 <- (example %>%
   slice_head(n = 1))$polygon_id
 
 habmap_long %>%
-  filter(polygon_id == polygon_id_example)
+  filter(polygon_id == polygon_id_example_2)
 ```
 
 We will not aggregate the certain and uncertain record, because we will loose some information used to create `habitatmap_terr`. It is some of the uncertain records (such as `9120, gh`) are eliminated when processing `habitatmap_terr`. 
@@ -212,7 +281,8 @@ check_double_type <- habmap_long %>%
   group_by(polygon_id, type) %>%
   mutate(n_type = n()) %>%
   ungroup() %>%
-  filter(n_type > 1)
+  filter(n_type > 1) %>% 
+  arrange(polygon_id)
   
 ```
 
@@ -232,7 +302,7 @@ See below the result of the aggregation for the first example.
 
 ```{r}
 habmap_long_aggr %>%
-  filter(polygon_id == "357179_v2020")
+  filter(polygon_id == polygon_id_example_1)
 ```
 
 ## Select vegetation types that belong to the standard list of habitat and rbb types  
@@ -287,7 +357,9 @@ The ID of each polygon in the habitatmap contains the year in which the polygon
 was last updated.
 In the table below we show the number of records per type and per update year.
 
-```{r}
+```{r eval = FALSE}
+# run only for the official versions with a TAG with the year as polygon_id
+# polygon_id of the interim version does not contain the year 
 habmap_types %>%
   mutate(polygon_version = str_sub(polygon_id, start = -4)) %>%
   group_by(type, polygon_version) %>%
@@ -305,7 +377,7 @@ in spatial analysis in GIS.
 
 First, we search for polygons with invalid geometries. 
 
-```{r}
+```{r find_invalid_geoms}
 habmap_types_geom_invalid <- st_is_valid(habmap_types_sf, reason = TRUE) %>%
   as_tibble() %>%
   mutate(id = rownames(.)) %>% 
@@ -328,7 +400,7 @@ habmap_types_geom_invalid  %>%
   scroll_box(height = "300px")
 ```
 
-```{r}
+```{r map_invalid_geoms}
 # show the invalid polygons on a map
 habmap_types_geom_invalid_wgs84 <- habmap_types_sf %>% 
   inner_join(habmap_types_geom_invalid %>% 
