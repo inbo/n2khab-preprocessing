@@ -25,10 +25,11 @@ More details are being discussed in subsequent chapters.
 ## Data sources
 
 Startingpoint for the interpretation is the standardized version of the shapefile of the BWK and Natura 2000 habitat map of Flanders. For more details about the standardized version see [its source location at Zenodo](https://doi.org/10.5281/zenodo.3355192).
+- to do: add link to the repository with the interim versions - 
 
 ### Standardized version
 
-To be sure we will use the correct version of the data source (habitatmap_stdized_2023_v1), we will derive the md5 file hashes and compare it to the file hashes in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
+To be sure we will use the correct version of the data source (habitatmap_stdized_2025_interim), we will derive the md5 file hashes and compare it to the file hashes in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
 
 ```{r}
 
@@ -46,7 +47,7 @@ hashes <-
            md5 = map(filepath, function(x) {
                            file(x) %>% md5 %>% str_c(collapse = '')
                          }) %>% as.character,
-           md5_ref = c("5e9a0cb2a53f88001796bd7457a343ac"),
+           md5_ref = c("95305aae46689afebcc1f3dc02b92be1"),
            match = md5 == md5_ref) %>%
     select(filename,
            md5,
@@ -80,8 +81,9 @@ habmap_types <- habmap_stdized$habitatmap_types
 ### Source version
 
 In some cases we'll need to refer to the source-map (from [Zenodo](https://zenodo.org/records/10167695)).
+The interim version is not online though, and will be imported manually.
 
-Again we will check if it is the correct version (habitatmap_2023).
+Again we will check if it is the correct version (habitatmap_2025_interim).
 
 ```{r}
 path <- fileman_up("n2khab_data")
@@ -98,12 +100,7 @@ hashes <-
            md5 = map(filepath, function(x) {
                            file(x) %>% md5 %>% str_c(collapse = '')
                          }) %>% as.character,
-           md5_ref = c("8d436686b2ad4bc9355bf1c403b5ba43",
-                       "358ff672c2fae48eba5bd09f8a671675",
-                      "f881f61a6c07741b58cb618d8bbb0b99",
-                      "8c6999e914d7f95948d84d5221f58e6f",
-                      "8e9c2c1ef888ce085e027d32f7c73b8c",
-                      "7ff6cc0efbd34f4cfef52d73e466df0d"),
+           md5_ref = c("0421100ccd30f09f1060524324528232"),
            match = md5 == md5_ref) %>%
     select(filename,
            md5,
@@ -119,8 +116,27 @@ if (!all.equal(hashes$md5, hashes$md5_ref)) {
 ```
 
 
-```{r read_raw_data, message=FALSE}
+```{r read_raw_data, message=FALSE, eval=FALSE}
+# official version:
 habmap_sf <- read_habitatmap()
+
+```
+
+```{r read_raw_data_interim_cleanup}
+# interim version:
+habmap_sf <- st_read(file.path(path, file, "habitatmap.gpkg"),
+                  crs = 31370)
+# we want to make the interim version as similar as possible as the official one
+# to avoid too many changes in the other chunks
+habmap_sf <- habmap_sf %>% 
+    mutate(across(-geom, ~ifelse(grepl(pattern = "^\\s*$", .), NA, .)),
+           info = ifelse(info == '<Null>', NA, info)) %>% # replace empty fields by NA
+    mutate(polygon_id = globalid_BWK, # add unique ID (we replace TAG by the unique globalid_BWK)
+           bwk_label = gsub(pattern = "\\s\\+\\sNA", 
+                           replacement = "",
+                           paste(eenh1, eenh2, eenh3, eenh4, eenh5, eenh6, eenh7, eenh8, sep = " + ")))
+   
+
 ```
 
 # Interpretations
