@@ -23,6 +23,7 @@ library(n2khab)
 library(knitr)
 library(tmap)
 library(leaflet)
+library(ggplot2)
 opts_chunk$set(
   echo = TRUE,
   dpi = 300
@@ -310,6 +311,12 @@ st_crs(habitatmap)
 
 ## Validity of the geometries
 
+First we check that no empty geometries are present:
+
+```{r check-empty-geom}
+all(!is.na(st_dimension(habitatmap$geom)))
+```
+
 Let's inspect features with invalid or corrupt geometry:
 
 ```{r check-geometry}
@@ -319,7 +326,13 @@ start_time <- Sys.time()
 
 #st_is_valid(habitatmap) %>% table
 validities <- st_is_valid(habitatmap)
-invalid_geoms <- habitatmap[!validities | is.na(validities), ]
+# invalid but not NA
+invalid_geoms <- habitatmap[!is.na(validities) & validities == FALSE , ] %>% 
+  mutate(geom_valid = "invalid")
+# NA
+navalid_geoms <- habitatmap[is.na(validities), ] %>% 
+  mutate(geom_valid = "na")
+# invalid_geoms <- habitatmap[!validities | is.na(validities), ] # returns all invalid and NA
 end_time <- Sys.time()
 end_time - start_time
 
@@ -339,38 +352,42 @@ end_time - start_time
 
 ```
 
+
 ```{r count-invalid-geoms}
-st_is_valid(invalid_geoms, reason = TRUE) %>%
+st_is_valid(rbind(invalid_geoms, navalid_geoms), reason = TRUE) %>%
   as_tibble() %>%
-  filter(value != "Valid Geometry") %>% 
+  filter(is.na(value) | value != "Valid Geometry") %>% 
   mutate(problem = str_extract(string = value, 
                                 pattern = "[^\\[]+")) %>% 
   count(problem) 
 
 ```
-The geometry invalidity is the consequence of self-intersecting rings, as a consequence of digitalization errors.
+The geometry invalidity is the consequence of self-intersecting rings, as a 
+consequence of digitalization errors. Note that there are also polygons that 
+return `NA`.
 
-st_make_valid gives an error with this dataset "GeometryFixer::getResult called on unknown geometry type"
-In this version there are apparently exotic geometry types: CURVEPOLYGON, COMPOUNDCURVE, 
-CIRCULARSTRING ...
+`st_make_valid` gives an error with this dataset "GeometryFixer::getResult called 
+on unknown geometry type". The invalid polygons returning `NA` are the ones 
+causing this error: in this version of the map there are apparently exotic 
+geometry types: `CURVEPOLYGON, COMPOUNDCURVE, CIRCULARSTRING` included in a `MULTISURFACE`.
+These geometries cannot be plotted with `leaflet` or `plotly` either. We need to
+find a workaround to be able to work with them.
+
 
 ```{r}
-unique(st_geometry_type(invalid_geoms))
-
-# an example of multisurface:
-invalid_geoms$geom[[33]]
+unique(st_geometry_type(navalid_geoms))
 ```
 
-From there on there is still some work to get it running
+### Invalid polygons with ring self-intersection
 
-Let us take a look at the invalid polygons:
+First, let us take a look at the **invalid polygons with ring self-intersection**:
 
 ```{r graph-invalid-geoms, eval = FALSE}
 # only use this if there are not too many invalid polygons
-tm_shape(invalid_geoms) + tm_borders() + tm_facets(by = "tag")
+tm_shape(invalid_geoms) + tm_borders() + tm_facets(by = "id")
 ```
 
-```{r map-invalid-geoms, eval = FALSE}
+```{r map-invalid-geoms-ring}
 # there are many invalid polygons, so we show them with leaflet:
 invalid_geoms_wgs84 <- invalid_geoms %>% 
   st_transform(crs = 4326) 
@@ -379,22 +396,25 @@ leaflet(height = "600px", width = "700px") %>%
   addTiles(group = "OSM (default)") %>%
   addPolygons(data = invalid_geoms_wgs84,
               color = "darkred",
-              popup = paste("tag:", 
-                          invalid_geoms_wgs84$tag)) 
+              popup = paste("id:", 
+                          invalid_geoms_wgs84$id)) 
 ```
 
-Let's compare with the same geoms after fixing the self-intersecting rings:
 
-```{r make-valid-geom, eval = FALSE}
+We can fix the geoms with the self-intersecting rings easily with `st_make_valid`.
+
+Let's compare with the same geoms after fixing the rings:
+
+```{r make-valid-ring-geom}
 valid_geoms <- st_make_valid(invalid_geoms)
 ```
 
 ```{r graph-corrected-geoms, eval = FALSE}
 # only use this if there are not too many invalid polygons
-tm_shape(valid_geoms) + tm_borders() + tm_facets(by = "tag")
+tm_shape(valid_geoms) + tm_borders() + tm_facets(by = "id")
 ```
 
-```{r map-corrected-geoms, eval = FALSE}
+```{r map-corrected-geoms}
 # there were many invalid polygons, so we show them with leaflet:
 valid_geoms_wgs84 <- valid_geoms %>% 
   st_transform(crs = 4326) 
@@ -407,27 +427,154 @@ leaflet(height = "600px", width = "700px") %>%
   addPolygons(data = valid_geoms_wgs84,
               group = "after correction (blue)",
               popup = paste(
-                           "tag:",
-                          valid_geoms_wgs84$tag)) %>%
+                           "id:",
+                          valid_geoms_wgs84$id)) %>%
     addLayersControl(overlayGroups = c("before correction (red)", "after correction (blue)"),
                      options = layersControlOptions(collapsed = FALSE))
 ```
 
 Are all geometries valid now?
 
-```{r recheck-geometry, eval = FALSE}
+```{r recheck-geometry}
 all(st_is_valid(valid_geoms))
+```
+
+### Invalid polygons returning NA
+
+And now let us take a look at the **invalid polygons with NA**:
+
+```{r map-navalid-geoms-ex1}
+# there are many invalid NA-polygons, 
+# but unfortunately we cannot plot them with leaflet, plotly, tmap...
+
+# an example with ggplot then:
+ggplot(data = head(navalid_geoms, n = 1)) +
+  geom_sf(aes(geometry = geom)) +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = NULL) +
+  theme_bw()
+```
+
+```{r map-navalid-geoms-ex2}
+# another example with ggplot:
+ggplot(data = tail(navalid_geoms, n = 1)) +
+  geom_sf(aes(geometry = geom)) +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = NULL) +
+  theme_bw()
+```
+
+These polygons contain curved lines and fixing the geoms with `st_make_valid` 
+does not work with them.
+
+We find a workaround using `gdalUtilities::ogr2ogr`:
+<https://stackoverflow.com/questions/74479973/casting-from-geometrycollection-with-multiple-nested-geometries-r-sf> 
+
+```{r make-valid-na-geom}
+# convert curve to line with ogr2ogr
+st_write(navalid_geoms,
+         './habitatmap_navalid.gpkg',
+         layer = "habitatmap_navalid",
+         driver = "GPKG",
+         delete_dsn = TRUE)
+
+gdalUtilities::ogr2ogr('./habitatmap_navalid.gpkg',
+                       './habitatmap_corr.gpkg',
+                       explodecollections = T, nlt = 'CONVERT_TO_LINEAR')
+
+navalid_geoms_corr <- st_read("./habitatmap_corr.gpkg")
+
+file.remove('./habitatmap_navalid.gpkg') 
+file.remove('./habitatmap_corr.gpkg') 
+```
+
+The result is a `POLYGON` instead of a `MULTISURFACE`, but there are now 461 
+records instead of 452. What happened?
+
+Let us search for the duplicates:
+
+```{r }
+supl_polygons <- navalid_geoms_corr %>%
+  st_drop_geometry() %>%
+  count(id) %>%
+  filter(n > 1)
+
+leaflet(height = "600px", width = "700px") %>%
+  addTiles(group = "OSM (default)") %>%
+  addPolygons(data = navalid_geoms_corr %>%
+                filter(id %in% supl_polygons$id) %>%
+                st_transform(crs = 4326),
+              color = "darkred",
+              popup = paste("id:", 
+                          invalid_geoms_wgs84$id))
+```
+
+
+- {2914A831-4B0E-469A-9480-3F26E4603E80} n=2 - a small circle inside a bigger polygon
+- {2B35801E-3B98-4003-97F6-DA28A4AAC71B} n=2 - a small circle inside a bigger polygon
+- {380DA352-1F74-43E9-BEA2-621C11D68A9A} n=5 - 4 small circles inside a bigger polygon
+- {575462C9-EAA1-46E2-AE80-5787A69BD283} n=2 - a small circle inside a bigger polygon
+- {8E3D05E3-323A-4795-8B27-E0F57A8E5349} n=2 - a small circle inside a bigger polygon
+- {DE8BCA5B-C10E-4035-8FD1-1AFF6F237481} n=2 - problem in the eastern part of the polygon (1 without visible perimeter?)
+
+```{r }
+# We can probably merge these polygons
+navalid_geoms_corr_dissolved  <- navalid_geoms_corr %>%
+  group_by(across(objectid:id)) %>% #all fields are the same
+  summarize(geom = sf::st_union(geom),
+            #across(everything(), first),
+            .groups = "drop") %>%
+  mutate(shapelength = st_length(geom),
+         shapearea = st_area(geom))
+```
+
+And now let's take a look at the corrected geoms:
+
+```{r }
+# plot one example before - after
+ggplot() +
+  geom_sf(data = navalid_geoms %>% 
+            filter(id == "{DE8BCA5B-C10E-4035-8FD1-1AFF6F237481}"), 
+          alpha = .2, color = 'red', lwd = 2) +
+  geom_sf(data = navalid_geoms_corr_dissolved %>% 
+            filter(id == "{DE8BCA5B-C10E-4035-8FD1-1AFF6F237481}"), 
+          alpha = .2, fill = 'blue') +
+  ggtitle('old (red) & corrected (blue) overplotted')
+```
+
+```{r }
+# plot one example before - after
+ggplot() +
+  geom_sf(data = navalid_geoms %>% 
+            filter(id == "{8E3D05E3-323A-4795-8B27-E0F57A8E5349}"), 
+          alpha = .2, color = 'red', lwd = 2) +
+  geom_sf(data = navalid_geoms_corr_dissolved %>% 
+            filter(id == "{8E3D05E3-323A-4795-8B27-E0F57A8E5349}"), 
+          alpha = .2, fill = 'blue') +
+  ggtitle('old (red) & corrected (blue) overplotted')
+
+```
+
+```{r }
+# plot all corrected polygons:
+leaflet(height = "600px", width = "700px") %>%
+  addTiles(group = "OSM (default)") %>%
+  addPolygons(data = navalid_geoms_corr_dissolved %>%
+                st_transform(crs = 4326),
+              popup = paste("id:",
+                            navalid_geoms_corr$id))
 ```
 
 
 So this works well. In the derived data (habitatmap_stdized) we will fix these geometries.
 
-We also consider an optional geometry reparation step in `read_habitatmap(fix_geom = TRUE)`.
+For the official version of the habitatmap we also consider an optional geometry 
+reparation step in `read_habitatmap(fix_geom = TRUE)`.
 
 How long would it take to repair the geometries 'on the fly' while importing the habitatmap? 
 
 ```{r fix-geometry, eval = FALSE}
-
+# official version
 start_time <- Sys.time()
 hmv <- st_make_valid(habitatmap)
 end_time <- Sys.time()
@@ -436,13 +583,6 @@ end_time - start_time
 
 ```
 
-OK, less than 1 minute sounds acceptable.
-
-We also check that no empty geometries are present:
-
-```{r check-empty-geom}
-all(!is.na(st_dimension(habitatmap$geom)))
-```
 
 Refer to <https://github.com/inbo/n2khab-preprocessing/issues/60> and <https://r-spatial.org/r/2017/03/19/invalid.html> for more information!
 
