@@ -32,6 +32,7 @@ opts_chunk$set(
 
 # A few checks of the habitatmap data source
 
+Interim version 3/2025
 
 ```{r read-habitatmap}
 filepath <- file.path(fileman_up("n2khab_data"),
@@ -74,18 +75,18 @@ names(habitatmap)
 
 Some names are in uppercase, others in lowercase or mixed case.
 This is different from version 2023 (where all the field names were in uppercase).
-A few fields were dropped since version 2023: OIDN, UIDN, BWKLABEL, HABLEGENDE, LENGTE, OPPERVL.
-Other fields were added: referentie, info, globalid_BWK.
+A few fields were dropped since version 2023: `OIDN`, `UIDN`, `BWKLABEL`, `HABLEGENDE`, `LENGTE`, `OPPERVL`.
+Other fields were added: `referentie`, `info`, `globalid_BWK`.
 And the following names were changed: 
 
-- HERK => herk_bwk
-- HERKHAB => HERK_HAB
-- HERKPHAB => HERK_pHAB
-- SHAPE_Leng => Shape_Length (probably due to the fact that the previous version was a shapefile)
+- `HERK` => `herk_bwk`
+- `HERKHAB` => `HERK_HAB`
+- `HERKPHAB` => `HERK_pHAB`
+- `SHAPE_Leng` => `Shape_Length` (probably due to the fact that the previous version was a shapefile)
 
 I convert all the field names to lowercase and remove all the underscores.
 (only for this script: to be able to use the checks in this script with different 
-versions of the habitatmap without the need to modifiy every chunk)
+versions of the habitatmap without the need to modify every chunk)
 
 ```{r lowercase-no-underscore}
 names(habitatmap) <- tolower(gsub("_","",names(habitatmap)))
@@ -138,7 +139,7 @@ habitatmap |> st_drop_geometry() %>%
 
 ## Are there empty strings instead of NA?
 
-There are many empty strings (apparently used instead of NA's), in most of the cases in the fields were empty values can be expected though.
+There are many empty strings (apparently used instead of NA's), in most of the cases in the fields where empty values can be expected though.
 
 ```{r empty-strings}
 sapply(habitatmap |> st_drop_geometry(), function(x) sum(as.character(x) == '', na.rm = TRUE))
@@ -170,7 +171,8 @@ There are records with one or several spaces.
 sapply(habitatmap |> st_drop_geometry(), function(x) sum(grepl(pattern = "^\\s+$", x), na.rm = TRUE))
 ```
 
-These are the cases with spaces: 
+As for `tag` and `eenh2` until `eenh8`, ...: there are too many of them to print the list. 
+Here are the cases with spaces for the other variables: 
 
 ```{r}
 habitatmap |> st_drop_geometry() %>% 
@@ -184,8 +186,6 @@ habitatmap |> st_drop_geometry() %>%
            grepl(pattern = "^\\s+$", herkphab) & nchar(herkphab) > 0) 
 ```
 
-
-As for tag, eenh2 and bigger, ...: there are too many of them to print the list.
 
 ## Are tag codes unique?
 
@@ -212,6 +212,14 @@ And is globalidbwk unique?
 habitatmap$globalidbwk %>% unique %>% length == nrow(habitatmap)
 ```
 
+From here on I will use `globalidbwk` as identifier (in a new `id` field that 
+can be used with any version of the habitatmap). 
+
+```{r add-id}
+habitatmap <- habitatmap %>% 
+  mutate(id = globalidbwk)
+```
+
 ## Are the habitat codes correct?
 
 rbbvos+ should be rbbvos, the rest seems ok.
@@ -223,7 +231,7 @@ list_habs <- n2khab::read_types()
 # long version with all the habitats in one column
 habitatmap_lg <- habitatmap %>% 
   st_drop_geometry() %>% 
-  select(tag, starts_with("hab")|starts_with("phab"), -any_of(c("HABLEGENDE", "hablegende"))) %>% 
+  select(id, starts_with("hab")|starts_with("phab"), -any_of(c("HABLEGENDE", "hablegende"))) %>% 
   pivot_longer(cols = starts_with("hab"), 
                names_to = "habnr", 
                names_prefix = "hab", 
@@ -447,7 +455,8 @@ habitatmap %>% colnames %>% cat(sep = "\n")
 
 data source variable          data frame variable
 ----------------------        ---------------------
-`TAG`                         `polygon_id` 
+`TAG`                         `polygon_id` (official version)
+`globalid_BWK`                `polygon_id` (interim version)
 `EVAL`                        `eval`
 `EENH1`                       `eenh1`
 `V1`                          `v1`
