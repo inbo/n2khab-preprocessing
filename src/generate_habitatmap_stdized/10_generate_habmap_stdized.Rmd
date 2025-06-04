@@ -1,6 +1,6 @@
 # Generate standardized habitatmap
 
-Interim version of the habitatmap 3/2025
+Interim version of the habitatmap 3/2025 (official name: habitatmap_2024.99_interim)
 
 The interim habitatmap has not been cleaned up as well as the official published 
 versions:
@@ -10,8 +10,8 @@ identifiers, the empty fields contain an empty string or one or more spaces, ...
 possible problems and needed corrections).
 
 Because of these problems, it does not seem a good idea to load the raw version 
-of the habitatmap with n2khab::read_habitatmap (there would be many corrections 
-needed in n2khab::read_habitatmap, and possibly different corrections for each 
+of the habitatmap with `n2khab::read_habitatmap` (there would be many corrections 
+needed in `n2khab::read_habitatmap`, and possibly different corrections for each 
 new interim version of the habitatmap).
 Therefore we decide to skip the raw habitatmap for the interim versions and to
 start directly with the standardized version.
@@ -22,7 +22,7 @@ start directly with the standardized version.
 The shapefile of the interim versions of the BWK and Natura 2000 habitat map of 
 Flanders can be downloaded [here](https://zenodo.org/record/10167695).
 
-To be sure we will use the correct version of the data source (habitatmap_2025_interim), 
+To be sure we will use the correct version of the data source (habitatmap_2024.99_interim), 
 we will derive the md5 file hashes and compare it to the file hashes in the 
 [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
 
@@ -81,31 +81,9 @@ habitatmap_sf <- habitatmap_sf %>%
   mutate(across(-geom, ~ifelse(grepl(pattern = "^\\s*$", .), NA, .)),
          info = ifelse(info == '<Null>', NA, info)) %>%  # clean up empty fields
    mutate(TAG = globalid_BWK) %>%  # add unique ID (we replace TAG by the unique globalid_BWK)
-  filter(!is.na(HAB1))
+  rename(OPPERVL = Shape_Area) %>% 
+  filter(!is.na(HAB1)) # remove a few errors
 
-```
-
-
-
-Are there NA? Yes, as expected
-```{r check_na}
-sapply(habitatmap_sf, function(x) sum(is.na(x)))
-```
-
-Are there <Null>? No, as expected.
-```{r check_null}
-sapply(habitatmap_sf |> st_drop_geometry(), function(x) sum(as.character(x) == '<Null>', na.rm = TRUE))
-```
-Are there empty strings? No, as expected.
-
-```{r check_empty_string}
-sapply(habitatmap_sf |> st_drop_geometry(), function(x) sum(as.character(x) == '', na.rm = TRUE))
-```
-
-Are there spaces? No, as expected.
-
-```{r check_space}
-sapply(habitatmap_sf |> st_drop_geometry(), function(x) sum(grepl(pattern = "^\\s+$", x), na.rm = TRUE))
 ```
 
 
@@ -274,7 +252,7 @@ habmap_long %>%
   filter(polygon_id == polygon_id_example_2)
 ```
 
-We will not aggregate the certain and uncertain record, because we will loose some information used to create `habitatmap_terr`. It is some of the uncertain records (such as `9120, gh`) are eliminated when processing `habitatmap_terr`. 
+We will not aggregate the certain and uncertain record, because we will lose some information used to create `habitatmap_terr`. It is some of the uncertain records (such as `9120, gh`) are eliminated when processing `habitatmap_terr`. 
 
 ```{r}
 check_double_type <- habmap_long %>%
@@ -353,8 +331,8 @@ habmap_types_sf <- habmap_sf %>%
 
 ## Let 's have a quick look at the result
 
-The ID of each polygon in the habitatmap contains the year in which the polygon
-was last updated.
+In the official version, the ID of each polygon in the habitatmap contains the 
+year in which the polygon was last updated.
 In the table below we show the number of records per type and per update year.
 
 ```{r eval = FALSE}
@@ -475,7 +453,7 @@ dir.create(file.path(path, "20_processed/habitatmap_stdized"), recursive = TRUE)
 filepath <- file.path(path,"20_processed/habitatmap_stdized/habitatmap_stdized.gpkg")
 ```
 
-```{r}
+```{r write_gpkg}
 
 st_write(habmap_types_sf, 
          filepath, 
