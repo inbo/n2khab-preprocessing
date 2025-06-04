@@ -29,7 +29,7 @@ Startingpoint for the interpretation is the standardized version of the shapefil
 
 ### Standardized version
 
-To be sure we will use the correct version of the data source (habitatmap_stdized_2025_interim), we will derive the md5 file hashes and compare it to the file hashes in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
+To be sure we will use the correct version of the data source (habitatmap_stdized_2024.99_interim), we will derive the md5 file hashes and compare it to the file hashes in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
 
 ```{r}
 
@@ -47,7 +47,7 @@ hashes <-
            md5 = map(filepath, function(x) {
                            file(x) %>% md5 %>% str_c(collapse = '')
                          }) %>% as.character,
-           md5_ref = c("95305aae46689afebcc1f3dc02b92be1"),
+           md5_ref = c("6cc9dc73f316fbaa353fe11ff33f3359"),
            match = md5 == md5_ref) %>%
     select(filename,
            md5,
@@ -80,10 +80,11 @@ habmap_types <- habmap_stdized$habitatmap_types
 
 ### Source version
 
-In some cases we'll need to refer to the source-map (from [Zenodo](https://zenodo.org/records/10167695)).
+In some cases we'll need to refer to the source-map (from [Zenodo](https://zenodo.org/records/10167695) 
+for the official versions).
 The interim version is not online though, and will be imported manually.
 
-Again we will check if it is the correct version (habitatmap_2025_interim).
+Again we will check if it is the correct version (habitatmap_2024.99_interim).
 
 ```{r}
 path <- fileman_up("n2khab_data")
