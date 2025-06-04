@@ -39,6 +39,7 @@ output:
 ```{r setup, include=FALSE}
 renv::restore()
 library(sf)
+library(gdalUtilities) # needed for layers with curved polygons only
 library(tidyverse)
 library(stringr)
 library(knitr)

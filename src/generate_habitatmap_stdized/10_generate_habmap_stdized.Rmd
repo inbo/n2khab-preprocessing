@@ -356,56 +356,143 @@ in spatial analysis in GIS.
 First, we search for polygons with invalid geometries. 
 
 ```{r find_invalid_geoms}
-habmap_types_geom_invalid <- st_is_valid(habmap_types_sf, reason = TRUE) %>%
+validities <- st_is_valid(habmap_types_sf, reason = TRUE) %>%
   as_tibble() %>%
-  mutate(id = rownames(.)) %>% 
+  mutate(id = rownames(.) ) %>%
+  mutate(problem = str_extract(string = value,
+                               pattern = "[^\\[]+")) %>%
   left_join(habmap_types_sf %>% 
               mutate(id = as.character(row_number())), 
-            by = "id") %>%
-  filter(value != "Valid Geometry") %>% 
-  mutate(problem = str_extract(string = value, 
-                                pattern = "[^\\[]+"))
+            by = "id") %>% 
+  select(-value)
 
-cat(paste0("There are ", habmap_types_geom_invalid %>% nrow() , 
-           " polygons with invalid geometry"))
+# there are invalid polygons with a reason mentioned but also with no reason given (NA)
+# those categories need to be handled separately
+
+# invalid polygons with a clear explanation
+habmap_types_geom_invalid <- validities %>%
+  filter(problem != "Valid Geometry") 
+# invalid polygons without a clear explanation: NA
+habmap_types_geom_invalidna <- validities %>% 
+  filter(is.na(problem)) 
+
+cat(paste0("There are ", 
+           rbind(habmap_types_geom_invalid,habmap_types_geom_invalidna) %>% nrow(), 
+           " polygons with invalid geometry: \n", 
+           habmap_types_geom_invalid %>% nrow() , 
+           " with a clear explanation for the problem and \n",
+           habmap_types_geom_invalidna %>% nrow(), 
+           " without any clear explanation (NA)."))
 ```
 
 ```{r}
 habmap_types_geom_invalid  %>%
+  rbind(., habmap_types_geom_invalidna) %>% 
   select(id, polygon_id, description_orig, problem) %>% 
   kable(caption = "Polygons with faulty geometries", label = NA) %>%
   kable_styling() %>% 
   scroll_box(height = "300px")
 ```
 
+We will correct the geometry using the function `st_make_valid` and check the results.
+
+The interim version from 3/2025 (habitatmap_2024.99_interim) contains more exotic geometries (MULTISURFACE with curved polygons) that cannot be corrected directly.
+We need an intermediate step to make it work: we convert the curved polygons into standard polygons with `gdalUtilities::ogr2ogr`.
+
+```{r convert_curve_to_line}
+# convert curved polygons into normal polygons
+# this needs to be done for the NA only
+
+st_write(habmap_types_geom_invalidna,
+         './habmap_types_invalidna.gpkg',
+         layer = "habmap_stdized_invalidna",
+         driver = "GPKG",
+         delete_dsn = TRUE)
+
+gdalUtilities::ogr2ogr('./habmap_types_invalidna.gpkg',
+                       './habmap_types_invalidnacorr.gpkg',
+                       explodecollections = T, nlt = 'CONVERT_TO_LINEAR')
+
+habmap_types_geom_invalidnacorr <- st_read("./habmap_types_invalidnacorr.gpkg")
+# note the geometry type: POLYGON
+
+file.remove('./habmap_types_invalidna.gpkg') 
+file.remove('./habmap_types_invalidnacorr.gpkg')
+
+# but there are now 181 records instead of 175
+# duplicates
+habmap_types_geom_invalidnacorr %>%
+  st_drop_geometry() %>%
+  count(polygon_id) %>%
+  filter(n > 1)
+# merge these polygons (see miscellaneous > habitatmap for the details)
+habmap_types_geom_invalidnacorr_dissolved  <- habmap_types_geom_invalidnacorr %>%
+  group_by(across(id:description_orig)) %>% 
+  summarize(geom = sf::st_union(geom),
+            .groups = "drop")
+
+```
+
+```{r}
+# merge both invalid datasets back together
+
+habmap_types_geom_invalidall <- habmap_types_sf %>% 
+  inner_join(habmap_types_geom_invalid %>% 
+               select(polygon_id, problem),
+             by = join_by(polygon_id)) %>% 
+  rbind(.,habmap_types_geom_invalidnacorr_dissolved %>% 
+          select(-id))
+```
+
+Let us take a look at the invalid polygons:
+
 ```{r map_invalid_geoms}
 # show the invalid polygons on a map
-habmap_types_geom_invalid_wgs84 <- habmap_types_sf %>% 
-  inner_join(habmap_types_geom_invalid %>% 
-               select(polygon_id, problem), 
-             by = join_by(polygon_id)) %>%
+habmap_types_geom_invalid_wgs84 <- habmap_types_geom_invalidall %>%
+  mutate(problem = ifelse(is.na(problem), "Unknown (NA)", problem)) %>% 
   st_transform(crs = 4326) 
+
+pal <- colorFactor(palette = c("black", "darkred"), 
+                   domain = habmap_types_geom_invalid_wgs84$problem)
 
 leaflet(height = "600px", width = "700px") %>%
   addTiles(group = "OSM (default)") %>%
   addPolygons(data = habmap_types_geom_invalid_wgs84,
-              color = "darkred",
+              color = pal(habmap_types_geom_invalid_wgs84$problem),
               popup = paste("polygon_id:", 
                           habmap_types_geom_invalid_wgs84$polygon_id, "<br>",
                            "description_orig:",
                           habmap_types_geom_invalid_wgs84$description_orig, 
                           "<br>", 
-                          habmap_types_geom_invalid_wgs84$problem)) 
+                          habmap_types_geom_invalid_wgs84$problem)) %>% 
+  addLegend(data = habmap_types_geom_invalid_wgs84,
+            pal = pal, values = ~problem,
+            opacity = 1)
 ```
 
-We correct the geometry using the function `st_make_valid` and check the results.
 
-```{r}
+And now we can correct the geometries
+
+
+```{r fix_geom}
 # correct geometries
-habmap_types_sf <- st_make_valid(habmap_types_sf)
+
+# combine all datasets (invalid and valid geoms)
+habmap_types_geom_all <- habmap_types_sf %>% 
+  semi_join(validities %>% 
+              filter(!is.na(problem)) %>% # valid and invalid with ring
+              select(polygon_id),
+            by = join_by(polygon_id)) %>% 
+  rbind(.,habmap_types_geom_invalidnacorr_dissolved %>% 
+          select(-id, -problem)) # invalid with NA
+
+
+# correct geometries
+habmap_types_sf <- st_make_valid(habmap_types_geom_all)
+
 ```
 
-```{r}
+```{r }
 # list the corrected polygons and check the geometry again
 habmap_types_geom_corrected <- st_is_valid(habmap_types_sf, reason = TRUE) %>% 
   as_tibble() %>% 
@@ -413,7 +500,7 @@ habmap_types_geom_corrected <- st_is_valid(habmap_types_sf, reason = TRUE) %>%
   left_join(habmap_types_sf %>% 
               mutate(id = as.character(row_number())), 
             by = "id") %>% 
-  filter(polygon_id %in% habmap_types_geom_invalid$polygon_id)
+  filter(polygon_id %in% habmap_types_geom_invalidall$polygon_id)
 
 habmap_types_geom_corrected %>% 
         select(id, polygon_id, description_orig, problem = value) %>% 
@@ -424,10 +511,10 @@ habmap_types_geom_corrected %>%
 ```
 
 
-```{r}
+```{r map_corrected_geoms}
 # show the corrected polygons on a map
 habmap_types_geom_corrected_wgs84 <- habmap_types_sf %>% 
-  filter(polygon_id %in% habmap_types_geom_invalid$polygon_id) %>% 
+  filter(polygon_id %in% habmap_types_geom_invalidall$polygon_id) %>% 
   st_transform(crs = 4326) 
 
 leaflet(height = "600px", width = "700px") %>%
