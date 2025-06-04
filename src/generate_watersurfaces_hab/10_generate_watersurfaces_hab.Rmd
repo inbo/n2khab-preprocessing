@@ -8,7 +8,7 @@ We will create a map with watersurfaces that contain aquatic habitat and rib. Th
 
 * The water surfaces map of Flanders `watersurfaces`
 
-To be sure we will use the correct version of the data sources (version 2023 for the processed habitatmap and version 2024 for watersurfaces), we will first derive the md5 file hashes and compare them to the file hashes in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853)
+To be sure we will use the correct version of the data sources (version 2024.99 interim for the processed habitatmap and version 2024 for watersurfaces), we will first derive the md5 file hashes and compare them to the file hashes in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853)
 
 ### Processed habitatmap
 
@@ -29,7 +29,7 @@ hashes <-
            md5 = map(filepath, function(x) {
                            x %>% md5sum() %>% str_c(collapse = '')
                          }) %>% as.character) %>% 
-           mutate(md5_ref = c("5e9a0cb2a53f88001796bd7457a343ac"), # version 2023_v1
+           mutate(md5_ref = c("6cc9dc73f316fbaa353fe11ff33f3359"), # version 2024.99_interim
            match = md5 == md5_ref) %>%
     select(filename,
            md5,
