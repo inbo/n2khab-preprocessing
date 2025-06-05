@@ -33,7 +33,7 @@ opts_chunk$set(
 
 # A few checks of the habitatmap data source
 
-Interim version 3/2025
+Interim version March 2025 (habitatmap_2024_v99_interim, based on field work until 2024)
 
 ```{r read-habitatmap}
 filepath <- file.path(fileman_up("n2khab_data"),
@@ -95,7 +95,7 @@ names(habitatmap) <- tolower(gsub("_","",names(habitatmap)))
 
 
 
-## A summary of the layer for version 3/2025
+## A summary of the layer for interim version 2024 v99
 
 ```{r summary-habitatmap}
 habitatmap %>% 

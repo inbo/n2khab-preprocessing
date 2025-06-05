@@ -1,6 +1,6 @@
 # Generate standardized habitatmap
 
-Interim version of the habitatmap 3/2025 (official name: habitatmap_2024.99_interim)
+Interim version of the habitatmap as of March 2025 (official name: habitatmap_2024_v99_interim)
 
 The interim habitatmap has not been cleaned up as well as the official published 
 versions:
@@ -22,7 +22,7 @@ start directly with the standardized version.
 The shapefile of the interim versions of the BWK and Natura 2000 habitat map of 
 Flanders can be downloaded [here](https://zenodo.org/record/10167695).
 
-To be sure we will use the correct version of the data source (habitatmap_2024.99_interim), 
+To be sure we will use the correct version of the data source (habitatmap_2024_v99_interim), 
 we will derive the md5 file hashes and compare it to the file hashes in the 
 [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
 
@@ -396,7 +396,7 @@ habmap_types_geom_invalid  %>%
 
 We will correct the geometry using the function `st_make_valid` and check the results.
 
-The interim version from 3/2025 (habitatmap_2024.99_interim) contains more exotic geometries (MULTISURFACE with curved polygons) that cannot be corrected directly.
+The interim version (habitatmap_2024_v99_interim) contains more exotic geometries (MULTISURFACE with curved polygons) that cannot be corrected directly.
 We need an intermediate step to make it work: we convert the curved polygons into standard polygons with `gdalUtilities::ogr2ogr`.
 
 ```{r convert_curve_to_line}
