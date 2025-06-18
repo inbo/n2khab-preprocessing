@@ -69,3 +69,11 @@ types %>%
   duplicated() %>% 
   negate(any)(.)
 ```
+
+- Are the geometries valid?
+
+```{r}
+validities <- st_is_valid(pol)
+sum(!validities | is.na(validities)) == 0
+```
+

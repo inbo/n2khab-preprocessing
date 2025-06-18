@@ -1,21 +1,16 @@
 # Check results
 
-## The new version v4
+## The new version v5
 
-Based on habitatmap_stdized_2020_v1 and watersurfaces_v1.1
+Based on habitatmap_stdized_2023_v1 and watersurfaces_v1.2
 
 Checksums:
 
 ```{r}
-filepath %>% 
-  n2khab::md5sum() %>% 
-  `names<-`("md5sum")
-filepath %>% 
-  n2khab::sha256sum() %>% 
-  `names<-`("sha256sum")
-filepath %>% 
-  n2khab::xxh64sum() %>% 
-  `names<-`("xxh64sum")
+c("xxh64", "md5", "sha256") %>% 
+  map_dfr(~tibble(algorithm = ., 
+                  checksum = checksum(filepath, .))) %>% 
+  kable
 ```
 
 Read file:
@@ -62,22 +57,28 @@ nrow(check_polygon_id_polygons) == 0
  st_crs(pol) == st_crs(31370) 
 ```
 
+- Are the geometries valid?
+
+```{r}
+validities <- st_is_valid(pol)
+sum(!validities | is.na(validities)) == 0
+```
+
 ## Compare with the previous version 
 
-We load the previous version of watersurfaces_hab (version 3 based on watersurfaces_v1 and habitatmap_stdized_2018_v2)
+We load the previous version of watersurfaces_hab (version 4 based on watersurfaces_v1.1 and habitatmap_stdized_2020_v1)
 
 ```{r paged.print=FALSE, warning=FALSE}
-# adapt this part of the script to load version v3 (expected md5 = fcf021e4bfca827dfc13466295d65174
-# as referenced in https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853)
-filepath_v3 <- file.path(path,"20_processed/watersurfaces_hab/versies/v3/watersurfaces_hab.gpkg")
+
+filepath_v4 <- file.path(path,"20_processed/_versions/watersurfaces_hab/watersurfaces_hab_v4/watersurfaces_hab.gpkg")
 
 hashes <-
-    tibble(filepath_v3) %>%
-    mutate(filename = basename(filepath_v3),
-           md5 = map(filepath_v3, function(x) {
+    tibble(filepath_v4) %>%
+    mutate(filename = basename(filepath_v4),
+           md5 = map(filepath_v4, function(x) {
                            x %>% md5sum() %>% str_c(collapse = '')
                          }) %>% as.character) %>% 
-           mutate(md5_ref = c("fcf021e4bfca827dfc13466295d65174"),
+           mutate(md5_ref = c("96b6a7abc3d637d71052900970e70904"),
            match = md5 == md5_ref) %>%
     select(filename,
            md5,
@@ -85,61 +86,113 @@ hashes <-
            match)
 
 if (!all.equal(hashes$md5, hashes$md5_ref)) {
-    stop(cat("The source map is NOT v3 ! Please check the datasource. "))
+    stop(cat("The source map is NOT v4 ! Please check the datasource. "))
 }
   
-(pol_v3 <- read_sf(filepath_v3, 
+(pol_v4 <- read_sf(filepath_v4, 
                 layer = "watersurfaces_hab_polygons"))
-(types_v3 <- read_sf(filepath_v3, 
+(types_v4 <- read_sf(filepath_v4, 
                 layer = "watersurfaces_hab_types"))
 ```
 
-- Are there differences between version v3 and version v4 and where are they located?
+- Are there differences between version v4 and version v5 and where are they located?
 
-There are many changes between versions, and unfortunately it is difficult
-to check them without showing the source maps for both versions.
-A detailed check is not easy to realize, so we merely show a map of the polygons 
-with a difference in polygon_id for watersurface and/or habitatmap_stdized.
+In the table below we check the differences between both versions.
+Note that for a large number of records only polygon_habitatmap_id changes, but the geometry and the type description remain the same.
 
 ```{r}
-# polygons with polygon_id in v4 butnot in version v3
-check_polygon_id_v4_v3 <- pol %>%
-  anti_join(pol_v3 %>%
+# polygons with polygon_id in v5 but not in version v4
+check_polygon_id_v5_v4 <- pol %>%
+  anti_join(pol_v4 %>%
               st_drop_geometry(), 
-            by = c("polygon_id_habitatmap", "polygon_id_ws"))
- nrow(check_polygon_id_v4_v3)
-   
-# we expected new polygons with polygon_id like "xxx_v2020" so we neglect 
-# them when we count
- nrow(check_polygon_id_v4_v3 %>% 
-   filter(!str_detect(string = polygon_id_habitatmap, pattern = "v2020")))
+            by = c("polygon_id_habitatmap", "polygon_id_ws")) %>%
+  left_join(pol_v4 %>%
+              mutate(geom_text_v4 = st_as_text(geom)) %>%
+              st_drop_geometry() %>%
+              select(polygon_id, description_orig_v4 = description_orig, geom_text_v4), 
+            by = c("polygon_id")) %>%
+  mutate(new_polygon_id = !(polygon_id %in% pol_v4$polygon_id),
+         new_polygon_id_ws = !(polygon_id_ws %in% pol_v4$polygon_id_ws),
+         new_polygon_id_habitatmap = !(polygon_id_habitatmap %in% pol_v4$polygon_id_habitatmap),
+         description_orig_update = description_orig != description_orig_v4,
+         geom_text_v5 = st_as_text(geom),  
+         geom_update = geom_text_v5 != geom_text_v4)
+
+check_polygon_id_v5_v4 %>%
+  st_drop_geometry() %>%
+  group_by(new_polygon_id, new_polygon_id_ws, new_polygon_id_habitatmap, geom_update, description_orig_update) %>%
+  summarise(n_records = n()) %>%
+  ungroup() %>%
+  kable() %>%
+  kable_styling()
 
 ```
 
+We check some of the polygons for which the geometry has changed.
+Changes are minor.
+
 ```{r}
-check_polygon_id_v3_v4 <- pol_v3 %>%
+check_geom <- check_polygon_id_v5_v4 %>%
+  filter(geom_update & !is.na(geom_update)) %>%
+  slice_head(n = 5) %>%
+  st_transform(4326)
+
+check_geom_v4 <- pol_v4 %>%
+  filter(polygon_id %in% check_geom$polygon_id) %>%
+  st_transform(4326)
+
+check_geom %>%
+  leaflet() %>%
+  addTiles() %>%
+  addPolygons(group = "v5") %>%
+  addPolygons(data = check_geom_v4, color = "yellow", group = "v4") %>%
+   addLayersControl(
+   overlayGroups = c("v5", "v4"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
+```
+
+
+
+
+```{r}
+check_polygon_id_v4_v5 <- pol_v4 %>%
   anti_join(pol %>%
               st_drop_geometry(), 
-            by = c("polygon_id_habitatmap", "polygon_id_ws"))
+            by = c("polygon_id_habitatmap", "polygon_id_ws")) %>%
+  mutate(ws_removed = !(polygon_id_ws %in% pol$polygon_id_ws))
 
-nrow(check_polygon_id_v3_v4) 
+nrow(check_polygon_id_v4_v5) 
 ```
 
-```{r, out.width='800px', out.height='500px'}
+Here we show:
+
++ new polygons from the watersurfaces layer that are included in `watersurfaces_hab_v5` (blue polygons)
++ polygons from the watersurfaces layer that are removed in `watersurfaces_hab_v5` compared to `watersurfaces_hab_v4` (black polygons)
+
+
+```{r}
+
+ws_new <- check_polygon_id_v5_v4 %>%
+  filter(new_polygon_id_ws) %>%
+  st_transform(crs = 4326)
+
+ws_removed <- check_polygon_id_v4_v5 %>%
+  filter(ws_removed) %>%
+  st_transform(crs = 4326)
+
 leaflet() %>%
   addTiles(group = "OSM (default)") %>%
-  addPolygons(data = check_polygon_id_v4_v3 %>%
-            st_transform(crs = 4326), 
-            group = "in v4 and not v3 (blue)",
-            popup = paste("polygon_id_habitatmap:", check_polygon_id_v4_v3$polygon_id_habitatmap, "<br>",
-                           "polygon_id_ws:", check_polygon_id_v4_v3$polygon_id_ws)) %>%
-  addPolygons(data = check_polygon_id_v3_v4 %>%
-            st_transform(crs = 4326), 
-            color = "black", group = "in v3 and not v4 (black)",
-            popup = paste("polygon_id_habitatmap:", check_polygon_id_v3_v4$polygon_id_habitatmap, "<br>",
-                           "polygon_id_ws:", check_polygon_id_v3_v4$polygon_id_ws)) %>% 
+  addPolygons(data = ws_new, 
+            group = "in v5 and not v4 (blue)",
+            popup = paste("polygon_id_habitatmap:", ws_new$polygon_id_habitatmap, "<br>",
+                           "polygon_id_ws:", ws_new$polygon_id_ws)) %>%
+  addPolygons(data = ws_removed, 
+            color = "black", group = "in v4 and not v5 (black)",
+            popup = paste("polygon_id_habitatmap:", ws_removed$polygon_id_habitatmap, "<br>",
+                           "polygon_id_ws:", ws_removed$polygon_id_ws)) %>% 
   addLayersControl(
-    overlayGroups = c("in v4 and not v3 (blue)", "in v3 and not v4 (black)"),
+    overlayGroups = c("in v5 and not v4 (blue)", "in v4 and not v5 (black)"),
     options = layersControlOptions(collapsed = FALSE)
   )
 ```
