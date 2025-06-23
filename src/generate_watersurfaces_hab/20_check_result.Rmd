@@ -2,7 +2,7 @@
 
 ## The new version v6.1 interim
 
-Based on habitatmap_stdized_2023_v1 and watersurfaces_2024
+Based on habitatmap_stdized_2024_v99_interim and watersurfaces_2024
 
 Checksums:
 
