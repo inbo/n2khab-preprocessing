@@ -140,7 +140,7 @@ habitatmap |> st_drop_geometry() %>%
 
 ## Are there empty strings instead of NA?
 
-There are many empty strings (apparently used instead of NA's), in most of the cases in the fields where empty values can be expected though.
+There are many empty strings (apparently used instead of NAs), in most of the cases in the fields where empty values can be expected though.
 
 ```{r empty-strings}
 sapply(habitatmap |> st_drop_geometry(), function(x) sum(as.character(x) == '', na.rm = TRUE))
