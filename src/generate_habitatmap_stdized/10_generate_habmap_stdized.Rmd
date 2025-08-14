@@ -18,9 +18,8 @@ start directly with the standardized version.
 
 ## Data source
 
-- adapt this when we know where the interim versions will be stored - 
-The shapefile of the interim versions of the BWK and Natura 2000 habitat map of 
-Flanders can be downloaded [here](https://zenodo.org/record/10167695).
+- The interim version of the BWK and Natura 2000 habitat map of 
+Flanders is not online, and will be imported manually.
 
 To be sure we will use the correct version of the data source (habitatmap_2024_v99_interim), 
 we will derive the md5 file hashes and compare it to the file hashes in the 
