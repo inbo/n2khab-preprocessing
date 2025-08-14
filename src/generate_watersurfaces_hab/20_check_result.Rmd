@@ -1,8 +1,8 @@
 # Check results
 
-## The new version v5
+## The new version v6.1 interim
 
-Based on habitatmap_stdized_2023_v1 and watersurfaces_v1.2
+Based on habitatmap_stdized_2024_v99_interim and watersurfaces_2024
 
 Checksums:
 
@@ -66,19 +66,20 @@ sum(!validities | is.na(validities)) == 0
 
 ## Compare with the previous version 
 
-We load the previous version of watersurfaces_hab (version 4 based on watersurfaces_v1.1 and habitatmap_stdized_2020_v1)
+We load the previous version of watersurfaces_hab (version 6 based on watersurfaces_2024 and habitatmap_stdized_2023_v1)
 
-```{r paged.print=FALSE, warning=FALSE}
 
-filepath_v4 <- file.path(path,"20_processed/_versions/watersurfaces_hab/watersurfaces_hab_v4/watersurfaces_hab.gpkg")
+```{r import hmws_v6, paged.print=FALSE, warning=FALSE}
+
+filepath_v6 <- file.path(path,"20_processed/_versions/watersurfaces_hab/watersurfaces_hab_v6/watersurfaces_hab.gpkg")
 
 hashes <-
-    tibble(filepath_v4) %>%
-    mutate(filename = basename(filepath_v4),
-           md5 = map(filepath_v4, function(x) {
+    tibble(filepath_v6) %>%
+    mutate(filename = basename(filepath_v6),
+           md5 = map(filepath_v6, function(x) {
                            x %>% md5sum() %>% str_c(collapse = '')
                          }) %>% as.character) %>% 
-           mutate(md5_ref = c("96b6a7abc3d637d71052900970e70904"),
+           mutate(md5_ref = c("4f589b43c6d3d38e06ee3ea81e3d2058"),
            match = md5 == md5_ref) %>%
     select(filename,
            md5,
@@ -86,41 +87,58 @@ hashes <-
            match)
 
 if (!all.equal(hashes$md5, hashes$md5_ref)) {
-    stop(cat("The source map is NOT v4 ! Please check the datasource. "))
+    stop(cat("The source map is NOT v6 ! Please check the datasource. "))
 }
   
-(pol_v4 <- read_sf(filepath_v4, 
+(pol_v6 <- read_sf(filepath_v6, 
                 layer = "watersurfaces_hab_polygons"))
-(types_v4 <- read_sf(filepath_v4, 
+(types_v6 <- read_sf(filepath_v6, 
                 layer = "watersurfaces_hab_types"))
 ```
 
-- Are there differences between version v4 and version v5 and where are they located?
+- Are there differences between version v6.1 interim and version v6 and where are they located?
 
-In the table below we check the differences between both versions.
-Note that for a large number of records only polygon_habitatmap_id changes, but the geometry and the type description remain the same.
+Apparently v6 uses MULTIPOLYGONs while v6.1 interim uses POLYGONs:
 
 ```{r}
-# polygons with polygon_id in v5 but not in version v4
-check_polygon_id_v5_v4 <- pol %>%
-  anti_join(pol_v4 %>%
-              st_drop_geometry(), 
-            by = c("polygon_id_habitatmap", "polygon_id_ws")) %>%
-  left_join(pol_v4 %>%
-              mutate(geom_text_v4 = st_as_text(geom)) %>%
-              st_drop_geometry() %>%
-              select(polygon_id, description_orig_v4 = description_orig, geom_text_v4), 
-            by = c("polygon_id")) %>%
-  mutate(new_polygon_id = !(polygon_id %in% pol_v4$polygon_id),
-         new_polygon_id_ws = !(polygon_id_ws %in% pol_v4$polygon_id_ws),
-         new_polygon_id_habitatmap = !(polygon_id_habitatmap %in% pol_v4$polygon_id_habitatmap),
-         description_orig_update = description_orig != description_orig_v4,
-         geom_text_v5 = st_as_text(geom),  
-         geom_update = geom_text_v5 != geom_text_v4)
+summary(pol$geom)
+summary(pol_v6$geom)
+```
+So we'd better convert them all to the same type before comparing:
 
-check_polygon_id_v5_v4 %>%
+```{r}
+
+pol <- pol %>% st_cast("MULTIPOLYGON")
+
+```
+
+
+Since v6.1 interim uses a new `polygon_id` (not based on the TAG of the previous 
+official versions), the polygons will have different values in `polygon_habitatmap_id`. 
+This means we cannot compare the polygons as easily between versions. 
+Only `polygon_id_ws` is a field shared by both versions.
+
+First we look at the **differences between polygons sharing the same** `polygon_id_ws`.
+
+The geometries haven't changed but there are differences in the descriptions 
+(which is perfectly plausible with a new version of the habitatmap).
+
+```{r compare v6 v6.1 shared id_ws}
+# compare polygons with polygon_id_ws in v6.1 interim and v6
+check_polygon_id_ws_v6_v61int <- pol %>%
+  filter(!is.na(polygon_id_ws)) %>% 
+  inner_join(pol_v6 %>%
+               mutate(geom_text_v6 = st_as_text(geom)) %>% 
+              st_drop_geometry() %>%
+              select(polygon_id_ws, description_orig_v6 = description_orig, geom_text_v6), 
+            by = c( "polygon_id_ws")) %>%
+  mutate(description_orig_update = description_orig != description_orig_v6,
+         geom_text_v61int = st_as_text(geom),  
+         geom_update = geom_text_v61int != geom_text_v6)
+
+check_polygon_id_ws_v6_v61int %>%
   st_drop_geometry() %>%
-  group_by(new_polygon_id, new_polygon_id_ws, new_polygon_id_habitatmap, geom_update, description_orig_update) %>%
+  group_by(geom_update, description_orig_update) %>%
   summarise(n_records = n()) %>%
   ungroup() %>%
   kable() %>%
@@ -128,72 +146,81 @@ check_polygon_id_v5_v4 %>%
 
 ```
 
-We check some of the polygons for which the geometry has changed.
-Changes are minor.
+Let us take a look at the modified descriptions:
 
 ```{r}
-check_geom <- check_polygon_id_v5_v4 %>%
-  filter(geom_update & !is.na(geom_update)) %>%
-  slice_head(n = 5) %>%
+check_polygon_id_ws_v6_v61int %>%
+  st_drop_geometry() %>% 
+  filter(description_orig_update == TRUE) %>% 
+  select(polygon_id, polygon_id_ws, 
+         description_orig_v6, description_orig_v6.1_interim = description_orig) %>% 
+  kable() %>%
+  kable_styling() %>% 
+  scroll_box(height = "400px")
+```
+
+The observed differences seem quite plausible (small changes in percentages and types). 
+
+Now let us **compare the other polygons** between versions (that is: the polygons without 
+a shared `polygon_id_ws`).
+
+```{r}
+# select the polygons without a shared polygon_id_ws
+pol_unshared <- pol %>% 
+  anti_join(check_polygon_id_ws_v6_v61int %>% st_drop_geometry(),
+            by = "polygon_id_ws")
+pol_v6_unshared <- pol_v6 %>% 
+  anti_join(check_polygon_id_ws_v6_v61int %>% st_drop_geometry(),
+            by = "polygon_id_ws")
+
+```
+
+Here are the polygons without a shared `polygon_id_ws` between versions 
+(red: v6 and dark red: v6.1 interim), with watersurfaces and the habitatmap 2024 v99 interim for a comparison:
+
+```{r compare v6 v6.1 unshared id_ws}
+
+ws_overlapping <- pol_unshared %>% 
+  rbind(pol_v6_unshared) %>% 
+  st_filter(watersurfaces, .predicates = st_overlaps) %>% 
   st_transform(4326)
 
-check_geom_v4 <- pol_v4 %>%
-  filter(polygon_id %in% check_geom$polygon_id) %>%
+hm_overlapping <- pol_unshared %>% 
+  rbind(pol_v6_unshared) %>% 
+  st_filter(habmap$habitatmap_polygons, .predicates = st_overlaps) %>% 
   st_transform(4326)
 
-check_geom %>%
+pol_unshared %>%
+  st_transform(4326) %>%
   leaflet() %>%
   addTiles() %>%
-  addPolygons(group = "v5") %>%
-  addPolygons(data = check_geom_v4, color = "yellow", group = "v4") %>%
+  addPolygons(group = "v6.1 interim (dark red)",
+              color = "darkred", 
+              popup = paste0("v6.1 interim<br>id ws: ",
+                             pol_unshared$polygon_id_ws, "<br>id hab:",
+                             pol_unshared$polygon_id_habitatmap, "<br>",
+                             pol_unshared$description_orig)) %>% 
+  addPolygons(data = pol_v6_unshared %>%
+                st_transform(4326), 
+              color = "red", group = "v6 (red)",
+              popup = paste0("v6<br>id ws: ",
+                             pol_v6_unshared$polygon_id_ws, "<br>id hab:",
+                             pol_v6_unshared$polygon_id_habitatmap, "<br>",
+                             pol_v6_unshared$description_orig)) %>%
+  addPolygons(data = ws_overlapping,
+              group = "watersurfaces",) %>%
+  addPolygons(data = hm_overlapping,
+              color = "grey30",
+              group = "habmap 2024 v99 interim (grey)",
+              popup = paste0("habmap 2024 v99 interim:<br>",
+                             hm_overlapping$description_orig)) %>% 
    addLayersControl(
-   overlayGroups = c("v5", "v4"),
+   overlayGroups = c("v6.1 interim (dark red)", "v6 (red)", 
+                     "watersurfaces", "habmap 2024 v99 interim (grey)"),
     options = layersControlOptions(collapsed = FALSE)
   )
+
 ```
 
-
-
-
-```{r}
-check_polygon_id_v4_v5 <- pol_v4 %>%
-  anti_join(pol %>%
-              st_drop_geometry(), 
-            by = c("polygon_id_habitatmap", "polygon_id_ws")) %>%
-  mutate(ws_removed = !(polygon_id_ws %in% pol$polygon_id_ws))
-
-nrow(check_polygon_id_v4_v5) 
-```
-
-Here we show:
-
-+ new polygons from the watersurfaces layer that are included in `watersurfaces_hab_v5` (blue polygons)
-+ polygons from the watersurfaces layer that are removed in `watersurfaces_hab_v5` compared to `watersurfaces_hab_v4` (black polygons)
-
-
-```{r}
-
-ws_new <- check_polygon_id_v5_v4 %>%
-  filter(new_polygon_id_ws) %>%
-  st_transform(crs = 4326)
-
-ws_removed <- check_polygon_id_v4_v5 %>%
-  filter(ws_removed) %>%
-  st_transform(crs = 4326)
-
-leaflet() %>%
-  addTiles(group = "OSM (default)") %>%
-  addPolygons(data = ws_new, 
-            group = "in v5 and not v4 (blue)",
-            popup = paste("polygon_id_habitatmap:", ws_new$polygon_id_habitatmap, "<br>",
-                           "polygon_id_ws:", ws_new$polygon_id_ws)) %>%
-  addPolygons(data = ws_removed, 
-            color = "black", group = "in v4 and not v5 (black)",
-            popup = paste("polygon_id_habitatmap:", ws_removed$polygon_id_habitatmap, "<br>",
-                           "polygon_id_ws:", ws_removed$polygon_id_ws)) %>% 
-  addLayersControl(
-    overlayGroups = c("in v5 and not v4 (blue)", "in v4 and not v5 (black)"),
-    options = layersControlOptions(collapsed = FALSE)
-  )
-```
-
+It is not easy to compare the differences in a systematical way, but I do not see 
+problems a the first sight. 

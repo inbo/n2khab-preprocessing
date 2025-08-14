@@ -18,10 +18,12 @@ options(stringsAsFactors = FALSE)
 library(sf)
 library(dplyr)
 library(stringr)
+library(tidyr)
 library(n2khab)
 library(knitr)
 library(tmap)
 library(leaflet)
+library(ggplot2)
 opts_chunk$set(
   echo = TRUE,
   dpi = 300
@@ -31,18 +33,30 @@ opts_chunk$set(
 
 # A few checks of the habitatmap data source
 
+Interim version March 2025 (habitatmap_2024_v99_interim, based on field work until 2024)
 
-```{r}
+```{r read-habitatmap}
 filepath <- file.path(fileman_up("n2khab_data"),
-                      "10_raw/habitatmap/habitatmap.shp")
-habitatmap <- st_read(filepath, layer = "habitatmap")
+                      "10_raw/habitatmap")
+
+if (length(grep("gpkg", list.files(path = filepath))) > 0){
+  # format = geopackage
+  filepath <- file.path(filepath, "habitatmap.gpkg")
+  habitatmap <- st_read(filepath) 
+  # omit layer name because it can be inconsistent in interim versions
+} else 
+  {
+  # format = shapefile
+    filepath <- file.path(filepath, "habitatmap.shp")
+  habitatmap <- st_read(filepath, layer = "habitatmap")
+}
 
 ```
 
 The number of rows is `r nrow(habitatmap)`.
 
 Checksums:
-```{r}
+```{r checksums}
 filepath %>% 
   n2khab::md5sum() %>% 
   `names<-`("md5sum")
@@ -54,9 +68,36 @@ filepath %>%
   `names<-`("xxh64sum")
 ```
 
-## A summary of the layer for version 2023
+## Field names
 
-```{r}
+```{r field-names}
+names(habitatmap)
+```
+
+Some names are in uppercase, others in lowercase or mixed case.
+This is different from version 2023 (where all the field names were in uppercase).
+A few fields were dropped since version 2023: `OIDN`, `UIDN`, `BWKLABEL`, `HABLEGENDE`, `LENGTE`, `OPPERVL`.
+Other fields were added: `referentie`, `info`, `globalid_BWK`.
+And the following names were changed: 
+
+- `HERK` => `herk_bwk`
+- `HERKHAB` => `HERK_HAB`
+- `HERKPHAB` => `HERK_pHAB`
+- `SHAPE_Leng` => `Shape_Length` (probably due to the fact that the previous version was a shapefile)
+
+I convert all the field names to lowercase and remove all the underscores.
+(only for this script: to be able to use the checks in this script with different 
+versions of the habitatmap without the need to modify every chunk)
+
+```{r lowercase-no-underscore}
+names(habitatmap) <- tolower(gsub("_","",names(habitatmap)))
+```
+
+
+
+## A summary of the layer for interim version 2024 v99
+
+```{r summary-habitatmap}
 habitatmap %>% 
   st_drop_geometry %>% 
   summary
@@ -65,33 +106,191 @@ Let us look for possible errors.
 
 ## Are there `NA` values?
 
-There are plenty of `NA`'s but only in fields where we expect them.
+There are no `NA`'s.
 
-```{r}
+```{r na-values}
 sapply(habitatmap, function(x) sum(is.na(x)))
 ```
 
 ## Are there `<Null>` values?
 
-No `<Null>` string.
+There is one `<Null>` string.
+
+```{r null-values}
+sapply(habitatmap |> st_drop_geometry(), function(x) sum(as.character(x) == '<Null>', na.rm = TRUE))
+```
 
 ```{r}
-sapply(habitatmap |> st_drop_geometry(), function(x) sum(as.character(x) == '<Null>', na.rm = TRUE))
+habitatmap |> st_drop_geometry() %>% 
+  filter(tag == "07_07315_22")
 ```
 
 ## Are there Zero (0) values?
 
-Yes, but only in PHAB2, PHAB3, PHAB4, PHAB5.
+Yes,  in `phab2`, `phab3`, `phab4`, `phab5` (as expected), but also a few in `tag`.
 
-```{r}
+```{r zero-values}
 sapply(habitatmap |> st_drop_geometry(), function(x) sum(as.character(x) == '0', na.rm = TRUE))
 ```
-## Are TAG codes unique?
-
-Yes. 
 
 ```{r}
-habitatmap$TAG %>% unique %>% length == nrow(habitatmap)
+habitatmap |> st_drop_geometry() %>% 
+  filter(tag == '0')
+```
+
+## Are there empty strings instead of NA?
+
+There are many empty strings (apparently used instead of NAs), in most of the cases in the fields where empty values can be expected though.
+
+```{r empty-strings}
+sapply(habitatmap |> st_drop_geometry(), function(x) sum(as.character(x) == '', na.rm = TRUE))
+```
+
+The following records might need to be checked since we don't expect empty values in the fields `eval`, `eenh1`, `herkbwk`, `hab1`, `herkhab`, `herkphab`.
+
+```{r}
+habitatmap |> st_drop_geometry() %>% 
+  select(objectid, tag, eval, eenh1, eenh2, herkbwk, 
+         hab1, phab1, herkhab, herkphab, globalidbwk ) %>% 
+  filter(eval == '' |
+           eenh1 == '' |
+           herkbwk == '' |
+           hab1 == '' |
+           herkhab == '' |
+           herkphab == '' ) # tag negeer ik (te veel)
+```
+
+As for `tag`: there are plenty of empty records in this interim versions. 
+The `tag`will be added for the publication. In the meantime we might use
+`globalidbwk`. 
+
+## Are there spaces instead of NA?
+
+There are records with one or several spaces.
+
+```{r spaces}
+sapply(habitatmap |> st_drop_geometry(), function(x) sum(grepl(pattern = "^\\s+$", x), na.rm = TRUE))
+```
+
+As for `tag` and `eenh2` until `eenh8`, ...: there are too many of them to print the list. 
+Here are the cases with spaces for the other variables: 
+
+```{r}
+habitatmap |> st_drop_geometry() %>% 
+  select(objectid, tag, eval, eenh1, eenh2, herkbwk, 
+         hab1, phab1, herkhab, herkphab, globalidbwk ) %>% 
+  filter(grepl(pattern = "^\\s+$", eval) & nchar(eval) > 0|
+           grepl(pattern = "^\\s+$", eenh1) & nchar(eenh1) > 0|
+           grepl(pattern = "^\\s+$", herkbwk) & nchar(herkbwk) > 0|
+           grepl(pattern = "^\\s+$", hab1)  & nchar(hab1) > 0|
+           grepl(pattern = "^\\s+$", herkhab) & nchar(herkhab) > 0|
+           grepl(pattern = "^\\s+$", herkphab) & nchar(herkphab) > 0) 
+```
+
+
+## Are tag codes unique?
+
+Even if we remove the records with `tag` = 0, there are duplicates
+
+```{r}
+habitatmap$tag %>% unique %>% length == nrow(habitatmap)
+
+habitatmap$tag[habitatmap$tag != '0'] %>% unique %>% length == (nrow(habitatmap) - 1)
+
+```
+How many repeated TAG's?
+```{r}
+habitatmap |> st_drop_geometry() %>% 
+  count(tag) %>% 
+  filter(n > 1) %>% 
+  nrow()
+
+```
+
+And is globalidbwk unique?
+
+```{r}
+habitatmap$globalidbwk %>% unique %>% length == nrow(habitatmap)
+```
+
+From here on I will use `globalidbwk` as identifier (in a new `id` field that 
+can be used with any version of the habitatmap). 
+
+```{r add-id}
+habitatmap <- habitatmap %>% 
+  mutate(id = globalidbwk)
+```
+
+## Are the habitat codes correct?
+
+rbbvos+ should be rbbvos, the rest seems ok.
+
+```{r check-types}
+# read standard types from n2khab
+list_habs <- n2khab::read_types()
+
+# long version with all the habitats in one column
+habitatmap_lg <- habitatmap %>% 
+  st_drop_geometry() %>% 
+  select(id, starts_with("hab")|starts_with("phab"), -any_of(c("HABLEGENDE", "hablegende"))) %>% 
+  pivot_longer(cols = starts_with("hab"), 
+               names_to = "habnr", 
+               names_prefix = "hab", 
+               values_to = "hab") %>%
+  pivot_longer(cols = starts_with("phab"), 
+               names_to = "phabnr", 
+               names_prefix = "phab", 
+               values_to = "phab") %>% 
+  filter(habnr == phabnr) %>% 
+  select(-phabnr)
+
+# habitats in habitatmap but not in official list n2khab:
+habitatmap_lg %>% 
+  filter(!is.na(hab) & 
+           !hab %in% c("gh", "", '<Null>') & 
+           !grepl(pattern = "^\\s*$", hab)) %>%  
+  mutate(hab = gsub(hab, pattern = ",gh", replacement = ""),
+         hab = gsub(hab, pattern = ",bos", replacement = "")) %>% 
+  anti_join(list_habs, by = c("hab" = "type")) %>% 
+  count(hab) 
+```
+
+"x" is used for unknown (for instance private domain)
+
+## Is the sum of the phab 100%?
+
+There should not be any row returned with sum phab < 100% or > 100% 
+(excepted when habitat 1130 is present):
+
+```{r sum-phab-100}
+habitatmap %>% 
+  st_drop_geometry() %>% 
+  mutate(phab_tot = phab1 + phab2 + phab3 + phab4 + phab5) %>% 
+  filter(phab_tot < 100 |
+           (phab_tot > 100 & hab1 != "1130")) %>% 
+  nrow()
+```
+
+
+## Are there habitats with phab = 0%?
+
+Yes: many!
+Mostly used for habitats only present on a small surface, for instance as small 
+landscape elements.
+
+```{r phab0}
+
+habitatmap_lg %>% 
+  filter(
+    !(
+      is.na(hab) |
+        hab %in% c("gh", "", '<Null>') |
+        grepl(pattern = "^\\s*$", hab) 
+    )
+    & 
+      phab == 0 ) %>% 
+  nrow()
+
 ```
 
 ## Is the CRS correct?
@@ -100,12 +299,10 @@ Checking the CRS stated in the file as "`r st_crs(habitatmap)$input`": does it a
 
 Does it conform to EPSG:31370?
 
-No, but it is a known issue: the CRS of the raw data source is numerically identical to ESRI:102499 with a tiny difference (sub-millimeter level) with EPSG:31370. 
-Chosen solution: set the CRS to 31370 without changing the coordinates of these geospatial objects, rather than transform (reproject) the data.
-This happens in the `read_habitatmap` function with `suppressWarnings(st_crs(habitatmap) <- 31370)`
+Yes
 
 
-```{r}
+```{r check-crs}
 st_crs(habitatmap) == st_crs(31370)
 
 st_crs(habitatmap)
@@ -114,20 +311,32 @@ st_crs(habitatmap)
 
 ## Validity of the geometries
 
+First we check that no empty geometries are present:
+
+```{r check-empty-geom}
+all(!is.na(st_dimension(habitatmap$geom)))
+```
+
 Let's inspect features with invalid or corrupt geometry:
 
-```{r check geometry}
-# can run for a while! (40 min for version 2023)
+```{r check-geometry}
+# can run for a while! (several minutes)
 
 start_time <- Sys.time()
 
 #st_is_valid(habitatmap) %>% table
 validities <- st_is_valid(habitatmap)
-invalid_geoms <- habitatmap[!validities | is.na(validities), ]
+# invalid but not NA
+invalid_geoms <- habitatmap[!is.na(validities) & validities == FALSE , ] %>% 
+  mutate(geom_valid = "invalid")
+# NA
+navalid_geoms <- habitatmap[is.na(validities), ] %>% 
+  mutate(geom_valid = "na")
+# invalid_geoms <- habitatmap[!validities | is.na(validities), ] # returns all invalid and NA
 end_time <- Sys.time()
 end_time - start_time
 
-# important: since we need 40 minutes to calculate invalid_geoms, it is probably not 
+# important: since we need several minutes to calculate invalid_geoms, it is probably not 
 # an option to use the same code as in read_watersurfaces
 # the calculation of n_invalid would be too slow, so probably better to drop the if
 # taken from read_watersurfaces: 
@@ -143,25 +352,42 @@ end_time - start_time
 
 ```
 
-```{r}
-st_is_valid(invalid_geoms, reason = TRUE) %>%
+
+```{r count-invalid-geoms}
+st_is_valid(rbind(invalid_geoms, navalid_geoms), reason = TRUE) %>%
   as_tibble() %>%
-  filter(value != "Valid Geometry") %>% 
+  filter(is.na(value) | value != "Valid Geometry") %>% 
   mutate(problem = str_extract(string = value, 
                                 pattern = "[^\\[]+")) %>% 
   count(problem) 
 
 ```
-The geometry invalidity is the consequence of self-intersecting rings, as a consequence of digitalization errors.
+The geometry invalidity is the consequence of self-intersecting rings, as a 
+consequence of digitalization errors. Note that there are also polygons that 
+return `NA`.
 
-Let us take a look at the invalid polygons:
+`st_make_valid` gives an error with this dataset "GeometryFixer::getResult called 
+on unknown geometry type". The invalid polygons returning `NA` are the ones 
+causing this error: in this version of the map there are apparently exotic 
+geometry types: `CURVEPOLYGON, COMPOUNDCURVE, CIRCULARSTRING` included in a `MULTISURFACE`.
+These geometries cannot be plotted with `leaflet` or `plotly` either. We need to
+find a workaround to be able to work with them.
 
-```{r eval = FALSE}
-# only use this if there are not too many invalid polygons
-tm_shape(invalid_geoms) + tm_borders() + tm_facets(by = "TAG")
-```
 
 ```{r}
+unique(st_geometry_type(navalid_geoms))
+```
+
+### Invalid polygons with ring self-intersection
+
+First, let us take a look at the **invalid polygons with ring self-intersection**:
+
+```{r graph-invalid-geoms, eval = FALSE}
+# only use this if there are not too many invalid polygons
+tm_shape(invalid_geoms) + tm_borders() + tm_facets(by = "id")
+```
+
+```{r map-invalid-geoms-ring}
 # there are many invalid polygons, so we show them with leaflet:
 invalid_geoms_wgs84 <- invalid_geoms %>% 
   st_transform(crs = 4326) 
@@ -170,22 +396,25 @@ leaflet(height = "600px", width = "700px") %>%
   addTiles(group = "OSM (default)") %>%
   addPolygons(data = invalid_geoms_wgs84,
               color = "darkred",
-              popup = paste("TAG:", 
-                          invalid_geoms_wgs84$TAG)) 
+              popup = paste("id:", 
+                          invalid_geoms_wgs84$id)) 
 ```
 
-Let's compare with the same geoms after fixing the self-intersecting rings:
 
-```{r}
+We can fix the geoms with the self-intersecting rings easily with `st_make_valid`.
+
+Let's compare with the same geoms after fixing the rings:
+
+```{r make-valid-ring-geom}
 valid_geoms <- st_make_valid(invalid_geoms)
 ```
 
-```{r eval = FALSE}
+```{r graph-corrected-geoms, eval = FALSE}
 # only use this if there are not too many invalid polygons
-tm_shape(valid_geoms) + tm_borders() + tm_facets(by = "TAG")
+tm_shape(valid_geoms) + tm_borders() + tm_facets(by = "id")
 ```
 
-```{r}
+```{r map-corrected-geoms}
 # there were many invalid polygons, so we show them with leaflet:
 valid_geoms_wgs84 <- valid_geoms %>% 
   st_transform(crs = 4326) 
@@ -198,27 +427,154 @@ leaflet(height = "600px", width = "700px") %>%
   addPolygons(data = valid_geoms_wgs84,
               group = "after correction (blue)",
               popup = paste(
-                           "TAG:",
-                          valid_geoms_wgs84$TAG)) %>%
+                           "id:",
+                          valid_geoms_wgs84$id)) %>%
     addLayersControl(overlayGroups = c("before correction (red)", "after correction (blue)"),
                      options = layersControlOptions(collapsed = FALSE))
 ```
 
 Are all geometries valid now?
 
-```{r}
+```{r recheck-geometry}
 all(st_is_valid(valid_geoms))
 ```
 
+### Invalid polygons returning NA
 
-So this works well. Inthe derived data (habitatmap_stdized) we will fix these geometries.
+And now let us take a look at the **invalid polygons with NA**:
 
-We also consider an optional geometry reparation step in `read_habitatmap(fix_geom = TRUE)`.
+```{r map-navalid-geoms-ex1}
+# there are many invalid NA-polygons, 
+# but unfortunately we cannot plot them with leaflet, plotly, tmap...
+
+# an example with ggplot then:
+ggplot(data = head(navalid_geoms, n = 1)) +
+  geom_sf(aes(geometry = geom)) +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = NULL) +
+  theme_bw()
+```
+
+```{r map-navalid-geoms-ex2}
+# another example with ggplot:
+ggplot(data = tail(navalid_geoms, n = 1)) +
+  geom_sf(aes(geometry = geom)) +
+  scale_x_continuous(name = NULL) +
+  scale_y_continuous(name = NULL) +
+  theme_bw()
+```
+
+These polygons contain curved lines and fixing the geoms with `st_make_valid` 
+does not work with them.
+
+We find a workaround using `gdalUtilities::ogr2ogr`:
+<https://stackoverflow.com/questions/74479973/casting-from-geometrycollection-with-multiple-nested-geometries-r-sf> 
+
+```{r make-valid-na-geom}
+# convert curve to line with ogr2ogr
+st_write(navalid_geoms,
+         './habitatmap_navalid.gpkg',
+         layer = "habitatmap_navalid",
+         driver = "GPKG",
+         delete_dsn = TRUE)
+
+gdalUtilities::ogr2ogr('./habitatmap_navalid.gpkg',
+                       './habitatmap_corr.gpkg',
+                       explodecollections = T, nlt = 'CONVERT_TO_LINEAR')
+
+navalid_geoms_corr <- st_read("./habitatmap_corr.gpkg")
+
+file.remove('./habitatmap_navalid.gpkg') 
+file.remove('./habitatmap_corr.gpkg') 
+```
+
+The result is a `POLYGON` instead of a `MULTISURFACE`, but there are now 461 
+records instead of 452. What happened?
+
+Let us search for the duplicates:
+
+```{r }
+supl_polygons <- navalid_geoms_corr %>%
+  st_drop_geometry() %>%
+  count(id) %>%
+  filter(n > 1)
+
+leaflet(height = "600px", width = "700px") %>%
+  addTiles(group = "OSM (default)") %>%
+  addPolygons(data = navalid_geoms_corr %>%
+                filter(id %in% supl_polygons$id) %>%
+                st_transform(crs = 4326),
+              color = "darkred",
+              popup = paste("id:", 
+                          invalid_geoms_wgs84$id))
+```
+
+
+- {2914A831-4B0E-469A-9480-3F26E4603E80} n=2 - a small circle inside a bigger polygon
+- {2B35801E-3B98-4003-97F6-DA28A4AAC71B} n=2 - a small circle inside a bigger polygon
+- {380DA352-1F74-43E9-BEA2-621C11D68A9A} n=5 - 4 small circles inside a bigger polygon
+- {575462C9-EAA1-46E2-AE80-5787A69BD283} n=2 - a small circle inside a bigger polygon
+- {8E3D05E3-323A-4795-8B27-E0F57A8E5349} n=2 - a small circle inside a bigger polygon
+- {DE8BCA5B-C10E-4035-8FD1-1AFF6F237481} n=2 - problem in the eastern part of the polygon (1 without visible perimeter?)
+
+```{r }
+# We can probably merge these polygons
+navalid_geoms_corr_dissolved  <- navalid_geoms_corr %>%
+  group_by(across(objectid:id)) %>% #all fields are the same
+  summarize(geom = sf::st_union(geom),
+            #across(everything(), first),
+            .groups = "drop") %>%
+  mutate(shapelength = st_length(geom),
+         shapearea = st_area(geom))
+```
+
+And now let's take a look at the corrected geoms:
+
+```{r }
+# plot one example before - after
+ggplot() +
+  geom_sf(data = navalid_geoms %>% 
+            filter(id == "{DE8BCA5B-C10E-4035-8FD1-1AFF6F237481}"), 
+          alpha = .2, color = 'red', lwd = 2) +
+  geom_sf(data = navalid_geoms_corr_dissolved %>% 
+            filter(id == "{DE8BCA5B-C10E-4035-8FD1-1AFF6F237481}"), 
+          alpha = .2, fill = 'blue') +
+  ggtitle('old (red) & corrected (blue) overplotted')
+```
+
+```{r }
+# plot one example before - after
+ggplot() +
+  geom_sf(data = navalid_geoms %>% 
+            filter(id == "{8E3D05E3-323A-4795-8B27-E0F57A8E5349}"), 
+          alpha = .2, color = 'red', lwd = 2) +
+  geom_sf(data = navalid_geoms_corr_dissolved %>% 
+            filter(id == "{8E3D05E3-323A-4795-8B27-E0F57A8E5349}"), 
+          alpha = .2, fill = 'blue') +
+  ggtitle('old (red) & corrected (blue) overplotted')
+
+```
+
+```{r }
+# plot all corrected polygons:
+leaflet(height = "600px", width = "700px") %>%
+  addTiles(group = "OSM (default)") %>%
+  addPolygons(data = navalid_geoms_corr_dissolved %>%
+                st_transform(crs = 4326),
+              popup = paste("id:",
+                            navalid_geoms_corr$id))
+```
+
+
+So this works well. In the derived data (habitatmap_stdized) we will fix these geometries.
+
+For the official version of the habitatmap we also consider an optional geometry 
+reparation step in `read_habitatmap(fix_geom = TRUE)`.
 
 How long would it take to repair the geometries 'on the fly' while importing the habitatmap? 
 
-```{r fix geometry}
-
+```{r fix-geometry, eval = FALSE}
+# official version
 start_time <- Sys.time()
 hmv <- st_make_valid(habitatmap)
 end_time <- Sys.time()
@@ -227,13 +583,6 @@ end_time - start_time
 
 ```
 
-OK, less than 1 minute sounds acceptable.
-
-We also check that no empty geometries are present:
-
-```{r}
-all(!is.na(st_dimension(habitatmap$geom)))
-```
 
 Refer to <https://github.com/inbo/n2khab-preprocessing/issues/60> and <https://r-spatial.org/r/2017/03/19/invalid.html> for more information!
 
@@ -246,7 +595,8 @@ habitatmap %>% colnames %>% cat(sep = "\n")
 
 data source variable          data frame variable
 ----------------------        ---------------------
-`TAG`                         `polygon_id` 
+`TAG`                         `polygon_id` (official version)
+`globalid_BWK`                `polygon_id` (interim version)
 `EVAL`                        `eval`
 `EENH1`                       `eenh1`
 `V1`                          `v1`
