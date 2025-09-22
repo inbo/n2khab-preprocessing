@@ -1,0 +1,54 @@
+# Check results
+
+```{r}
+watersurfaces_refpoints <- 
+  read_vc("watersurfaces_refpoints", root = refpoints_path_current) %>% 
+  as_tibble()
+```
+
+## Checksums
+
+```{r}
+tibble(algorithm = c("xxh64", "md5", "sha256")) %>% 
+  crossing(
+    tibble(
+      filepath = file.path(
+        refpoints_path_current,
+        str_c("watersurfaces_refpoints",c(".tsv", ".yml")))
+    )
+  ) %>% 
+  mutate(
+    file = basename(filepath),
+    checksum = checksum(filepath, algorithm),
+    .by = c(filepath, algorithm)
+  ) %>% 
+  select(-filepath) %>% 
+  kable()
+```
+
+## Contents
+
+Are all `polygon_id` values unique?
+
+```{r}
+n_distinct(watersurfaces_refpoints$polygon_id) == nrow(watersurfaces_refpoints)
+```
+
+No missing values?
+
+```{r}
+watersurfaces_refpoints %>% 
+  summarize(across(everything(), \(x) all(!is.na(x)))) %>% 
+  as.matrix() %>% 
+  all()
+```
+
+Are all coordinates situated within (or only marginally outside) Flanders?
+
+```{r}
+watersurfaces_refpoints %>% 
+  st_as_sf(coords = c("x", "y"), crs = 31370) %>% 
+  .[read_admin_areas(dsn = "flanders") %>% st_buffer(50), ] %>% 
+  nrow() == nrow(watersurfaces_refpoints)
+```
+

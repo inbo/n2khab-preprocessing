@@ -1,0 +1,202 @@
+# Update the watersurfaces_refpoints data source
+
+Setting version specific information, defining what the 'previous' and 'current' version mean.
+The current version refers to the version of watersurfaces_hab to be used to derive new points for watersurfaces_refpoints.
+
+```{r}
+previous_version <- "v5"
+current_version <- "v6"
+xxh64sum_refpoints_previous_tsv <- "8b74e5f80082595b"
+xxh64sum_refpoints_previous_yml <- "e8376d961a06e76a"
+xxh64sum_wsh_previous <- "bd860c4d8b2b1de7"
+xxh64sum_wsh_current <- "e2920c4932008387"
+```
+
+Locating `n2khab_data`.
+
+```{r}
+n2khab_data_path <- locate_n2khab_data()
+```
+
+Note that the code requires a setup of `n2khab_data` that supports concurrent versions, by implementing approach \[3] of <https://github.com/inbo/n2khab/issues/113>.
+
+## Reading the previous versions of watersurfaces_refpoints and watersurfaces_hab
+
+Verifying and reading the previous version of watersurfaces_refpoints.
+
+```{r}
+refpoints_path_previous <- file.path(
+  n2khab_data_path,
+  str_c(
+    "20_processed/_versions/watersurfaces_refpoints/watersurfaces_refpoints_",
+    previous_version
+  )
+)
+# file version verification
+stopifnot(
+  xxh64sum(file.path(refpoints_path_previous, "watersurfaces_refpoints.tsv")) ==
+    xxh64sum_refpoints_previous_tsv
+)
+stopifnot(
+  xxh64sum(file.path(refpoints_path_previous, "watersurfaces_refpoints.yml")) ==
+    xxh64sum_refpoints_previous_yml
+)
+# read as tibble and update column name
+refpoints_previous <- 
+  read_vc("watersurfaces_refpoints", root = refpoints_path_previous) %>% 
+  as_tibble()
+```
+
+Verifying and reading the previous version of watersurfaces_hab.
+
+```{r}
+wsh_path_previous <- file.path(
+  n2khab_data_path,
+  str_c(
+    "20_processed/_versions/watersurfaces_hab/watersurfaces_hab_",
+    previous_version
+  ),
+  "watersurfaces_hab.gpkg"
+)
+# file version verification
+stopifnot(xxh64sum(wsh_path_previous) == xxh64sum_wsh_previous)
+# read
+wsh_previous <- 
+  read_watersurfaces_hab(
+    file = wsh_path_previous,
+    version = str_c("watersurfaces_hab_", previous_version),
+    interpreted = TRUE
+  )
+```
+
+
+
+## Searching for new watersurface polygons in the current version of watersurfaces_hab
+
+Verifying and reading the current version of watersurfaces_hab.
+
+```{r}
+wsh_path_current <- file.path(
+  n2khab_data_path,
+  str_c(
+    "20_processed/_versions/watersurfaces_hab/watersurfaces_hab_",
+    current_version
+  ),
+  "watersurfaces_hab.gpkg"
+)
+# file version verification
+stopifnot(xxh64sum(wsh_path_current) == xxh64sum_wsh_current)
+# read
+wsh <- 
+  read_watersurfaces_hab(
+    file = wsh_path_current,
+    version = str_c("watersurfaces_hab_", current_version),
+    interpreted = TRUE
+  )
+```
+
+Checking that all polygons of the previous version of watersurfaces_hab are present in the previous version of watersurfaces_refpoints.
+
+```{r}
+wsh_previous$watersurfaces_polygons %>% 
+  anti_join(refpoints_previous, join_by(polygon_id)) %>% 
+  nrow() == 0
+```
+
+New watersurfaces in the current version of watersurfaces_hab that originate from the watersurfaces data source:
+
+```{r paged.print = FALSE}
+wsh_new_ws <- 
+  wsh$watersurfaces_polygons %>% 
+  anti_join(refpoints_previous, join_by(polygon_id)) %>% 
+  filter(!str_detect(polygon_id, "_v"))
+wsh_new_ws
+```
+
+New polygons in the current version of watersurfaces_hab that originate from the habitatmap_stdized data source:
+
+```{r paged.print = FALSE}
+wsh_new_hms <- 
+  wsh$watersurfaces_polygons %>% 
+  anti_join(refpoints_previous, join_by(polygon_id)) %>% 
+  filter(str_detect(polygon_id, "_v"))
+wsh_new_hms
+```
+
+Checking that new polygons from habitatmap_stdized really are new and don't overlap older habitatmap polygons in watersurfaces_hab.
+This cannot normally be the case since watersurfaces_hab versions are not based on their previous version.
+
+```{r}
+wsh_old_hms <- 
+  wsh$watersurfaces_polygons %>% 
+  semi_join(refpoints_previous, join_by(polygon_id)) %>% 
+  filter(str_detect(polygon_id, "_v"))
+nrow(wsh_new_hms[wsh_old_hms, ]) == 0
+```
+
+
+
+## Defining new reference points
+
+Generating the points to be added to the previous version of watersurfaces_refpoints.
+
+```{r}
+refpoints_new <- 
+  wsh$watersurfaces_polygons %>% 
+  select(polygon_id) %>% 
+  anti_join(refpoints_previous, join_by(polygon_id)) %>% 
+  st_sf(agr = "identity") %>% 
+  st_point_on_surface() %>% 
+  mutate(
+    x = round(st_coordinates(.)[, 1], 2),
+    y = round(st_coordinates(.)[, 2], 2)
+  ) %>%
+  st_drop_geometry()
+```
+
+
+
+## Writing new version of watersurfaces_refpoints
+
+Setting target directory.
+
+```{r}
+refpoints_path_current <- file.path(
+  n2khab_data_path,
+  str_c(
+    "20_processed/_versions/watersurfaces_refpoints/watersurfaces_refpoints_",
+    current_version
+  )
+)
+```
+
+Copying previous version into target directory, so that overwriting it with git2rdata will minimize diffs between versions.
+
+```{r}
+file.copy(
+  file.path(
+    refpoints_path_previous,
+    str_c("watersurfaces_refpoints",c(".tsv", ".yml"))),
+  refpoints_path_current,
+  overwrite = TRUE
+) %>% 
+  invisible()
+```
+
+Combining previous and new refpoints and writing as the new version of watersurfaces_refpoints.
+We only use `polygon_id`, `x` and `y` columns as these are the ones unique to this data object.
+Spatial attributes can always be added as needed, provided that the CRS is set correctly (EPSG:31370).
+
+```{r}
+refpoints_previous %>% 
+  select(polygon_id, x, y) %>% 
+  bind_rows(refpoints_new) %>% 
+  arrange(polygon_id) %>% 
+  write_vc(
+    "watersurfaces_refpoints",
+    root = refpoints_path_current,
+    sorting = "polygon_id",
+    strict = FALSE,
+    digits = 6
+  )
+```
