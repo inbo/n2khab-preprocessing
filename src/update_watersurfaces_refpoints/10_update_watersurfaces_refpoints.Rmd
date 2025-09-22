@@ -24,7 +24,7 @@ Note that the code requires a setup of `n2khab_data` that supports concurrent ve
 
 Verifying and reading the previous version of watersurfaces_refpoints.
 
-```{r}
+```{r paged.print = FALSE}
 refpoints_path_previous <- file.path(
   n2khab_data_path,
   str_c(
@@ -45,6 +45,7 @@ stopifnot(
 refpoints_previous <- 
   read_vc("watersurfaces_refpoints", root = refpoints_path_previous) %>% 
   as_tibble()
+refpoints_previous
 ```
 
 Verifying and reading the previous version of watersurfaces_hab.
@@ -140,7 +141,7 @@ nrow(wsh_new_hms[wsh_old_hms, ]) == 0
 
 Generating the points to be added to the previous version of watersurfaces_refpoints.
 
-```{r}
+```{r paged.print = FALSE}
 refpoints_new <- 
   wsh$watersurfaces_polygons %>% 
   select(polygon_id) %>% 
@@ -152,6 +153,7 @@ refpoints_new <-
     y = round(st_coordinates(.)[, 2], 2)
   ) %>%
   st_drop_geometry()
+refpoints_new
 ```
 
 
