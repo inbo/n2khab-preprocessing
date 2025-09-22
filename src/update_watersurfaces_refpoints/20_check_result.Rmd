@@ -28,6 +28,12 @@ tibble(algorithm = c("xxh64", "md5", "sha256")) %>%
 
 ## Contents
 
+Printing the object.
+
+```{r paged.print = FALSE}
+watersurfaces_refpoints
+```
+
 Are all `polygon_id` values unique?
 
 ```{r}
