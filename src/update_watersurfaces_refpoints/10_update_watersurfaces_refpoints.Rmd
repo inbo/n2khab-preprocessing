@@ -171,53 +171,76 @@ wsh_previous$watersurfaces_polygons %>%
   nrow() == 0
 ```
 
-New watersurfaces in the current version of watersurfaces_hab that originate from the watersurfaces data source:
+Listing new polygons in watersurfaces_hab according to `polygon_id`:
 
 ```{r paged.print = FALSE}
-wsh_new_ws <- 
+wsh_new <- 
   wsh$watersurfaces_polygons %>% 
-  anti_join(refpoints_previous, join_by(polygon_id)) %>% 
-  filter(!str_detect(polygon_id, "_v"))
-wsh_new_ws
+  select(polygon_id) %>% 
+  anti_join(refpoints_previous, join_by(polygon_id))
+wsh_new
 ```
 
-New polygons in the current version of watersurfaces_hab that originate from the habitatmap_stdized data source:
+However, it is possible and expected that new `polygon_id`s may pop up in new versions of watersurfaces_hab that at least overlap previous polygons, if not be equal to them.
+Evolution of the watersurfaces data source is at least one reason for this: some polygons previously not distinguished in watersurfaces may already have been distinguished in previous watersurfaces_hab using the `polygon_id` coming from the habitatmap.
+The other way around (disappearing from watersurfaces but still present in habitatmap) is also not excluded and might also be a cause.
+Another reason may be the unstable presence of habitat types and ribs in watersurfaces, causing it to disappear and reappear later in consecutive versions, in which case we also want to recycle the old reference point.
+
+For this reason, we need to check which 'new polygons by `polygon_id`' spatially still match an existing reference point.
+Those polygons should adopt that point instead of receiving a new one.
+
+Polygons with new `polygon_id` but existing reference point:
 
 ```{r paged.print = FALSE}
-wsh_new_hms <- 
-  wsh$watersurfaces_polygons %>% 
-  anti_join(refpoints_previous, join_by(polygon_id)) %>% 
-  filter(str_detect(polygon_id, "_v"))
-wsh_new_hms
+refpoints_previous_sf <- 
+  refpoints_previous %>%
+  st_as_sf(coords = c("x", "y"), crs = 31370, remove = FALSE)
+wsh_new_point_exists <- 
+  wsh_new %>% 
+  st_join(
+    refpoints_previous_sf %>% 
+      select(polygon_id_previous = polygon_id),
+    join = st_contains,
+    left = FALSE
+  )
+wsh_new_point_exists
 ```
 
-Checking that new polygons from habitatmap_stdized really are new and don't overlap older habitatmap polygons in watersurfaces_hab.
-This cannot normally be the case since watersurfaces_hab versions are not based on their previous version.
+Checking that the point to be adopted is unique.
 
 ```{r}
-wsh_old_hms <- 
-  wsh$watersurfaces_polygons %>% 
-  semi_join(refpoints_previous, join_by(polygon_id)) %>% 
-  filter(str_detect(polygon_id, "_v"))
-nrow(wsh_new_hms[wsh_old_hms, ]) == 0
+stopifnot(
+  wsh_new_point_exists %>% 
+    st_drop_geometry() %>% 
+    count(polygon_id) %>% 
+    filter(n > 1) %>% 
+    nrow() == 0
+)
 ```
 
 
 
-## Defining new reference points
+## Defining the additional list of reference points
 
 Generating the points to be added to the previous version of watersurfaces_refpoints.
+We make a distinction between:
+
+- polygons with a new `polygon_id` that overlap existing reference points: they adopt those points;
+- and totally new polygons, which receive a new point.
 
 ```{r paged.print = FALSE}
 refpoints_new <- 
-  wsh$watersurfaces_polygons %>% 
-  select(polygon_id) %>% 
-  anti_join(refpoints_previous, join_by(polygon_id)) %>% 
+  wsh_new %>% 
+  st_join(
+    refpoints_previous_sf %>% 
+      select(x, y),
+    join = st_contains
+  ) %>% 
   st_sf(agr = "identity") %>% 
   st_point_on_surface() %>% 
   mutate(
-    x = round(st_coordinates(.)[, 1], 2),
-    y = round(st_coordinates(.)[, 2], 2)
+    x = ifelse(is.na(x), round(st_coordinates(.)[, 1], 2), x),
+    y = ifelse(is.na(y), round(st_coordinates(.)[, 2], 2), y)
   ) %>%
   st_drop_geometry()
 refpoints_new
