@@ -1,5 +1,5 @@
 ---
-title: "Updating watersurfaces_refpoints"
+title: "Updating the _interim_ version of watersurfaces_refpoints"
 date: "`r lubridate::now()`"
 link-citations: true
 linkcolor: link.colour
