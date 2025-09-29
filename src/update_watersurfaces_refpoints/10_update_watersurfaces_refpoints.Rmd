@@ -288,6 +288,18 @@ file.copy(
   invisible()
 ```
 
+(**XXXXXXXXXX** Below chunk is to be removed in the future, as it only applies to version watersurfaces_refpoints_v5.)
+
+Rewriting the git2rdata files since a column name was updated.
+
+```{r}
+rename_variable(
+  "watersurfaces_refpoints",
+  root = refpoints_path_current,
+  change = c(in_polygon = "in_object")
+)
+```
+
 Combining previous and new refpoints and writing as the new version of watersurfaces_refpoints.
 We only use `polygon_id`, `x` and `y` columns as these are the ones unique to this data object.
 Spatial attributes can always be added as needed, provided that the CRS is set correctly (EPSG:31370).
