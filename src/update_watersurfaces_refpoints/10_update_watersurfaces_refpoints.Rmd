@@ -228,7 +228,7 @@ stopifnot(
 )
 ```
 
-
+<!-- IF THIS TEST FAILS, THEN ADOPT THE MEASURES ALREADY APPLIED IN THE INTERIM VERSION! -->
 
 ## Defining the additional list of reference points
 
