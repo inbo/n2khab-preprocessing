@@ -52,6 +52,10 @@ refpoints_previous <-
 refpoints_previous
 ```
 
+Note that we consider `in_polygon` to never be overwritten, i.e. it is tied to a specific `polygon_id` at the time of its first arrival in watersurfaces_refpoints.
+It is relevant to keep this attribute since older polygons may be involved which don't occur in recent versions of watersurfaces_hab.
+The column `in_polygon` tells whether the point lies in the polygon or not; with current approaches the point should always be inside the polygon.
+
 Verifying and reading the previous version of watersurfaces_hab.
 
 ```{r}
@@ -126,6 +130,9 @@ Another reason may be the unstable presence of habitat types and ribs in watersu
 For this reason, we need to check which 'new polygons by `polygon_id`' spatially still match an existing reference point.
 Those polygons should adopt that point instead of receiving a new one.
 
+Note however that we only accept points that are marked to be inside a polygon at the time of their creation.
+This is done to prevent that points outside the polygon that they represent can also be used to represent another (new) polygon that contains it.
+
 Polygons with new `polygon_id` but existing reference point:
 
 ```{r paged.print = FALSE}
@@ -136,7 +143,9 @@ wsh_new_point_exists <-
   wsh_new %>% 
   st_join(
     refpoints_previous_sf %>% 
+      filter(in_polygon) %>% 
       select(polygon_id_previous = polygon_id),
+    join = st_contains,
     left = FALSE
   )
 wsh_new_point_exists
@@ -169,7 +178,9 @@ refpoints_new <-
   wsh_new %>% 
   st_join(
     refpoints_previous_sf %>% 
-      select(x, y)
+      filter(in_polygon) %>% 
+      select(x, y),
+    join = st_contains
   ) %>% 
   st_sf(agr = "identity") %>% 
   st_point_on_surface() %>% 
@@ -177,7 +188,9 @@ refpoints_new <-
     x = ifelse(is.na(x), round(st_coordinates(.)[, 1], 2), x),
     y = ifelse(is.na(y), round(st_coordinates(.)[, 2], 2), y)
   ) %>%
-  st_drop_geometry()
+  st_drop_geometry() %>% 
+  mutate(in_polygon = TRUE) %>% 
+  relocate(in_polygon, .after = polygon_id)
 refpoints_new
 ```
 
@@ -216,7 +229,6 @@ Spatial attributes can always be added as needed, provided that the CRS is set c
 
 ```{r}
 refpoints_previous %>% 
-  select(polygon_id, x, y) %>% 
   bind_rows(refpoints_new) %>% 
   arrange(polygon_id) %>% 
   write_vc(
