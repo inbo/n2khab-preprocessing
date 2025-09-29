@@ -123,7 +123,8 @@ wsh_new
 ```
 
 However, it is possible and expected that new `polygon_id`s may pop up in new versions of watersurfaces_hab that at least overlap previous polygons, if not be equal to them.
-Evolution of the watersurfaces data source is at least one reason for this: some polygons previously not distinguished in watersurfaces may already have been distinguished in previous watersurfaces_hab using the `polygon_id` coming from the habitatmap.
+First of all, this happens because `polygon_id` values may be different in interim versions of watersurfaces_hab compared to regular versions.
+Evolution of the watersurfaces data source is another reason, which we already had for the regular releases: some polygons previously not distinguished in watersurfaces may already have been distinguished in previous watersurfaces_hab using the `polygon_id` coming from the habitatmap.
 The other way around (disappearing from watersurfaces but still present in habitatmap) is also not excluded and might also be a cause.
 Another reason may be the unstable presence of habitat types and ribs in watersurfaces, causing it to disappear and reappear later in consecutive versions, in which case we also want to recycle the old reference point.
 
