@@ -40,6 +40,24 @@ Are all `polygon_id` values unique?
 n_distinct(watersurfaces_refpoints$polygon_id) == nrow(watersurfaces_refpoints)
 ```
 
+Are all polygons of the current version of watersurfaces_hab represented?
+
+```{r}
+wsh$watersurfaces_polygons %>% 
+  semi_join(watersurfaces_refpoints, join_by(polygon_id)) %>% 
+  nrow() == nrow(wsh$watersurfaces_polygons)
+```
+
+Are all coordinates unique for the polygons in the current version of watersurfaces_hab?
+
+```{r}
+watersurfaces_refpoints %>% 
+  semi_join(wsh$watersurfaces_polygons, join_by(polygon_id)) %>% 
+  count(x, y) %>% 
+  filter(n > 1) %>% 
+  nrow() == 0
+```
+
 No missing values?
 
 ```{r}
