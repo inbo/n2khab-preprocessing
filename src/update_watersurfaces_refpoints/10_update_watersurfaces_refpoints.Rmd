@@ -1,15 +1,19 @@
-# Update the watersurfaces_refpoints data source
+# Update the _interim_ version of the watersurfaces_refpoints data source
 
 Setting version specific information, defining what the 'previous' and 'current' version mean.
-The current version refers to the version of watersurfaces_hab to be used to derive new points for watersurfaces_refpoints.
+The current version refers to the current _interim_ version of watersurfaces_hab to be used to derive new points for watersurfaces_refpoints.
 
 ```{r}
-previous_version <- "v5"
-current_version <- "v6"
-xxh64sum_refpoints_previous_tsv <- "8b74e5f80082595b"
-xxh64sum_refpoints_previous_yml <- "e8376d961a06e76a"
-xxh64sum_wsh_previous <- "bd860c4d8b2b1de7"
-xxh64sum_wsh_current <- "e2920c4932008387"
+previous_version <- "v6"
+# in future versions, we should also add:
+# previous_interim_version <- "v..."
+# This is because we will need to take into account already chosen points for 
+# both the regular and the interim versions.
+current_version <- "v6.1_interim"
+xxh64sum_refpoints_previous_tsv <- "01275d8cb15546c4"
+xxh64sum_refpoints_previous_yml <- "7c0deebf390ad2b8"
+xxh64sum_wsh_previous <- "e2920c4932008387"
+xxh64sum_wsh_current <- "d35532db5c4b41ff"
 ```
 
 Locating `n2khab_data`.
@@ -41,7 +45,7 @@ stopifnot(
   xxh64sum(file.path(refpoints_path_previous, "watersurfaces_refpoints.yml")) ==
     xxh64sum_refpoints_previous_yml
 )
-# read as tibble and update column name
+# read as tibble
 refpoints_previous <- 
   read_vc("watersurfaces_refpoints", root = refpoints_path_previous) %>% 
   as_tibble()
@@ -71,77 +75,10 @@ wsh_previous <-
 ```
 
 
-## Fix previous version of watersurfaces_refpoints
 
-(**XXXXXXXXXX** This section is to be removed in the future, as it only applies to version watersurfaces_refpoints_v5.)
+## Searching for new watersurface polygons in the current interim version of watersurfaces_hab
 
-We expect no duplication of coordinates in the previous version of watersurfaces_refpoints if we restrict it to the polygons that are present in the previous version of watersurfaces_hab.
-
-```{r paged.print = FALSE}
-points_problem <- 
-  refpoints_previous %>% 
-  semi_join(wsh_previous$watersurfaces_polygons, join_by(polygon_id)) %>% 
-  count(x, y) %>% 
-  filter(n > 1) %>% 
-  semi_join(refpoints_previous, ., join_by(x, y)) %>% 
-  st_as_sf(coords = c("x", "y"), crs = 31370)
-points_problem
-```
-
-Checking the corresponding polygons.
-
-```{r}
-pols_problem <- 
-  wsh_previous$watersurfaces_polygons %>% 
-  semi_join(st_drop_geometry(points_problem), join_by(polygon_id))
-# mapview::mapview(pols_problem) + points_problem
-```
-
-After having checked these watersurfaces aren't part of current MHQ samples, we decide to redefine the reference point for the polygon that has no point in its surface.
-
-```{r}
-coordinates_update <- 
-  pols_problem %>% 
-  filter(polygon_id == "VBRSZI0433") %>% 
-  select(polygon_id) %>% 
-  st_sf(agr = "identity") %>% 
-  st_point_on_surface() %>% 
-  mutate(
-    x_new = round(st_coordinates(.)[, 1], 2),
-    y_new = round(st_coordinates(.)[, 2], 2)
-  ) %>%
-  st_drop_geometry()
-```
-
-Updating `refpoints_previous`.
-
-```{r}
-refpoints_previous <- 
-  refpoints_previous %>% 
-  left_join(coordinates_update, join_by(polygon_id)) %>% 
-  mutate(
-    x = ifelse(is.na(x_new), x, x_new),
-    y = ifelse(is.na(y_new), y, y_new)
-  ) %>% 
-  select(-x_new, -y_new)
-```
-
-Rechecking the requirement.
-
-```{r}
-stopifnot(
-  refpoints_previous %>% 
-    semi_join(wsh_previous$watersurfaces_polygons, join_by(polygon_id)) %>% 
-    count(x, y) %>% 
-    filter(n > 1) %>% 
-    nrow() == 0
-)
-```
-
-
-## Searching for new watersurface polygons in the current version of watersurfaces_hab
-
-Verifying and reading the current version of watersurfaces_hab.
+Verifying and reading the current _interim_ version of watersurfaces_hab.
 
 ```{r}
 wsh_path_current <- file.path(
