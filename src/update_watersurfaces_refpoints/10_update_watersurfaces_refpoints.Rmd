@@ -148,16 +148,63 @@ wsh_new_point_exists <-
       select(polygon_id_previous = polygon_id),
     join = st_contains,
     left = FALSE
-  )
+  ) %>% 
+  st_drop_geometry()
 wsh_new_point_exists
 ```
 
 Checking that the point to be adopted is unique.
 
 ```{r}
+wsh_new_point_exists %>% 
+  count(polygon_id) %>% 
+  filter(n > 1) %>% 
+  nrow() == 0
+```
+
+We can see that some polygons match multiple reference points, i.e. correspond to multiple polygons of the previous version of watersurfaces_hab:
+
+```{r paged.print = FALSE}
+wsh_new_point_exists %>% 
+  mutate(
+    nr_points = n(),
+    .by = polygon_id
+  ) %>% 
+  filter(nr_points > 1) %>% 
+  print(n = Inf)
+```
+
+In these cases, we will choose the point where `polygon_id_previous` is from the watersurfaces data source, or else the one that includes the oldest year (if year can be extracted), and then the alphabetically first one.
+
+```{r}
+wsh_new_point_exists <- 
+  wsh_new_point_exists %>% 
+  mutate(
+    year_hms_previous = str_match(polygon_id_previous, "_v(\\d+)$")[, 2] %>% 
+      as.integer(),
+    polygon_id = as.character(polygon_id)
+    ) %>% 
+  mutate(
+    year_hms_previous_resolved = min(year_hms_previous),
+    .by = polygon_id
+  ) %>% 
+  filter(
+    (is.na(year_hms_previous) & is.na(year_hms_previous_resolved)) |
+      (!is.na(year_hms_previous) & year_hms_previous == year_hms_previous_resolved)
+  ) %>% 
+  arrange(polygon_id, polygon_id_previous) %>% 
+  filter(
+    polygon_id_previous == first(polygon_id_previous),
+    .by = polygon_id
+  ) %>% 
+  select(polygon_id, polygon_id_previous)
+```
+
+Rechecking that the point to be adopted is unique.
+
+```{r}
 stopifnot(
   wsh_new_point_exists %>% 
-    st_drop_geometry() %>% 
     count(polygon_id) %>% 
     filter(n > 1) %>% 
     nrow() == 0
@@ -180,6 +227,11 @@ refpoints_new <-
   st_join(
     refpoints_previous_sf %>% 
       filter(in_polygon) %>% 
+      # defining which point to take if multiple match:
+      semi_join(
+        wsh_new_point_exists,
+        join_by(polygon_id == polygon_id_previous)
+      ) %>% 
       select(x, y),
     join = st_contains
   ) %>% 
