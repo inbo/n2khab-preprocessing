@@ -195,6 +195,8 @@ Another reason may be the unstable presence of habitat types and ribs in watersu
 For this reason, we need to check which 'new polygons by `polygon_id`' spatially still match an existing reference point.
 Those polygons should adopt that point instead of receiving a new one.
 
+<!-- XXXX IN FUTURE, ALSO TAKE CARE TO ADDITIONALLY RECYCLE POINTS THAT HAVE BEEN DEFINED IN AN INTERIM VERSION, IF THE LATTER IS MORE RECENT THAN THE LAST REGULAR VERSION OF watersurfaces_hab !! -->
+
 Note however that we only accept points that are marked to be inside a polygon at the time of their creation.
 This is done to prevent that points outside the polygon that they represent can also be used to represent another (new) polygon that contains it.
 
