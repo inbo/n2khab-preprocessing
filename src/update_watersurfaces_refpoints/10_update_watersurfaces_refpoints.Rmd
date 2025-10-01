@@ -303,7 +303,7 @@ rename_variable(
 ```
 
 Combining previous and new refpoints and writing as the new version of watersurfaces_refpoints.
-We only use `polygon_id`, `x` and `y` columns as these are the ones unique to this data object.
+We only use `polygon_id`, `in_polygon`, `x` and `y` columns as these are the ones unique to this data object.
 Spatial attributes can always be added as needed, provided that the CRS is set correctly (EPSG:31370).
 
 ```{r}
