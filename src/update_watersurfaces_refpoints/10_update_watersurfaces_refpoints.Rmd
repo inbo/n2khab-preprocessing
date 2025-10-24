@@ -10,8 +10,8 @@ previous_version <- "v6"
 # This is because we will need to take into account already chosen points for 
 # both the regular and the interim versions.
 current_version <- "v6.1_interim"
-xxh64sum_refpoints_previous_tsv <- "01275d8cb15546c4"
-xxh64sum_refpoints_previous_yml <- "7c0deebf390ad2b8"
+xxh64sum_refpoints_previous_tsv <- "b075fbc80c0b55a4"
+xxh64sum_refpoints_previous_yml <- "4ec27b705950e01b"
 xxh64sum_wsh_previous <- "e2920c4932008387"
 xxh64sum_wsh_current <- "d35532db5c4b41ff"
 ```
