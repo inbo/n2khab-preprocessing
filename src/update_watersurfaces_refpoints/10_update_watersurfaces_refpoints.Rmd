@@ -318,6 +318,6 @@ refpoints_previous %>%
     root = refpoints_path_current,
     sorting = "polygon_id",
     strict = FALSE,
-    digits = 6
+    digits = 10
   )
 ```
