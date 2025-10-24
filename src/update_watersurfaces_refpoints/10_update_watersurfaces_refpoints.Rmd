@@ -275,6 +275,9 @@ refpoints_path_current <- file.path(
     current_version
   )
 )
+if (!dir.exists(refpoints_path_current)) {
+  dir.create(refpoints_path_current, recursive = TRUE)
+}
 ```
 
 Copying previous version into target directory, so that overwriting it with git2rdata will minimize diffs between versions.
