@@ -201,15 +201,33 @@ Those polygons should adopt that point instead of receiving a new one.
 
 <!-- XXXX IN FUTURE, ALSO TAKE CARE TO ADDITIONALLY RECYCLE POINTS THAT HAVE BEEN DEFINED IN AN INTERIM VERSION, IF THE LATTER IS MORE RECENT THAN THE LAST REGULAR VERSION OF watersurfaces_hab !! -->
 
+```{r}
+refpoints_previous_sf <- 
+  refpoints_previous %>%
+  st_as_sf(coords = c("x", "y"), crs = 31370, remove = FALSE)
+```
+
 Note however that we only accept points that are marked to be inside a polygon at the time of their creation.
 This is done to prevent that points outside the polygon that they represent can also be used to represent another (new) polygon that contains it.
+
+Indeed, it is possible that such mismatches would otherwise happen.
+If any are present, then this is shown by the following tibble.
+
+```{r paged.print = FALSE}
+wsh_new %>% 
+  st_join(
+    refpoints_previous_sf %>%
+      filter(!in_polygon) %>%
+      select(polygon_id_previous = polygon_id),
+    join = st_contains,
+    left = FALSE
+  ) %>% 
+  st_drop_geometry()
+```
 
 Polygons with new `polygon_id` but existing reference point:
 
 ```{r paged.print = FALSE}
-refpoints_previous_sf <- 
-  refpoints_previous %>%
-  st_as_sf(coords = c("x", "y"), crs = 31370, remove = FALSE)
 wsh_new_point_exists <- 
   wsh_new %>% 
   st_join(
