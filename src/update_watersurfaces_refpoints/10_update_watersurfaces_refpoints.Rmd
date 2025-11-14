@@ -166,7 +166,7 @@ wsh_new_point_exists %>%
   nrow() == 0
 ```
 
-We can see that some polygons match multiple reference points, i.e. correspond to multiple polygons of the previous version of watersurfaces_hab:
+We can see that some polygons match multiple reference points, i.e. correspond to multiple polygons of the previous reference points version:
 
 ```{r paged.print = FALSE}
 wsh_new_point_exists %>% 
