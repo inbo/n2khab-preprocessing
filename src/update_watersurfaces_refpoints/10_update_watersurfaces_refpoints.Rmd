@@ -185,26 +185,27 @@ stopifnot(
 Polygons with new `polygon_id` but existing reference point:
 
 ```{r paged.print = FALSE}
-refpoints_previous_sf <- 
-  refpoints_previous %>%
-  st_as_sf(coords = c("x", "y"), crs = 31370, remove = FALSE)
-wsh_new_point_exists <- 
+wsh_new_point_exists_sf <- 
   wsh_new %>% 
   st_join(
-    refpoints_previous_sf %>% 
-      filter(in_polygon) %>% 
-      select(polygon_id_previous = polygon_id),
+    refpoints_previous_sf %>%
+      filter(in_polygon) %>%
+      select(
+        polygon_id_previous = polygon_id,
+        x_previous = x,
+        y_previous = y
+      ),
     join = st_contains,
     left = FALSE
-  ) %>% 
-  st_drop_geometry()
-wsh_new_point_exists
+  )
+wsh_new_point_exists_sf
 ```
 
 Checking that the point to be adopted is unique.
 
 ```{r}
-wsh_new_point_exists %>% 
+wsh_new_point_exists_sf %>% 
+  st_drop_geometry() %>% 
   count(polygon_id) %>% 
   filter(n > 1) %>% 
   nrow() == 0
@@ -213,7 +214,9 @@ wsh_new_point_exists %>%
 We can see that some polygons match multiple reference points, i.e. correspond to multiple polygons of the previous reference points version:
 
 ```{r paged.print = FALSE}
-wsh_new_point_exists %>% 
+wsh_new_point_exists_sf %>% 
+  select(polygon_id, polygon_id_previous) %>% 
+  st_drop_geometry() %>% 
   mutate(
     nr_points = n(),
     .by = polygon_id
@@ -222,16 +225,31 @@ wsh_new_point_exists %>%
   print(n = Inf)
 ```
 
-In these cases, we will choose the point where `polygon_id_previous` is from the watersurfaces data source, or else the one that includes the oldest year (if year can be extracted), and then the alphabetically first one.
+In these cases, we will choose the point according to the following successive filters:
+
+1. the distance between a newly calculated 'point on surface' for the new polygon and the existing points is the smallest distance;
+2. if multiple choices remain, use `polygon_id_previous` that is from the watersurfaces data source, or else the one that includes the oldest year (if year can be extracted);
+3. if multiple choices remain, use the alphabetically first `polygon_id_previous`.
 
 ```{r}
 wsh_new_point_exists <- 
-  wsh_new_point_exists %>% 
+  wsh_new_point_exists_sf %>% 
+  st_sf(agr = "identity") %>% 
+  st_point_on_surface() %>% 
   mutate(
+    x = st_coordinates(.)[, 1],
+    y = st_coordinates(.)[, 2],
+    distance = sqrt((x - x_previous)^2 + (y - y_previous)^2),
     year_hms_previous = str_match(polygon_id_previous, "_v(\\d+)$")[, 2] %>% 
       as.integer(),
     polygon_id = as.character(polygon_id)
     ) %>% 
+  st_drop_geometry() %>% 
+  select(starts_with("polygon"), distance, year_hms_previous) %>% 
+  filter(
+    distance == min(distance),
+    .by = polygon_id
+  ) %>% 
   mutate(
     year_hms_previous_resolved = min(year_hms_previous),
     .by = polygon_id
