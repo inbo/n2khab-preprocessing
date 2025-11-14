@@ -225,6 +225,30 @@ wsh_new %>%
   st_drop_geometry()
 ```
 
+Before applying this in-polygon restriction in recycling existing reference points, we also want make sure that no polygons of `wsh_new` actually do match a polygon from the previous watersurfaces_hab version with an out-of-polygon reference point.
+If this occurs, we should still recycle that point for those cases and then this workflow needs updating.
+(The majority of out-of-polygon reference points in `refpoints_previous` effectively refers to a polygon still existing in the previous watersurfaces_hab version.)
+
+```{r}
+stopifnot(
+  wsh_new %>% 
+    st_join(
+      wsh_previous$watersurfaces_polygons %>% 
+        semi_join(refpoints_previous %>% filter(!in_polygon), join_by(polygon_id)) %>% 
+        select(polygon_id_previous = polygon_id) %>% 
+        st_sf(agr = "identity") %>% 
+        st_point_on_surface(),
+      join = st_contains,
+      left = FALSE
+    ) %>% 
+    st_drop_geometry() %>% 
+    nrow() == 0
+)
+```
+
+
+### Matching existing reference points
+
 Polygons with new `polygon_id` but existing reference point:
 
 ```{r paged.print = FALSE}
