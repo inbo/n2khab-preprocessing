@@ -135,8 +135,28 @@ Another reason may be the unstable presence of habitat types and ribs in watersu
 For the above reason, we need to check which 'new polygons by `polygon_id`' spatially still match an existing reference point.
 Those polygons should adopt that point instead of receiving a new one.
 
+```{r}
+refpoints_previous_sf <- 
+  refpoints_previous %>%
+  st_as_sf(coords = c("x", "y"), crs = 31370, remove = FALSE)
+```
+
 Note however that we only accept points that are marked to be inside a polygon at the time of their creation.
 This is done to prevent that points outside the polygon that they represent can also be used to represent another (new) polygon that contains it.
+
+Indeed, it can be the case that such mismatches would otherwise happen:
+
+```{r paged.print = FALSE}
+wsh_new %>% 
+  st_join(
+    refpoints_previous_sf %>%
+      filter(!in_polygon) %>%
+      select(polygon_id_previous = polygon_id),
+    join = st_contains,
+    left = FALSE
+  ) %>% 
+  st_drop_geometry()
+```
 
 Polygons with new `polygon_id` but existing reference point:
 
