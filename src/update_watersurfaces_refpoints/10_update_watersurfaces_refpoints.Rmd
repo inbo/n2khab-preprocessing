@@ -112,6 +112,8 @@ wsh_previous$watersurfaces_polygons %>%
   nrow() == 0
 ```
 
+### New polygon IDs
+
 Listing new polygons in watersurfaces_hab according to `polygon_id`:
 
 ```{r paged.print = FALSE}
@@ -128,7 +130,9 @@ Evolution of the watersurfaces data source is another reason, which we already h
 The other way around (disappearing from watersurfaces but still present in habitatmap) is also not excluded and might also be a cause.
 Another reason may be the unstable presence of habitat types and ribs in watersurfaces, causing it to disappear and reappear later in consecutive versions, in which case we also want to recycle the old reference point.
 
-For this reason, we need to check which 'new polygons by `polygon_id`' spatially still match an existing reference point.
+### Exploration before matching existing reference points
+
+For the above reason, we need to check which 'new polygons by `polygon_id`' spatially still match an existing reference point.
 Those polygons should adopt that point instead of receiving a new one.
 
 Note however that we only accept points that are marked to be inside a polygon at the time of their creation.
