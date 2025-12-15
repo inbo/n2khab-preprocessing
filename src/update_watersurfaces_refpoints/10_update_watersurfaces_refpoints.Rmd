@@ -364,7 +364,11 @@ rename_variable(
   "watersurfaces_refpoints",
   root = refpoints_path_current,
   change = c(in_polygon = "in_object")
-)
+) %>% 
+  convert_line_endings(
+    root = refpoints_path_current,
+    silent = FALSE
+  )
 ```
 
 Combining previous and new refpoints and writing as the new version of watersurfaces_refpoints.
@@ -381,5 +385,9 @@ refpoints_previous %>%
     sorting = "polygon_id",
     strict = FALSE,
     digits = 10
+  ) %>% 
+  convert_line_endings(
+    root = refpoints_path_current,
+    silent = FALSE
   )
 ```
