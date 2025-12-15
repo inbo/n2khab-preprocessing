@@ -32,11 +32,27 @@ refpoints_path_previous <- file.path(
     previous_version
   )
 )
-# file version verification
+# file version verification, including EOL conversion as needed
+if (
+  xxh64sum(file.path(refpoints_path_previous, "watersurfaces_refpoints.tsv")) !=
+    xxh64sum_refpoints_previous_tsv
+) {
+  convert_line_endings(
+    file.path(refpoints_path_previous, "watersurfaces_refpoints.tsv")
+  )
+}
 stopifnot(
   xxh64sum(file.path(refpoints_path_previous, "watersurfaces_refpoints.tsv")) ==
     xxh64sum_refpoints_previous_tsv
 )
+if (
+  xxh64sum(file.path(refpoints_path_previous, "watersurfaces_refpoints.yml")) !=
+    xxh64sum_refpoints_previous_yml
+) {
+  convert_line_endings(
+    file.path(refpoints_path_previous, "watersurfaces_refpoints.yml")
+  )
+}
 stopifnot(
   xxh64sum(file.path(refpoints_path_previous, "watersurfaces_refpoints.yml")) ==
     xxh64sum_refpoints_previous_yml
