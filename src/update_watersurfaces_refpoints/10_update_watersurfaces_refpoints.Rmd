@@ -1,0 +1,393 @@
+# Update the watersurfaces_refpoints data source
+
+Setting version specific information, defining what the 'previous' and 'current' version mean.
+The current version refers to the version of watersurfaces_hab to be used to derive new points for watersurfaces_refpoints.
+
+```{r}
+previous_version <- "v5"
+current_version <- "v6"
+xxh64sum_refpoints_previous_tsv <- "8b74e5f80082595b"
+xxh64sum_refpoints_previous_yml <- "e8376d961a06e76a"
+xxh64sum_wsh_previous <- "bd860c4d8b2b1de7"
+xxh64sum_wsh_current <- "e2920c4932008387"
+```
+
+Locating `n2khab_data`.
+
+```{r}
+n2khab_data_path <- locate_n2khab_data()
+```
+
+Note that the code requires a setup of `n2khab_data` that supports concurrent versions, by implementing approach \[3] of <https://github.com/inbo/n2khab/issues/113>.
+
+## Reading the previous versions of watersurfaces_refpoints and watersurfaces_hab
+
+Verifying and reading the previous version of watersurfaces_refpoints.
+
+```{r paged.print = FALSE}
+refpoints_path_previous <- file.path(
+  n2khab_data_path,
+  str_c(
+    "20_processed/_versions/watersurfaces_refpoints/watersurfaces_refpoints_",
+    previous_version
+  )
+)
+# file version verification, including EOL conversion as needed
+if (
+  xxh64sum(file.path(refpoints_path_previous, "watersurfaces_refpoints.tsv")) !=
+    xxh64sum_refpoints_previous_tsv
+) {
+  convert_line_endings(
+    file.path(refpoints_path_previous, "watersurfaces_refpoints.tsv")
+  )
+}
+stopifnot(
+  xxh64sum(file.path(refpoints_path_previous, "watersurfaces_refpoints.tsv")) ==
+    xxh64sum_refpoints_previous_tsv
+)
+if (
+  xxh64sum(file.path(refpoints_path_previous, "watersurfaces_refpoints.yml")) !=
+    xxh64sum_refpoints_previous_yml
+) {
+  convert_line_endings(
+    file.path(refpoints_path_previous, "watersurfaces_refpoints.yml")
+  )
+}
+stopifnot(
+  xxh64sum(file.path(refpoints_path_previous, "watersurfaces_refpoints.yml")) ==
+    xxh64sum_refpoints_previous_yml
+)
+# read as tibble and update column name
+refpoints_previous <- 
+  read_vc("watersurfaces_refpoints", root = refpoints_path_previous) %>% 
+  as_tibble() %>% 
+  mutate(in_polygon = in_object) %>% 
+  select(polygon_id, in_polygon, x, y)
+refpoints_previous
+```
+
+Note that we consider `in_polygon` to never be overwritten, i.e. it is tied to a specific `polygon_id` at the time of its first arrival in watersurfaces_refpoints.
+It is relevant to keep this attribute since older polygons may be involved which don't occur in recent versions of watersurfaces_hab.
+The column `in_polygon` tells whether the point lies in the polygon or not; with current approaches the point should always be inside the polygon.
+
+Verifying and reading the previous version of watersurfaces_hab.
+
+```{r}
+wsh_path_previous <- file.path(
+  n2khab_data_path,
+  str_c(
+    "20_processed/_versions/watersurfaces_hab/watersurfaces_hab_",
+    previous_version
+  ),
+  "watersurfaces_hab.gpkg"
+)
+# file version verification
+stopifnot(xxh64sum(wsh_path_previous) == xxh64sum_wsh_previous)
+# read
+wsh_previous <- 
+  read_watersurfaces_hab(
+    file = wsh_path_previous,
+    version = str_c("watersurfaces_hab_", previous_version),
+    interpreted = TRUE
+  )
+```
+
+
+## Fix previous version of watersurfaces_refpoints
+
+(**XXXXXXXXXX** This section is to be removed in the future, as it only applies to version watersurfaces_refpoints_v5.)
+
+We expect no duplication of coordinates in the previous version of watersurfaces_refpoints if we restrict it to the polygons that are present in the previous version of watersurfaces_hab.
+
+```{r paged.print = FALSE}
+points_problem <- 
+  refpoints_previous %>% 
+  semi_join(wsh_previous$watersurfaces_polygons, join_by(polygon_id)) %>% 
+  count(x, y) %>% 
+  filter(n > 1) %>% 
+  semi_join(refpoints_previous, ., join_by(x, y)) %>% 
+  st_as_sf(coords = c("x", "y"), crs = 31370)
+points_problem
+```
+
+Checking the corresponding polygons.
+
+```{r}
+pols_problem <- 
+  wsh_previous$watersurfaces_polygons %>% 
+  semi_join(st_drop_geometry(points_problem), join_by(polygon_id))
+# mapview::mapview(pols_problem) + points_problem
+```
+
+After having checked these watersurfaces aren't part of current MHQ samples, we decide to redefine the reference point for the polygon that has no point in its surface.
+
+```{r}
+coordinates_update <- 
+  pols_problem %>% 
+  filter(polygon_id == "VBRSZI0433") %>% 
+  select(polygon_id) %>% 
+  st_sf(agr = "identity") %>% 
+  st_point_on_surface() %>% 
+  mutate(
+    x_new = round(st_coordinates(.)[, 1], 2),
+    y_new = round(st_coordinates(.)[, 2], 2)
+  ) %>%
+  st_drop_geometry()
+```
+
+Updating `refpoints_previous`.
+
+```{r}
+refpoints_previous <- 
+  refpoints_previous %>% 
+  left_join(coordinates_update, join_by(polygon_id)) %>% 
+  mutate(
+    x = ifelse(is.na(x_new), x, x_new),
+    y = ifelse(is.na(y_new), y, y_new)
+  ) %>% 
+  select(-x_new, -y_new)
+```
+
+Rechecking the requirement.
+
+```{r}
+stopifnot(
+  refpoints_previous %>% 
+    semi_join(wsh_previous$watersurfaces_polygons, join_by(polygon_id)) %>% 
+    count(x, y) %>% 
+    filter(n > 1) %>% 
+    nrow() == 0
+)
+```
+
+
+## Searching for new watersurface polygons in the current version of watersurfaces_hab
+
+Verifying and reading the current version of watersurfaces_hab.
+
+```{r}
+wsh_path_current <- file.path(
+  n2khab_data_path,
+  str_c(
+    "20_processed/_versions/watersurfaces_hab/watersurfaces_hab_",
+    current_version
+  ),
+  "watersurfaces_hab.gpkg"
+)
+# file version verification
+stopifnot(xxh64sum(wsh_path_current) == xxh64sum_wsh_current)
+# read
+wsh <- 
+  read_watersurfaces_hab(
+    file = wsh_path_current,
+    version = str_c("watersurfaces_hab_", current_version),
+    interpreted = TRUE
+  )
+```
+
+Checking that all polygons of the previous version of watersurfaces_hab are present in the previous version of watersurfaces_refpoints.
+
+```{r}
+wsh_previous$watersurfaces_polygons %>% 
+  anti_join(refpoints_previous, join_by(polygon_id)) %>% 
+  nrow() == 0
+```
+
+### New polygon IDs
+
+Listing new polygons in watersurfaces_hab according to `polygon_id`:
+
+```{r paged.print = FALSE}
+wsh_new <- 
+  wsh$watersurfaces_polygons %>% 
+  select(polygon_id) %>% 
+  anti_join(refpoints_previous, join_by(polygon_id))
+wsh_new
+```
+
+However, it is possible and expected that new `polygon_id`s may pop up in new versions of watersurfaces_hab that at least overlap previous polygons, if not be equal to them.
+Evolution of the watersurfaces data source is at least one reason for this: some polygons previously not distinguished in watersurfaces may already have been distinguished in previous watersurfaces_hab using the `polygon_id` coming from the habitatmap.
+The other way around (disappearing from watersurfaces but still present in habitatmap) is also not excluded and might also be a cause.
+Another reason may be the unstable presence of habitat types and ribs in watersurfaces, causing it to disappear and reappear later in consecutive versions, in which case we also want to recycle the old reference point.
+
+### Exploration before matching existing reference points
+
+For the above reason, we need to check which 'new polygons by `polygon_id`' spatially still match an existing reference point.
+Those polygons should adopt that point instead of receiving a new one.
+
+<!-- XXXX IN FUTURE, ALSO TAKE CARE TO ADDITIONALLY RECYCLE POINTS THAT HAVE BEEN DEFINED IN AN INTERIM VERSION, IF THE LATTER IS MORE RECENT THAN THE LAST REGULAR VERSION OF watersurfaces_hab !! -->
+
+```{r}
+refpoints_previous_sf <- 
+  refpoints_previous %>%
+  st_as_sf(coords = c("x", "y"), crs = 31370, remove = FALSE)
+```
+
+Note however that we only accept points that are marked to be inside a polygon at the time of their creation.
+This is done to prevent that points outside the polygon that they represent can also be used to represent another (new) polygon that contains it.
+
+Indeed, it is possible that such mismatches would otherwise happen.
+If any are present, then this is shown by the following tibble.
+
+```{r paged.print = FALSE}
+wsh_new %>% 
+  st_join(
+    refpoints_previous_sf %>%
+      filter(!in_polygon) %>%
+      select(polygon_id_previous = polygon_id),
+    join = st_contains,
+    left = FALSE
+  ) %>% 
+  st_drop_geometry()
+```
+
+Before applying this in-polygon restriction in recycling existing reference points, we also want make sure that no polygons of `wsh_new` actually do match a polygon from the previous watersurfaces_hab version with an out-of-polygon reference point.
+If this occurs, we should still recycle that point for those cases and then this workflow needs updating.
+(The majority of out-of-polygon reference points in `refpoints_previous` effectively refers to a polygon still existing in the previous watersurfaces_hab version.)
+
+```{r}
+stopifnot(
+  wsh_new %>% 
+    st_join(
+      wsh_previous$watersurfaces_polygons %>% 
+        semi_join(refpoints_previous %>% filter(!in_polygon), join_by(polygon_id)) %>% 
+        select(polygon_id_previous = polygon_id) %>% 
+        st_sf(agr = "identity") %>% 
+        st_point_on_surface(),
+      join = st_contains,
+      left = FALSE
+    ) %>% 
+    st_drop_geometry() %>% 
+    nrow() == 0
+)
+```
+
+
+### Matching existing reference points
+
+Polygons with new `polygon_id` but existing reference point:
+
+```{r paged.print = FALSE}
+wsh_new_point_exists <- 
+  wsh_new %>% 
+  st_join(
+    refpoints_previous_sf %>% 
+      filter(in_polygon) %>% 
+      select(polygon_id_previous = polygon_id),
+    join = st_contains,
+    left = FALSE
+  )
+wsh_new_point_exists
+```
+
+Checking that the point to be adopted is unique.
+
+```{r}
+stopifnot(
+  wsh_new_point_exists %>% 
+    st_drop_geometry() %>% 
+    count(polygon_id) %>% 
+    filter(n > 1) %>% 
+    nrow() == 0
+)
+```
+
+<!-- IF THIS TEST FAILS, THEN ADOPT THE MEASURES ALREADY APPLIED IN THE INTERIM VERSION! -->
+
+## Defining the additional list of reference points
+
+Generating the points to be added to the previous version of watersurfaces_refpoints.
+We make a distinction between:
+
+- polygons with a new `polygon_id` that overlap existing reference points: they adopt those points;
+- and totally new polygons, which receive a new point.
+
+```{r paged.print = FALSE}
+refpoints_new <- 
+  wsh_new %>% 
+  st_join(
+    refpoints_previous_sf %>% 
+      filter(in_polygon) %>% 
+      select(x, y),
+    join = st_contains
+  ) %>% 
+  st_sf(agr = "identity") %>% 
+  st_point_on_surface() %>% 
+  mutate(
+    x = ifelse(is.na(x), round(st_coordinates(.)[, 1], 2), x),
+    y = ifelse(is.na(y), round(st_coordinates(.)[, 2], 2), y)
+  ) %>%
+  st_drop_geometry() %>% 
+  mutate(in_polygon = TRUE) %>% 
+  relocate(in_polygon, .after = polygon_id)
+refpoints_new
+```
+
+
+
+## Writing new version of watersurfaces_refpoints
+
+Setting target directory.
+
+```{r}
+refpoints_path_current <- file.path(
+  n2khab_data_path,
+  str_c(
+    "20_processed/_versions/watersurfaces_refpoints/watersurfaces_refpoints_",
+    current_version
+  )
+)
+if (!dir.exists(refpoints_path_current)) {
+  dir.create(refpoints_path_current, recursive = TRUE)
+}
+```
+
+Copying previous version into target directory, so that overwriting it with git2rdata will minimize diffs between versions.
+
+```{r}
+file.copy(
+  file.path(
+    refpoints_path_previous,
+    str_c("watersurfaces_refpoints",c(".tsv", ".yml"))),
+  refpoints_path_current,
+  overwrite = TRUE
+) %>% 
+  invisible()
+```
+
+(**XXXXXXXXXX** Below chunk is to be removed in the future, as it only applies to version watersurfaces_refpoints_v5.)
+
+Rewriting the git2rdata files since a column name was updated.
+
+```{r}
+rename_variable(
+  "watersurfaces_refpoints",
+  root = refpoints_path_current,
+  change = c(in_polygon = "in_object")
+) %>% 
+  convert_line_endings(
+    root = refpoints_path_current,
+    silent = FALSE
+  )
+```
+
+Combining previous and new refpoints and writing as the new version of watersurfaces_refpoints.
+We only use `polygon_id`, `in_polygon`, `x` and `y` columns as these are the ones unique to this data object.
+Spatial attributes can always be added as needed, provided that the CRS is set correctly (EPSG:31370).
+
+```{r}
+refpoints_previous %>% 
+  bind_rows(refpoints_new) %>% 
+  arrange(polygon_id) %>% 
+  write_vc(
+    "watersurfaces_refpoints",
+    root = refpoints_path_current,
+    sorting = "polygon_id",
+    strict = FALSE,
+    digits = 10
+  ) %>% 
+  convert_line_endings(
+    root = refpoints_path_current,
+    silent = FALSE
+  )
+```
