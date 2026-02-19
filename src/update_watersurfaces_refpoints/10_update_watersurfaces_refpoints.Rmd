@@ -375,5 +375,9 @@ refpoints_previous %>%
     sorting = "polygon_id",
     strict = FALSE,
     digits = 10
+  ) %>% 
+  convert_line_endings(
+    root = refpoints_path_current,
+    silent = FALSE
   )
 ```
