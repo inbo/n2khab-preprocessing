@@ -130,7 +130,7 @@ habitatmap$TAG %>% unique %>% length == nrow(habitatmap)
 
 ## Are the habitat codes correct?
 
-rbbvos+ should be rbbvos, the rest seems ok.
+All seems ok.
 
 ```{r check-types}
 # read standard types from n2khab
@@ -229,7 +229,10 @@ all(!is.na(st_dimension(habitatmap$geom)))
 Let's inspect features with invalid or corrupt geometry:
 
 ```{r check-geometry}
-# can run for a while! (40 min for version 2023)
+# can run for a while! (40 min for version 2023, 7 min for version 2025)
+
+# note that this could be made quicker with parallellization by working on
+# chunks of this data (see purrr::in_parallel)
 
 start_time <- Sys.time()
 
