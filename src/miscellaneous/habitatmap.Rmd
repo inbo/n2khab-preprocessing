@@ -85,7 +85,10 @@ sapply(habitatmap, function(x) sum(is.na(x)))
 There is one `<Null>` string in the INFO column.
 
 ```{r null-values}
-sapply(habitatmap |> st_drop_geometry(), function(x) sum(as.character(x) == '<Null>', na.rm = TRUE))
+sapply(
+  habitatmap |> st_drop_geometry(),
+  function(x) sum(as.character(x) == "<Null>", na.rm = TRUE)
+)
 ```
 
 ```{r}
@@ -100,7 +103,10 @@ habitatmap %>%
 Yes, but only in PHAB2, PHAB3, PHAB4, PHAB5.
 
 ```{r zero-values}
-sapply(habitatmap |> st_drop_geometry(), function(x) sum(as.character(x) == '0', na.rm = TRUE))
+sapply(
+  habitatmap |> st_drop_geometry(),
+  function(x) sum(as.character(x) == '0', na.rm = TRUE)
+)
 ```
 
 ## Are there empty strings instead of NA?
@@ -108,7 +114,10 @@ sapply(habitatmap |> st_drop_geometry(), function(x) sum(as.character(x) == '0',
 No empty strings (""):
 
 ```{r empty-strings}
-sapply(habitatmap |> st_drop_geometry(), function(x) sum(as.character(x) == '', na.rm = TRUE))
+sapply(
+  habitatmap |> st_drop_geometry(),
+  function(x) sum(as.character(x) == '', na.rm = TRUE)
+)
 ```
 
 ## Are there spaces instead of NA?
@@ -116,7 +125,10 @@ sapply(habitatmap |> st_drop_geometry(), function(x) sum(as.character(x) == '', 
 No spaces (one of more):
 
 ```{r spaces}
-sapply(habitatmap |> st_drop_geometry(), function(x) sum(grepl(pattern = "^\\s+$", x), na.rm = TRUE))
+sapply(
+  habitatmap |> st_drop_geometry(),
+  function(x) sum(grepl(pattern = "^\\s+$", x), na.rm = TRUE)
+)
 ```
 
 
@@ -139,7 +151,7 @@ list_habs <- n2khab::read_types()
 # long version with all the habitats in one column
 habitatmap_lg <- habitatmap %>% 
   st_drop_geometry() %>% 
-  select(TAG, starts_with("HAB")|starts_with("PHAB"), -HABLEGENDE) %>% 
+  select(TAG, starts_with("HAB") | starts_with("PHAB"), -HABLEGENDE) %>% 
   pivot_longer(cols = starts_with("HAB"), 
                names_to = "HABNR", 
                names_prefix = "HAB", 
