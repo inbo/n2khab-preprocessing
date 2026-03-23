@@ -29,8 +29,9 @@ opts_chunk$set(
 )
 ```
 
-
 # A few checks of the habitatmap data source
+
+We check version **habitatmap_2025**.
 
 
 ```{r read-habitatmap}
@@ -61,13 +62,14 @@ filepath %>%
 names(habitatmap)
 ```
 
-## A summary of the layer for version 2023
+## A summary of the layer
 
 ```{r summary-habitatmap}
 habitatmap %>% 
   st_drop_geometry %>% 
   summary
 ```
+
 Let us look for possible errors.
 
 ## Are there `NA` values?
@@ -80,32 +82,53 @@ sapply(habitatmap, function(x) sum(is.na(x)))
 
 ## Are there `<Null>` values?
 
-No `<Null>` string.
+There is one `<Null>` string in the INFO column.
 
 ```{r null-values}
-sapply(habitatmap |> st_drop_geometry(), function(x) sum(as.character(x) == '<Null>', na.rm = TRUE))
+sapply(
+  habitatmap |> st_drop_geometry(),
+  function(x) sum(as.character(x) == "<Null>", na.rm = TRUE)
+)
 ```
+
+```{r}
+habitatmap %>% 
+  st_drop_geometry() %>% 
+  filter(TAG == "595806_v2025")
+```
+
 
 ## Are there Zero (0) values?
 
 Yes, but only in PHAB2, PHAB3, PHAB4, PHAB5.
 
 ```{r zero-values}
-sapply(habitatmap |> st_drop_geometry(), function(x) sum(as.character(x) == '0', na.rm = TRUE))
+sapply(
+  habitatmap |> st_drop_geometry(),
+  function(x) sum(as.character(x) == '0', na.rm = TRUE)
+)
 ```
 
-## Are there empty strings or spaces instead of NA?
+## Are there empty strings instead of NA?
 
 No empty strings (""):
 
 ```{r empty-strings}
-sapply(habitatmap |> st_drop_geometry(), function(x) sum(as.character(x) == '', na.rm = TRUE))
+sapply(
+  habitatmap |> st_drop_geometry(),
+  function(x) sum(as.character(x) == '', na.rm = TRUE)
+)
 ```
+
+## Are there spaces instead of NA?
 
 No spaces (one of more):
 
 ```{r spaces}
-sapply(habitatmap |> st_drop_geometry(), function(x) sum(grepl(pattern = "^\\s+$", x), na.rm = TRUE))
+sapply(
+  habitatmap |> st_drop_geometry(),
+  function(x) sum(grepl(pattern = "^\\s+$", x), na.rm = TRUE)
+)
 ```
 
 
@@ -119,7 +142,7 @@ habitatmap$TAG %>% unique %>% length == nrow(habitatmap)
 
 ## Are the habitat codes correct?
 
-rbbvos+ should be rbbvos, the rest seems ok.
+All seems ok.
 
 ```{r check-types}
 # read standard types from n2khab
@@ -128,7 +151,7 @@ list_habs <- n2khab::read_types()
 # long version with all the habitats in one column
 habitatmap_lg <- habitatmap %>% 
   st_drop_geometry() %>% 
-  select(TAG, starts_with("HAB")|starts_with("PHAB"), -HABLEGENDE) %>% 
+  select(TAG, starts_with("HAB") | starts_with("PHAB"), -HABLEGENDE) %>% 
   pivot_longer(cols = starts_with("HAB"), 
                names_to = "HABNR", 
                names_prefix = "HAB", 
@@ -150,6 +173,9 @@ habitatmap_lg %>%
   anti_join(list_habs, by = c("HAB" = "type")) %>% 
   count(HAB) 
 ```
+
+"x" is used for unknown (for instance private domain)
+
 ## Is the sum of the pHAB 100%?
 
 There should not be any row returned with sum pHAB < 100% or > 100% 
@@ -206,20 +232,35 @@ st_crs(habitatmap)
 
 ## Validity of the geometries
 
+First we check that no empty geometries are present:
+
+```{r check-empty-geom}
+all(!is.na(st_dimension(habitatmap$geom)))
+```
+
 Let's inspect features with invalid or corrupt geometry:
 
 ```{r check-geometry}
-# can run for a while! (40 min for version 2023)
+# can run for a while! (40 min for version 2023, 7 min for version 2025)
+
+# note that this could be made quicker with parallellization by working on
+# chunks of this data (see purrr::in_parallel)
 
 start_time <- Sys.time()
 
 #st_is_valid(habitatmap) %>% table
 validities <- st_is_valid(habitatmap)
-invalid_geoms <- habitatmap[!validities | is.na(validities), ]
+# invalid but not NA
+invalid_geoms <- habitatmap[!is.na(validities) & validities == FALSE , ] %>% 
+  mutate(geom_valid = "invalid")
+# NA
+navalid_geoms <- habitatmap[is.na(validities), ] %>% 
+  mutate(geom_valid = "na")
+# invalid_geoms <- habitatmap[!validities | is.na(validities), ] # returns all invalid and NA
 end_time <- Sys.time()
 end_time - start_time
 
-# important: since we need 40 minutes to calculate invalid_geoms, it is probably not 
+# important: since we need several minutes to calculate invalid_geoms, it is probably not 
 # an option to use the same code as in read_watersurfaces
 # the calculation of n_invalid would be too slow, so probably better to drop the if
 # taken from read_watersurfaces: 
@@ -236,21 +277,24 @@ end_time - start_time
 ```
 
 ```{r count-invalid-geoms}
-st_is_valid(invalid_geoms, reason = TRUE) %>%
+st_is_valid(rbind(invalid_geoms, navalid_geoms), reason = TRUE) %>%
   as_tibble() %>%
-  filter(value != "Valid Geometry") %>% 
+  filter(is.na(value) | value != "Valid Geometry") %>% 
   mutate(problem = str_extract(string = value, 
                                 pattern = "[^\\[]+")) %>% 
-  count(problem) 
+  count(problem)
 
 ```
+
 The geometry invalidity is the consequence of self-intersecting rings, as a consequence of digitalization errors.
 
 Let us take a look at the invalid polygons:
 
 ```{r eval = FALSE}
 # only use this if there are not too many invalid polygons
-tm_shape(invalid_geoms) + tm_borders() + tm_facets(by = "TAG")
+tm_shape(invalid_geoms %>% mutate(TAG = factor(TAG))) +
+  tm_borders() +
+  tm_facets(by = "TAG")
 ```
 
 ```{r map-invalid-geoms}
