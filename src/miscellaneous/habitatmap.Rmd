@@ -273,13 +273,16 @@ st_is_valid(rbind(invalid_geoms, navalid_geoms), reason = TRUE) %>%
   count(problem)
 
 ```
+
 The geometry invalidity is the consequence of self-intersecting rings, as a consequence of digitalization errors.
 
 Let us take a look at the invalid polygons:
 
 ```{r eval = FALSE}
 # only use this if there are not too many invalid polygons
-tm_shape(invalid_geoms) + tm_borders() + tm_facets(by = "TAG")
+tm_shape(invalid_geoms %>% mutate(TAG = factor(TAG))) +
+  tm_borders() +
+  tm_facets(by = "TAG")
 ```
 
 ```{r map-invalid-geoms}
