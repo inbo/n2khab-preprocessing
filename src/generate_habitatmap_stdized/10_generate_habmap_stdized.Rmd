@@ -291,9 +291,7 @@ habmap_long_aggr <- habmap_long_aggr %>%
 habmap_types <- habmap_long_aggr %>%
   filter(!is.na(typelevel)) %>%
   select(polygon_id, type, certain, code_orig, phab) %>%
-  mutate(type = factor(type,
-    levels = levels(types$type)
-  )) %>%
+  mutate(type = factor(type, levels = levels(types$type))) %>%
   arrange(polygon_id, desc(phab))
 
 habmap_other_type <- habmap_long_aggr %>%
