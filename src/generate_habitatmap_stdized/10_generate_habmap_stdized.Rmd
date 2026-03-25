@@ -69,7 +69,6 @@ We also add a `description_orig` column to store original codes.
 habmap_sf <- habitatmap_sf %>%
   filter(!(hab1 == "gh" & phab1 == 100)) %>%
   mutate(
-    polygon_id = polygon_id, # unieke id
     description_orig = str_c(
       phab1, "% ", hab1,
       ifelse(is.na(hab2), "", str_c("; ", phab2, "% ", hab2)),
