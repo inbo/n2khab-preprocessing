@@ -234,9 +234,6 @@ check_double_type <- habmap_long %>%
 
 ```{r}
 habmap_long_aggr <- habmap_long %>%
-  # group_by(polygon_id, code, source_hab) %>%
-  #     mutate(n = n()) %>%
-  #   ungroup() %>%
   summarise(
     phab = sum(phab),
     code_orig = str_c(code_orig, collapse = "; "),
