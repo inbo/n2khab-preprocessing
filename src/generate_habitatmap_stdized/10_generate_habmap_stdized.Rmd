@@ -61,12 +61,9 @@ habitatmap_sf <- read_habitatmap(
 ```
 
 
-## Processing of the attribute table
+## Filter the data source according to habitat or rib types
 
-Every polygon in the habitat map can consist of maximum 5 different vegetation types. This information is stored in the columns 'HAB1', 'HAB2',..., 'HAB5' of the attribute table. The estimated fraction of each vegetation type within the polygons is stored in the columns 'PHAB1', 'PHAB2', ..., 'PHAB5'.
-
-We will convert the attribute table to a long format, so that every row contains one vegetation type.
-
+We also add a `description_orig` column to store original codes.
 
 ```{r select_polygons}
 habmap_sf <- habitatmap_sf %>%
@@ -83,6 +80,14 @@ habmap_sf <- habitatmap_sf %>%
   )
 ```
 
+
+## Processing the attribute table
+
+### Converting to long format
+
+Every polygon in the habitat map can consist of maximum 5 different vegetation types. This information is stored in the columns 'HAB1', 'HAB2',..., 'HAB5' of the attribute table. The estimated fraction of each vegetation type within the polygons is stored in the columns 'PHAB1', 'PHAB2', ..., 'PHAB5'.
+
+We will convert the attribute table to a long format, so that every row contains one vegetation type.
 
 ```{r long_format}
 habmap_longPHAB <- habmap_sf %>%
@@ -112,7 +117,7 @@ habmap_longHAB %>%
   scroll_box(height = "300px")
 ```
 
-## Correction of some of the codes in the Habitat map
+### Correction of some of the codes in the Habitat map
 
 Some polygons in the habitat map contain codes that do not correspond with the standardized list of habitat types. 
 We correct these codes to make processing of the habitat map more straightforward.
@@ -157,7 +162,7 @@ if (sum(habmap_correction$code %in% habmap_longHAB$code) > 0) {
 ```
 
 
-## Splitting codes that contain different types
+### Splitting codes that contain different types
 
 In several cases the code contains 2 or 3 possible vegetation types which are separated with a ','. 
 We will split the different possible vegetation types and create one row for each of them. 
@@ -248,7 +253,7 @@ habmap_long_aggr %>%
   filter(polygon_id == "357179_v2020")
 ```
 
-## Select vegetation types that belong to the standard list of habitat and rbb types  
+### Select vegetation types that belong to the standard list of habitat and rbb types  
 
 Table \@ref(tab:selectTypes) shows the records with habitat types that do not belong to the standard list of habitat and rbb types.
 
@@ -280,15 +285,40 @@ habmap_other_type %>%
   kable_styling()
 ```
 
+### Let 's have a quick look at the result
 
-## Select features that contain habitat or rbb types
+The ID of each polygon in the habitatmap contains the year in which the polygon
+was last updated.
+In the table below we show the number of records per type and per update year.
+
+```{r}
+habmap_types %>%
+  mutate(polygon_version = str_sub(polygon_id, start = -4)) %>%
+  summarise(
+    n_records = n(),
+    .by = c(type, polygon_version)
+  ) %>%
+  pivot_wider(
+    names_from = "polygon_version",
+    names_sort = TRUE,
+    values_from = "n_records",
+    values_fill = 0
+  ) %>%
+  arrange(type) %>% 
+  kable() %>%
+  kable_styling()
+```
+
+## Transforming the spatial object
+
+### Only select features that contain habitat or rib types
 
 ```{r}
 habmap_sf <- habmap_sf %>%
   filter(polygon_id %in% habmap_types$polygon_id)
 ```
 
-## Add the year for each feature
+### Add the assessment year and method for each feature
 
 ```{r sources}
 habmap_sf <- 
@@ -340,40 +370,15 @@ habmap_sf <-
   select(-source_for_year, -year_short, -method_abbrev)
 ```
 
-
-## Select specific columns
+### Select specific columns
 
 ```{r}
 habmap_types_sf <- habmap_sf %>%
   select(polygon_id, description_orig, year_assessment, method_assessment)
 ```
 
-## Let 's have a quick look at the result
 
-The ID of each polygon in the habitatmap contains the year in which the polygon
-was last updated.
-In the table below we show the number of records per type and per update year.
-
-```{r}
-habmap_types %>%
-  mutate(polygon_version = str_sub(polygon_id, start = -4)) %>%
-  summarise(
-    n_records = n(),
-    .by = c(type, polygon_version)
-  ) %>%
-  pivot_wider(
-    names_from = "polygon_version",
-    names_sort = TRUE,
-    values_from = "n_records",
-    values_fill = 0
-  ) %>%
-  arrange(type) %>% 
-  kable() %>%
-  kable_styling()
-```
-
-
-## Write results into a geopackage
+## Write results to a geopackage
 
 ```{r}
 dir.create(file.path(path, "20_processed/habitatmap_stdized"), recursive = TRUE)
