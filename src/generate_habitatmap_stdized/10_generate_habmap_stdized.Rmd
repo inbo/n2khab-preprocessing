@@ -22,11 +22,7 @@ checksums <-
   )) %>%
   mutate(
     filename = str_match(filepath, "(.+\\/)*(.+)")[, 3],
-    md5 = map(filepath, function(x) {
-      file(x) %>%
-        md5() %>%
-        str_c(collapse = "")
-    }) %>% as.character(),
+    md5 = unname(md5sum(filepath)),
     md5_ref = c(
       "12372851086ee8207407c86905426ee2",
       "59fadca0e8a3ce09fc19b2f0fa72009b",
@@ -48,7 +44,10 @@ kable(checksums) %>%
   kable_styling()
 
 if (!all.equal(checksums$md5, checksums$md5_ref)) {
-  stop(cat("The source map is NOT up to date ! Please check  the datasource. "))
+  stop(
+    "The data source is not at the right version! ",
+    "Please check the data source."
+  )
 }
 ```
 
