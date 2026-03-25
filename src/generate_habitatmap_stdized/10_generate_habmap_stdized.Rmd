@@ -7,49 +7,58 @@ The shapefile of the BWK and Natura 2000 habitat map of Flanders can be download
 To be sure we will use the correct version of the data source (habitatmap_2025), we will derive the md5 file checksums and compare it to the file checksums in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
 
 ```{r}
-
 path <- locate_n2khab_data()
 file <- "10_raw/habitatmap"
 
 mypath <- file.path(path, file)
 
 checksums <-
-    tibble(filepath = str_c(mypath, "/",
-        list.files(path = mypath,
-            recursive = TRUE)
-      )) %>%
-    mutate(filename = str_match(filepath, "(.+\\/)*(.+)")[,3],
-           md5 = map(filepath, function(x) {
-                           file(x) %>% md5 %>% str_c(collapse = '')
-                         }) %>% as.character,
-           md5_ref = c("12372851086ee8207407c86905426ee2",
-                       "59fadca0e8a3ce09fc19b2f0fa72009b",
-                      "f881f61a6c07741b58cb618d8bbb0b99",
-                      "1b9a4efa9b94d8906f9ff0903831abe0",
-                      "aa79a21216c16f7fe0263ed4ba907ed9",
-                      "7ff6cc0efbd34f4cfef52d73e466df0d"),
-           match = md5 == md5_ref) %>%
-    select(filename,
-           md5,
-           md5_ref,
-           match)
+  tibble(filepath = str_c(
+    mypath, "/",
+    list.files(
+      path = mypath,
+      recursive = TRUE
+    )
+  )) %>%
+  mutate(
+    filename = str_match(filepath, "(.+\\/)*(.+)")[, 3],
+    md5 = map(filepath, function(x) {
+      file(x) %>%
+        md5() %>%
+        str_c(collapse = "")
+    }) %>% as.character(),
+    md5_ref = c(
+      "12372851086ee8207407c86905426ee2",
+      "59fadca0e8a3ce09fc19b2f0fa72009b",
+      "f881f61a6c07741b58cb618d8bbb0b99",
+      "1b9a4efa9b94d8906f9ff0903831abe0",
+      "aa79a21216c16f7fe0263ed4ba907ed9",
+      "7ff6cc0efbd34f4cfef52d73e466df0d"
+    ),
+    match = md5 == md5_ref
+  ) %>%
+  select(
+    filename,
+    md5,
+    md5_ref,
+    match
+  )
 
 kable(checksums) %>%
   kable_styling()
 
 if (!all.equal(checksums$md5, checksums$md5_ref)) {
-    stop(cat("The source map is NOT up to date ! Please check  the datasource. "))
+  stop(cat("The source map is NOT up to date ! Please check  the datasource. "))
 }
 ```
 
 
 ```{r read_raw_data}
-
 habitatmap_sf <- read_habitatmap(
   file = file.path(locate_n2khab_data(), "10_raw/habitatmap"),
   filter_hab = FALSE,
-  fix_geom = TRUE)
-
+  fix_geom = TRUE
+)
 ```
 
 
@@ -61,35 +70,36 @@ We will convert the attribute table to a long format, so that every row contains
 
 
 ```{r select_polygons}
-
 habmap_sf <- habitatmap_sf %>%
-            filter(!(hab1 == "gh" & phab1 == 100)) %>%
-            mutate(polygon_id = polygon_id, # unieke id
-                   description_orig = str_c(phab1, "% ", hab1,
-                                      ifelse(is.na(hab2), "", str_c("; ", phab2, "% ", hab2)),
-                                      ifelse(is.na(hab3), "", str_c("; ", phab3, "% ", hab3)),
-                                      ifelse(is.na(hab4), "", str_c("; ", phab4, "% ", hab4)),
-                                      ifelse(is.na(hab5), "", str_c("; ", phab5, "% ", hab5)))) 
-
+  filter(!(hab1 == "gh" & phab1 == 100)) %>%
+  mutate(
+    polygon_id = polygon_id, # unieke id
+    description_orig = str_c(
+      phab1, "% ", hab1,
+      ifelse(is.na(hab2), "", str_c("; ", phab2, "% ", hab2)),
+      ifelse(is.na(hab3), "", str_c("; ", phab3, "% ", hab3)),
+      ifelse(is.na(hab4), "", str_c("; ", phab4, "% ", hab4)),
+      ifelse(is.na(hab5), "", str_c("; ", phab5, "% ", hab5))
+    )
+  )
 ```
 
 
 ```{r long_format}
-
 habmap_longPHAB <- habmap_sf %>%
-    st_drop_geometry() %>%
-    gather(phab1, phab2, phab3, phab4, phab5, key = "phabn", value = "phab") %>%
-    mutate(patch_id = str_sub(phabn, 5, 5)) %>%
-    select(polygon_id, patch_id, phab) %>%
-    filter(!is.na(phab))
+  st_drop_geometry() %>%
+  gather(phab1, phab2, phab3, phab4, phab5, key = "phabn", value = "phab") %>%
+  mutate(patch_id = str_sub(phabn, 5, 5)) %>%
+  select(polygon_id, patch_id, phab) %>%
+  filter(!is.na(phab))
 
 habmap_longHAB <- habmap_sf %>%
-    st_drop_geometry() %>%
-    select(polygon_id, polygon_area = area_m2, starts_with("hab"), - hab_legend) %>%
-    gather(hab1, hab2, hab3, hab4, hab5, key = "hab", value = "code") %>%
-    mutate(patch_id = substr(hab, 4, 4)) %>%
-    filter(!is.na(code)) %>%
-    filter(! code %in% c("gh", "x"))
+  st_drop_geometry() %>%
+  select(polygon_id, polygon_area = area_m2, starts_with("hab"), -hab_legend) %>%
+  gather(hab1, hab2, hab3, hab4, hab5, key = "hab", value = "code") %>%
+  mutate(patch_id = substr(hab, 4, 4)) %>%
+  filter(!is.na(code)) %>%
+  filter(!code %in% c("gh", "x"))
 
 habmap_HABsrc <- habmap_sf %>%
   st_drop_geometry() %>%
@@ -101,7 +111,7 @@ habmap_HABsrc <- habmap_sf %>%
     year = case_when(
       year_short < 90 ~ 2000 + year_short,
       year_short >= 90 ~ 1900 + year_short,
-      TRUE ~ NA_real_  
+      TRUE ~ NA_real_
     ),
     method = case_when(
       grepl("a", source_hab) ~ "Automatic translation",
@@ -121,10 +131,10 @@ Here are the vegetation codes used in this version of the habitatmap:
 
 ```{r showListHabitats}
 habmap_longHAB %>%
-  distinct(code) %>% 
-  arrange(code) %>% 
+  distinct(code) %>%
+  arrange(code) %>%
   kable(caption = "List codes in habitat map", label = NA) %>%
-  kable_styling() %>% 
+  kable_styling() %>%
   scroll_box(height = "300px")
 ```
 
@@ -136,7 +146,6 @@ Table \@ref(tab:codeCorrected) shows the corrected codes and the number of polyg
 
 
 ```{r }
-
 habmap_correction <- read_vc("habmap_correction/habmap_correction")
 
 overview_habmap_correction <- habmap_longHAB %>%
@@ -144,7 +153,6 @@ overview_habmap_correction <- habmap_longHAB %>%
   group_by(code, code_corrected) %>%
   summarise(n_polygons = n()) %>%
   ungroup()
-
 ```
 
 
@@ -155,20 +163,20 @@ overview_habmap_correction %>%
 ```
 
 ```{r}
-if(sum(habmap_correction$code %in% habmap_longHAB$code) > 0){
-
-    habmap_longHAB <- habmap_longHAB %>%
-        left_join(habmap_correction, by = "code") %>%
-        mutate(code_orig = code,
-            code = ifelse(is.na(code_corrected),
-                             code,
-                             code_corrected)) %>%
-        select(-code_corrected)
-    
-    } else {
-      
-      habmap_longHAB <- habmap_longHAB %>%
-        mutate(code_orig = code)
+if (sum(habmap_correction$code %in% habmap_longHAB$code) > 0) {
+  habmap_longHAB <- habmap_longHAB %>%
+    left_join(habmap_correction, by = "code") %>%
+    mutate(
+      code_orig = code,
+      code = ifelse(is.na(code_corrected),
+        code,
+        code_corrected
+      )
+    ) %>%
+    select(-code_corrected)
+} else {
+  habmap_longHAB <- habmap_longHAB %>%
+    mutate(code_orig = code)
 }
 ```
 
@@ -184,24 +192,26 @@ These are standing water bodies that contain both `rbbmr` and the habitat type.
 Therefore `certain` will be set to `TRUE` for both types included in `code`.
 
 ```{r}
-
 habmap_long <- habmap_longHAB %>%
-    left_join(habmap_longPHAB, by = c("polygon_id", "patch_id")) %>% 
-    left_join(habmap_HABsrc, by = c("polygon_id", "patch_id"))%>%
-    mutate(certain = !str_detect(code, ","),
-           certain = ifelse(code_orig %in% 
-                              c("3130_rbbmr", "3140_rbbmr", "3150_rbbmr", "3160_rbbmr"), 
-                            TRUE, 
-                            certain)) %>%
-    separate(code,
-             into = c("type1", "type2", "type3"),
-             sep = ",",
-             remove = FALSE) %>%
-    gather(type1, type2, type3, key = "ntype", value = "type") %>%
-    filter(!is.na(type)) %>%
-    filter(!(type %in% c("gh", "bos"))) %>%
-    select(-patch_id)
-
+  left_join(habmap_longPHAB, by = c("polygon_id", "patch_id")) %>%
+  left_join(habmap_HABsrc, by = c("polygon_id", "patch_id")) %>%
+  mutate(
+    certain = !str_detect(code, ","),
+    certain = ifelse(code_orig %in%
+      c("3130_rbbmr", "3140_rbbmr", "3150_rbbmr", "3160_rbbmr"),
+    TRUE,
+    certain
+    )
+  ) %>%
+  separate(code,
+    into = c("type1", "type2", "type3"),
+    sep = ",",
+    remove = FALSE
+  ) %>%
+  gather(type1, type2, type3, key = "ntype", value = "type") %>%
+  filter(!is.na(type)) %>%
+  filter(!(type %in% c("gh", "bos"))) %>%
+  select(-patch_id)
 ```
 
 Sometimes you get two records for the same type within the same habitatmap polygon.
@@ -219,7 +229,6 @@ In this case we will sum the phab-values and create one record for each type.
 + a certain and an uncertain record of the same type, for example:
 
 ```{r}
-
 example <- habmap_long %>%
   group_by(polygon_id, type) %>%
   filter(n() > 1) %>%
@@ -241,7 +250,6 @@ check_double_type <- habmap_long %>%
   mutate(n_type = n()) %>%
   ungroup() %>%
   filter(n_type > 1)
-  
 ```
 
 
@@ -250,11 +258,13 @@ habmap_long_aggr <- habmap_long %>%
   # group_by(polygon_id, code, source_hab) %>%
   #     mutate(n = n()) %>%
   #   ungroup() %>%
-    group_by(polygon_id, type, certain) %>%
-     summarise(phab = sum(phab),
-              code_orig = str_c(code_orig, collapse = "; "),
-              certain = all(certain)) %>%
-    ungroup() 
+  group_by(polygon_id, type, certain) %>%
+  summarise(
+    phab = sum(phab),
+    code_orig = str_c(code_orig, collapse = "; "),
+    certain = all(certain)
+  ) %>%
+  ungroup()
 ```
 See below the result of the aggregation for the first example. 
 
@@ -271,7 +281,6 @@ Good news!
 The table is empty
 
 ```{r selectTypes}
-
 types <- read_types() %>%
   select(type, typelevel, main_type, typeclass)
 
@@ -282,31 +291,29 @@ habmap_types <- habmap_long_aggr %>%
   filter(!is.na(typelevel)) %>%
   select(polygon_id, type, certain, code_orig, phab) %>%
   mutate(type = factor(type,
-                       levels = levels(types$type)
-                       )
-         ) %>%
+    levels = levels(types$type)
+  )) %>%
   arrange(polygon_id, desc(phab))
-  
+
 habmap_other_type <- habmap_long_aggr %>%
   filter(is.na(typelevel))
 
 habmap_other_type %>%
   select(polygon_id, type, certain, code_orig, phab) %>%
-  kable(caption = "Polygons with types that do not correspond with the standard list of types and rbb",
-        label = NA) %>%
+  kable(
+    caption = "Polygons with types that do not correspond with the standard list of types and rbb",
+    label = NA
+  ) %>%
   kable_styling()
-
 ```
 
 
 ## Select features that contain habitat or rbb types
 
 ```{r}
-
 habmap_types_sf <- habmap_sf %>%
   select(polygon_id, description_orig) %>%
   filter(polygon_id %in% habmap_types$polygon_id)
-
 ```
 
 ## Let 's have a quick look at the result
@@ -331,20 +338,21 @@ habmap_types %>%
 
 ```{r}
 dir.create(file.path(path, "20_processed/habitatmap_stdized"), recursive = TRUE)
-filepath <- file.path(path,"20_processed/habitatmap_stdized/habitatmap_stdized.gpkg")
+filepath <- file.path(path, "20_processed/habitatmap_stdized/habitatmap_stdized.gpkg")
 ```
 
 ```{r}
+st_write(habmap_types_sf,
+  filepath,
+  layer = "habitatmap_polygons",
+  driver = "GPKG",
+  delete_dsn = TRUE
+)
 
-st_write(habmap_types_sf, 
-         filepath, 
-         layer = "habitatmap_polygons", 
-         driver = "GPKG", 
-         delete_dsn = TRUE)
-
-st_write(habmap_types, 
-         filepath, 
-         layer = "habitatmap_types", 
-         driver = "GPKG", 
-         append = TRUE)
+st_write(habmap_types,
+  filepath,
+  layer = "habitatmap_types",
+  driver = "GPKG",
+  append = TRUE
+)
 ```
