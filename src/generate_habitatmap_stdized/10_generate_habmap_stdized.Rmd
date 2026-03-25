@@ -8,7 +8,7 @@ To be sure we will use the correct version of the data source (habitatmap_2025),
 
 ```{r}
 
-path <- fileman_up("n2khab_data")
+path <- locate_n2khab_data()
 file <- "10_raw/habitatmap"
 
 mypath <- file.path(path, file)
