@@ -35,7 +35,7 @@ We check version **habitatmap_2025**.
 
 
 ```{r read-habitatmap}
-filepath <- file.path(fileman_up("n2khab_data"),
+filepath <- file.path(locate_n2khab_data(),
                       "10_raw/habitatmap/habitatmap.shp")
 habitatmap <- st_read(filepath, layer = "habitatmap")
 
