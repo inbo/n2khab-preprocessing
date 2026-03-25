@@ -219,7 +219,7 @@ habmap_long %>%
 
 We will not aggregate the certain and uncertain record, because we will loose some information used to create `habitatmap_terr`. It is some of the uncertain records (such as `9120, gh`) are eliminated when processing `habitatmap_terr`. 
 
-```{r}
+```{r include=FALSE, eval=FALSE}
 check_double_type <- habmap_long %>%
   group_by(polygon_id, type) %>%
   mutate(n_type = n()) %>%
