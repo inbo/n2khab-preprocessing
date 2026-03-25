@@ -149,9 +149,11 @@ habmap_correction <- read_vc("habmap_correction/habmap_correction")
 
 overview_habmap_correction <- habmap_longHAB %>%
   inner_join(habmap_correction, by = "code") %>%
-  group_by(code, code_corrected) %>%
-  summarise(n_polygons = n()) %>%
-  ungroup()
+  summarise(
+    n_polygons = n(),
+    .by = c(code, code_corrected)
+  ) %>% 
+  arrange(code_corrected)
 ```
 
 
@@ -257,14 +259,14 @@ habmap_long_aggr <- habmap_long %>%
   # group_by(polygon_id, code, source_hab) %>%
   #     mutate(n = n()) %>%
   #   ungroup() %>%
-  group_by(polygon_id, type, certain) %>%
   summarise(
     phab = sum(phab),
     code_orig = str_c(code_orig, collapse = "; "),
-    certain = all(certain)
-  ) %>%
-  ungroup()
+    certain = all(certain),
+    .by = c(polygon_id, type, certain)
+  )
 ```
+
 See below the result of the aggregation for the first example. 
 
 ```{r}
@@ -324,10 +326,17 @@ In the table below we show the number of records per type and per update year.
 ```{r}
 habmap_types %>%
   mutate(polygon_version = str_sub(polygon_id, start = -4)) %>%
-  group_by(type, polygon_version) %>%
-  summarise(n_records = n()) %>%
-  ungroup() %>%
-  pivot_wider(names_from = "polygon_version", values_from = "n_records", values_fill = 0) %>%
+  summarise(
+    n_records = n(),
+    .by = c(type, polygon_version)
+  ) %>%
+  pivot_wider(
+    names_from = "polygon_version",
+    names_sort = TRUE,
+    values_from = "n_records",
+    values_fill = 0
+  ) %>%
+  arrange(type) %>% 
   kable() %>%
   kable_styling()
 ```
