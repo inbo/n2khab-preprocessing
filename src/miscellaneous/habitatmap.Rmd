@@ -212,6 +212,42 @@ habitatmap_lg %>%
 
 ```
 
+
+## Are HERKHAB codes OK?
+
+The included years look OK.
+
+```{r check-herkhab-1, paged.print = FALSE}
+habitatmap %>% 
+  st_drop_geometry() %>% 
+  as_tibble() %>% 
+  mutate(
+    year_hab = ifelse(
+      str_detect(HERKHAB, "^\\d{2}"),
+      str_sub(HERKHAB, 1, 2),
+      NA_character_
+    ) %>% 
+      as.integer()
+  ) %>% 
+  count(year_hab) %>% 
+  print(n = Inf)
+```
+
+We see one method ("n") which is not declared in the supporting report:
+
+```{r check-herkhab-2, paged.print = FALSE}
+habitatmap %>% 
+  st_drop_geometry() %>% 
+  as_tibble() %>% 
+  mutate(method = str_extract(
+    HERKHAB,
+    "^\\d*?([a-gi-ux-yA-GI-UX-Y]{1,2})",
+    group = 1
+  )) %>% 
+  count(method)
+```
+
+
 ## Is the CRS correct?
 
 Checking the CRS stated in the file as "`r st_crs(habitatmap)$input`": does it actually conform to the EPSG standard (in order to prevent CRS clashes in workflows)?
