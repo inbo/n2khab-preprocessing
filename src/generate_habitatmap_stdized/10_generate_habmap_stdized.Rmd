@@ -170,7 +170,6 @@ Therefore `certain` will be set to `TRUE` for both types included in `code`.
 ```{r}
 habmap_long <- habmap_longHAB %>%
   left_join(habmap_longPHAB, by = c("polygon_id", "patch_id")) %>%
-  left_join(habmap_HABsrc, by = c("polygon_id", "patch_id")) %>%
   mutate(
     certain = !str_detect(code, ","),
     certain = ifelse(code_orig %in%
@@ -282,42 +281,71 @@ habmap_other_type %>%
 ```
 
 
-## Add the year for each feature
-
-```{r sources}
-habmap_HABsrc <- habmap_sf %>%
-  st_drop_geometry() %>%
-  mutate(
-    year_short = case_when(
-      grepl("^\\d+$", source_hab) ~ suppressWarnings(as.numeric(str_sub(source_hab, 1, 2))),
-      TRUE ~ suppressWarnings(as.numeric(str_sub(source, 1, 2)))
-    ),
-    year = case_when(
-      year_short < 90 ~ 2000 + year_short,
-      year_short >= 90 ~ 1900 + year_short,
-      TRUE ~ NA_real_
-    ),
-    method = case_when(
-      grepl("a", source_hab) ~ "Automatic translation",
-      grepl("mk", source_hab) ~ "Manual translation",
-      grepl("ex", source_hab) ~ "External source",
-      grepl("l", source_hab) ~ "Literature",
-      grepl("o", source_hab) ~ "Orthophoto interpretation",
-      TRUE ~ "Field observation"
-    )
-  ) %>%
-  gather(phab1, phab2, phab3, phab4, phab5, key = "phabn", value = "phab") %>%
-  mutate(patch_id = str_sub(phabn, 5, 5)) %>%
-  select(polygon_id, patch_id, year, method)
-```
-
-
 ## Select features that contain habitat or rbb types
 
 ```{r}
-habmap_types_sf <- habmap_sf %>%
-  select(polygon_id, description_orig) %>%
+habmap_sf <- habmap_sf %>%
   filter(polygon_id %in% habmap_types$polygon_id)
+```
+
+## Add the year for each feature
+
+```{r sources}
+habmap_sf <- 
+  habmap_sf %>% 
+  mutate(
+    source_for_year = case_when(
+      str_detect(source_hab, "^\\d{2}") ~ "hab",
+      # only turn to BWK year if it the habitat type was translated
+      # automatically without further alteration
+      str_detect(source, "^\\d{2}") & 
+        str_detect(source_hab, "^\\d*?(a|A)") ~ "bwk",
+      .default = NA_character_
+      ) %>% 
+      factor(),
+    year_short = recode_values(
+      source_for_year,
+      "hab" ~ str_sub(source_hab, 1, 2),
+      "bwk" ~ str_sub(source, 1, 2),
+      ),
+    year_short = as.integer(year_short),
+    year_assessment = ifelse(
+      year_short < 90,
+      2000L + year_short,
+      1900L + year_short
+    ),
+    method_abbrev = 
+      str_extract(source_hab, "^\\d*?([a-gi-ux-yA-GI-UX-Y]{1,2})", group = 1),
+    method_assessment = case_when(
+      method_abbrev %in% c("A", "a") ~ "Automated translation from BWK",
+      method_abbrev == "mk" ~ "Translation adjusted xxxxxxx",
+      method_abbrev == "ex" ~ "External source",
+      method_abbrev == "l" ~ "Literature",
+      method_abbrev == "o" ~ "Orthophoto interpretation",
+      method_abbrev == "n" ~ "???",
+      is.na(source_for_year) ~ "Field observation but year is missing??",
+      .default = "Field observation"
+    ) %>% 
+      factor()
+  ) %>% 
+  # checking that no other methods occur
+  {
+    fieldobs <- filter(., str_detect(method_assessment, "Field"))
+    if (any(!is.na(fieldobs$method_abbrev))) {
+      stop("Unsupported method abbreviations detected in source_hab")
+    } else {
+      .
+    }
+  } %>% 
+  select(-source_for_year, -year_short, -method_abbrev)
+```
+
+
+## Select specific columns
+
+```{r}
+habmap_types_sf <- habmap_sf %>%
+  select(polygon_id, description_orig, year_assessment, method_assessment)
 ```
 
 ## Let 's have a quick look at the result
