@@ -99,31 +99,6 @@ habmap_longHAB <- habmap_sf %>%
   mutate(patch_id = substr(hab, 4, 4)) %>%
   filter(!is.na(code)) %>%
   filter(!code %in% c("gh", "x"))
-
-habmap_HABsrc <- habmap_sf %>%
-  st_drop_geometry() %>%
-  mutate(
-    year_short = case_when(
-      grepl("^\\d+$", source_hab) ~ suppressWarnings(as.numeric(str_sub(source_hab, 1, 2))),
-      TRUE ~ suppressWarnings(as.numeric(str_sub(source, 1, 2)))
-    ),
-    year = case_when(
-      year_short < 90 ~ 2000 + year_short,
-      year_short >= 90 ~ 1900 + year_short,
-      TRUE ~ NA_real_
-    ),
-    method = case_when(
-      grepl("a", source_hab) ~ "Automatic translation",
-      grepl("mk", source_hab) ~ "Manual translation",
-      grepl("ex", source_hab) ~ "External source",
-      grepl("l", source_hab) ~ "Literature",
-      grepl("o", source_hab) ~ "Orthophoto interpretation",
-      TRUE ~ "Field observation"
-    )
-  ) %>%
-  gather(phab1, phab2, phab3, phab4, phab5, key = "phabn", value = "phab") %>%
-  mutate(patch_id = str_sub(phabn, 5, 5)) %>%
-  select(polygon_id, patch_id, year, method)
 ```
 
 Here are the vegetation codes used in this version of the habitatmap:
@@ -304,6 +279,36 @@ habmap_other_type %>%
     label = NA
   ) %>%
   kable_styling()
+```
+
+
+## Add the year for each feature
+
+```{r sources}
+habmap_HABsrc <- habmap_sf %>%
+  st_drop_geometry() %>%
+  mutate(
+    year_short = case_when(
+      grepl("^\\d+$", source_hab) ~ suppressWarnings(as.numeric(str_sub(source_hab, 1, 2))),
+      TRUE ~ suppressWarnings(as.numeric(str_sub(source, 1, 2)))
+    ),
+    year = case_when(
+      year_short < 90 ~ 2000 + year_short,
+      year_short >= 90 ~ 1900 + year_short,
+      TRUE ~ NA_real_
+    ),
+    method = case_when(
+      grepl("a", source_hab) ~ "Automatic translation",
+      grepl("mk", source_hab) ~ "Manual translation",
+      grepl("ex", source_hab) ~ "External source",
+      grepl("l", source_hab) ~ "Literature",
+      grepl("o", source_hab) ~ "Orthophoto interpretation",
+      TRUE ~ "Field observation"
+    )
+  ) %>%
+  gather(phab1, phab2, phab3, phab4, phab5, key = "phabn", value = "phab") %>%
+  mutate(patch_id = str_sub(phabn, 5, 5)) %>%
+  select(polygon_id, patch_id, year, method)
 ```
 
 
