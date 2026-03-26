@@ -3458,7 +3458,7 @@
       "RemoteRepo": "n2khab",
       "RemoteUsername": "inbo",
       "RemoteRef": "update_for_habmap_2025",
-      "RemoteSha": "88790982f7f25f21ba25b7c89c91356243720b12",
+      "RemoteSha": "9d9fe4ef305b68837e847a6bde68168d4a172bba",
       "NeedsCompilation": "no",
       "Author": "Floris Vanderhaeghe [aut, cre] (ORCID: <https://orcid.org/0000-0002-6378-6229>), Toon Westra [aut] (ORCID: <https://orcid.org/0000-0003-2478-9459>), Cécile Herr [aut] (ORCID: <https://orcid.org/0000-0002-2833-6046>), Hans Van Calster [aut] (ORCID: <https://orcid.org/0000-0001-8595-8426>), Dries Adriaens [ctb] (ORCID: <https://orcid.org/0000-0002-7216-3111>), Maud Raman [ctb] (ORCID: <https://orcid.org/0000-0003-2116-4963>), Jan Wouters [ctb] (ORCID: <https://orcid.org/0000-0001-8200-9102>), Steven De Saeger [ctb] (ORCID: <https://orcid.org/0000-0002-5477-3063>), Els Lommelen [ctb] (ORCID: <https://orcid.org/0000-0002-3481-5684>), Luc Denys [ctb] (ORCID: <https://orcid.org/0000-0002-1841-6579>), An Leyssen [ctb] (ORCID: <https://orcid.org/0000-0003-3537-286X>), Patrik Oosterlynck [ctb] (ORCID: <https://orcid.org/0000-0002-5712-0770>), Jeroen Vanden Borre [ctb] (ORCID: <https://orcid.org/0000-0002-0153-7243>), Nathalie Cools [ctb] (ORCID: <https://orcid.org/0000-0002-7059-2318>), Bruno De Vos [ctb] (ORCID: <https://orcid.org/0000-0001-9523-3453>), Suzanna Lettens [ctb] (ORCID: <https://orcid.org/0000-0001-5032-495X>), Arne Verstraeten [ctb] (ORCID: <https://orcid.org/0000-0002-8813-1261>), Research Institute for Nature and Forest [cph]",
       "Maintainer": "Floris Vanderhaeghe <floris.vanderhaeghe@inbo.be>"
