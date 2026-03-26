@@ -359,9 +359,13 @@ habmap_sf <-
   ) %>% 
   # checking that no other methods occur
   {
-    fieldobs <- filter(., str_detect(method_assessment, "Field"))
+    fieldobs <- filter(
+      .,
+      str_detect(method_assessment, "Field"),
+      !str_detect(method_assessment, "external")
+    )
     if (any(!is.na(fieldobs$method_abbrev))) {
-      stop("Unsupported method abbreviations detected in source_hab")
+      stop("Unsupported method abbreviation detected in source_hab")
     } else {
       .
     }
