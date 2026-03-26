@@ -233,7 +233,7 @@ habitatmap %>%
   print(n = Inf)
 ```
 
-We see one method ("n") which is not declared in the supporting report:
+The included methods look OK.
 
 ```{r check-herkhab-2, paged.print = FALSE}
 habitatmap %>% 
@@ -241,7 +241,9 @@ habitatmap %>%
   as_tibble() %>% 
   mutate(method = str_extract(
     HERKHAB,
-    "^\\d*?([a-gi-ux-yA-GI-UX-Y]{1,2})",
+    # extract the methods, not the season-letters [vznw] that may be added to
+    # fieldwork years:
+    "^\\d*?([a-mo-ux-yA-MO-UX-Y]{1,2})",
     group = 1
   )) %>% 
   count(method)
