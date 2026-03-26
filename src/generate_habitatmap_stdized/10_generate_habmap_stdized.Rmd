@@ -346,13 +346,14 @@ habmap_sf <-
       str_extract(source_hab, "^\\d*?([a-mo-ux-yA-MO-UX-Y]{1,2})", group = 1),
     method_assessment = case_when(
       method_abbrev %in% c("A", "a") ~ "Automated translation from BWK",
-      method_abbrev == "mk" ~ "Translation adjusted xxxxxxx",
-      method_abbrev == "ex" ~ "External source",
-      method_abbrev == "l" ~ "Literature",
-      method_abbrev == "o" ~ "Orthophoto interpretation",
-      method_abbrev == "n" ~ "???",
-      is.na(source_for_year) ~ "Field observation but year is missing??",
-      .default = "Field observation"
+      method_abbrev == "mk" ~ 
+        "Adjustment of BWK-translation, based on field knowledge",
+      method_abbrev == "o" ~ 
+        "Adjustment of BWK-translation, based on orthophoto interpretation",
+      method_abbrev == "l" ~ "Assessment based on literature or extra files",
+      method_abbrev == "ex" ~ "Field assessment by an external expert",
+      is.na(source_for_year) ~ "Field assessment but year is missing??",
+      .default = "Field assessment"
     ) %>% 
       factor()
   ) %>% 
