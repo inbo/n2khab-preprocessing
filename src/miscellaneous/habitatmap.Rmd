@@ -35,7 +35,7 @@ We check version **habitatmap_2025**.
 
 
 ```{r read-habitatmap}
-filepath <- file.path(fileman_up("n2khab_data"),
+filepath <- file.path(locate_n2khab_data(),
                       "10_raw/habitatmap/habitatmap.shp")
 habitatmap <- st_read(filepath, layer = "habitatmap")
 
@@ -211,6 +211,44 @@ habitatmap_lg %>%
   nrow()
 
 ```
+
+
+## Are HERKHAB codes OK?
+
+The included years look OK.
+
+```{r check-herkhab-1, paged.print = FALSE}
+habitatmap %>% 
+  st_drop_geometry() %>% 
+  as_tibble() %>% 
+  mutate(
+    year_hab = ifelse(
+      str_detect(HERKHAB, "^\\d{2}"),
+      str_sub(HERKHAB, 1, 2),
+      NA_character_
+    ) %>% 
+      as.integer()
+  ) %>% 
+  count(year_hab) %>% 
+  print(n = Inf)
+```
+
+The included methods look OK.
+
+```{r check-herkhab-2, paged.print = FALSE}
+habitatmap %>% 
+  st_drop_geometry() %>% 
+  as_tibble() %>% 
+  mutate(method = str_extract(
+    HERKHAB,
+    # extract the methods, not the season-letters [vznw] that may be added to
+    # fieldwork years:
+    "^\\d*?([a-mo-ux-yA-MO-UX-Y]{1,2})",
+    group = 1
+  )) %>% 
+  count(method)
+```
+
 
 ## Is the CRS correct?
 
