@@ -341,7 +341,9 @@ habmap_sf <-
       1900L + year_short
     ),
     method_abbrev = 
-      str_extract(source_hab, "^\\d*?([a-gi-ux-yA-GI-UX-Y]{1,2})", group = 1),
+      # extract the methods, not the season-letters [vznw] that may be added to
+      # fieldwork years:
+      str_extract(source_hab, "^\\d*?([a-mo-ux-yA-MO-UX-Y]{1,2})", group = 1),
     method_assessment = case_when(
       method_abbrev %in% c("A", "a") ~ "Automated translation from BWK",
       method_abbrev == "mk" ~ "Translation adjusted xxxxxxx",
