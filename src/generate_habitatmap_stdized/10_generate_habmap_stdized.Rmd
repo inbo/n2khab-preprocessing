@@ -322,8 +322,8 @@ habmap_sf <-
   mutate(
     source_for_year = case_when(
       str_detect(source_hab, "^\\d{2}") ~ "hab",
-      # only turn to BWK year if it the habitat type was translated
-      # automatically without further alteration
+      # only turn to BWK year if the habitat type was translated automatically
+      # without further alteration
       str_detect(source, "^\\d{2}") & 
         str_detect(source_hab, "^\\d*?(a|A)") ~ "bwk",
       .default = NA_character_
