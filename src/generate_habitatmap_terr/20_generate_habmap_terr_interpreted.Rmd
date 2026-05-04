@@ -32,7 +32,7 @@ To be sure we will use the correct version of the data source (habitatmap_stdize
 
 ```{r}
 
-path <- fileman_up("n2khab_data")
+path <- locate_n2khab_data()
 file <- "20_processed/habitatmap_stdized"
 
 mypath <- file.path(path, file)
@@ -84,7 +84,7 @@ In some cases we'll need to refer to the source-map (from [Zenodo](https://doi.o
 Again we will check if it is the correct version (habitatmap_2025).
 
 ```{r}
-path <- fileman_up("n2khab_data")
+path <- locate_n2khab_data()
 file <- "10_raw/habitatmap"
 
 mypath <- file.path(path, file)
