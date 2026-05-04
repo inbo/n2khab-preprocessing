@@ -28,7 +28,7 @@ Startingpoint for the interpretation is the standardized version of the shapefil
 
 ### Standardized version
 
-To be sure we will use the correct version of the data source (habitatmap_stdized_2023_v1), we will derive the md5 file hashes and compare it to the file hashes in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
+To be sure we will use the correct version of the data source (habitatmap_stdized_2025_v1), we will derive the md5 file hashes and compare it to the file hashes in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
 
 ```{r}
 
@@ -46,7 +46,7 @@ hashes <-
            md5 = map(filepath, function(x) {
                            file(x) %>% md5 %>% str_c(collapse = '')
                          }) %>% as.character,
-           md5_ref = c("5e9a0cb2a53f88001796bd7457a343ac"),
+           md5_ref = c("b7a3e688be3a428885971ff423cbc683"),
            match = md5 == md5_ref) %>%
     select(filename,
            md5,
@@ -79,9 +79,9 @@ habmap_types <- habmap_stdized$habitatmap_types
 
 ### Source version
 
-In some cases we'll need to refer to the source-map (from [Zenodo](https://zenodo.org/records/10167695)).
+In some cases we'll need to refer to the source-map (from [Zenodo](https://doi.org/10.5281/zenodo.3354381)).
 
-Again we will check if it is the correct version (habitatmap_2023).
+Again we will check if it is the correct version (habitatmap_2025).
 
 ```{r}
 path <- fileman_up("n2khab_data")
@@ -98,12 +98,12 @@ hashes <-
            md5 = map(filepath, function(x) {
                            file(x) %>% md5 %>% str_c(collapse = '')
                          }) %>% as.character,
-           md5_ref = c("8d436686b2ad4bc9355bf1c403b5ba43",
-                       "358ff672c2fae48eba5bd09f8a671675",
-                      "f881f61a6c07741b58cb618d8bbb0b99",
-                      "8c6999e914d7f95948d84d5221f58e6f",
-                      "8e9c2c1ef888ce085e027d32f7c73b8c",
-                      "7ff6cc0efbd34f4cfef52d73e466df0d"),
+           md5_ref = c("12372851086ee8207407c86905426ee2",
+                       "59fadca0e8a3ce09fc19b2f0fa72009b",
+                       "f881f61a6c07741b58cb618d8bbb0b99",
+                       "1b9a4efa9b94d8906f9ff0903831abe0",
+                       "aa79a21216c16f7fe0263ed4ba907ed9",
+                       "7ff6cc0efbd34f4cfef52d73e466df0d"),
            match = md5 == md5_ref) %>%
     select(filename,
            md5,
