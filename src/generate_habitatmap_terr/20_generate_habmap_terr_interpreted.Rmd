@@ -332,13 +332,13 @@ watertypes <- data.frame("watertype" = c(
 
 habmap_polygons_water <-
   habmap_types_interpreted %>%
-  group_by(polygon_id) %>%
-  mutate(oppsum = sum(phab)) %>%
-  semi_join(watertypes, by = c("type" = "watertype")) %>%
-  group_by(polygon_id, oppsum) %>%
-  summarise(opp = sum(phab)) %>%
-  ungroup() %>%
-  filter(opp == oppsum)
+  mutate(
+    is_watertype = type %in% watertypes$watertype,
+    polhab_is_exclusive_watertypes = all(is_watertype),
+    .by = polygon_id
+  ) %>%
+  filter(polhab_is_exclusive_watertypes) %>%
+  distinct(polygon_id)
 
 habmap_polygons_interpreted <- habmap_polygons_interpreted %>%
   anti_join(habmap_polygons_water, by = join_by(polygon_id))
