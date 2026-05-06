@@ -361,6 +361,8 @@ For the terrestrial types it's about the following types
 |7140|7140_meso|
 |9130|9130_end|
 
+Additionally, if 6230 has been extracted from the original code "6230,6410", it is considered as subtype 6230_hmo.
+
 ```{r common subtypes}
 habmap_polygons_interpreted <- habmap_polygons_interpreted %>%
   mutate(description = str_replace_all(description, c(
@@ -372,6 +374,8 @@ habmap_polygons_interpreted <- habmap_polygons_interpreted %>%
   ))) %>%
   mutate(
     description = str_replace_all(description, c(
+      "6230,6410" = "6230_hmo,6410",
+      "6410,6230" = "6410,6230_hmo",
       "6410" = "6410_mo",
       "6430" = "6430_hf",
       "6510" = "6510_hu",
@@ -393,7 +397,8 @@ habmap_polygons_interpreted <- habmap_polygons_interpreted %>%
 habmap_types_interpreted <- habmap_types_interpreted %>%
   mutate(
     source = ifelse(
-      type %in% c("6410", "6430", "6510", "7140", "9130"),
+      type %in% c("6410", "6430", "6510", "7140", "9130") |
+        (code_orig %in% c("6410,6230", "6230,6410") & type == "6230"),
       "habitatmap_stdized + interpretation",
       source
     ),
@@ -403,6 +408,11 @@ habmap_types_interpreted <- habmap_types_interpreted %>%
       "6510" ~ "6510_hu",
       "7140" ~ "7140_meso",
       "9130" ~ "9130_end"
+    ),
+    type = ifelse(
+      code_orig %in% c("6410,6230", "6230,6410") & type == "6230",
+      "6230_hmo",
+      type
     )
   ) %>%
   mutate(
