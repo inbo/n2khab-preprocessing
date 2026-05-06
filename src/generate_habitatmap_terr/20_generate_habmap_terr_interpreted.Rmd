@@ -391,31 +391,20 @@ habmap_polygons_interpreted <- habmap_polygons_interpreted %>%
   mutate(source = as.factor(source))
 
 habmap_types_interpreted <- habmap_types_interpreted %>%
-  mutate(type = str_replace_all(type, c(
-    "6410_" = "641µ_",
-    "6430_" = "643µ_",
-    "6510_" = "651µ_",
-    "7140_" = "714µ_",
-    "9130_" = "913µ_"
-  ))) %>%
   mutate(
-    type = str_replace_all(type, c(
-      "6410" = "6410_mo",
-      "6430" = "6430_hf",
-      "6510" = "6510_hu",
-      "7140" = "7140_meso",
-      "9130" = "9130_end"
-    )),
-    source = case_when(
-      str_detect(type, "6410") ~ "habitatmap_stdized + interpretation",
-      str_detect(type, "6430") ~ "habitatmap_stdized + interpretation",
-      str_detect(type, "6510") ~ "habitatmap_stdized + interpretation",
-      str_detect(type, "7140") ~ "habitatmap_stdized + interpretation",
-      str_detect(type, "9130") ~ "habitatmap_stdized + interpretation",
-      TRUE ~ source
+    source = ifelse(
+      type %in% c("6410", "6430", "6510", "7140", "9130"),
+      "habitatmap_stdized + interpretation",
+      source
+    ),
+    type = replace_values(type,
+      "6410" ~ "6410_mo",
+      "6430" ~ "6430_hf",
+      "6510" ~ "6510_hu",
+      "7140" ~ "7140_meso",
+      "9130" ~ "9130_end"
     )
   ) %>%
-  mutate(type = str_replace_all(type, "µ_", "0_")) %>%
   mutate(
     type = as.factor(type),
     source = as.factor(source)
