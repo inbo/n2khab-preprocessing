@@ -392,7 +392,8 @@ habmap_polygons_interpreted <- habmap_polygons_interpreted %>%
     )
   ) %>%
   mutate(description = str_replace_all(description, "µ_", "0_")) %>%
-  mutate(source = as.factor(source))
+  mutate(source = as.factor(source)) %>% 
+  relocate(geom, .after = last_col())
 
 habmap_types_interpreted <- habmap_types_interpreted %>%
   mutate(
