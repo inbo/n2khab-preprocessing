@@ -17,35 +17,45 @@ Control the file hashes and read habitatmap_stdized.
 ```{r read processed habmap}
 path <- fileman_up("n2khab_data")
 file <- "20_processed/habitatmap_stdized"
-filepath <- str_c(file.path(path, file), "/",
-        # list.files(path = file.path(path, file), recursive = TRUE)
-        setdiff(list.files(path = file.path(path, file)), 
-                list.dirs(path = file.path(path, file), full.names = FALSE))
-      )
+filepath <- str_c(
+  file.path(path, file), "/",
+  # list.files(path = file.path(path, file), recursive = TRUE)
+  setdiff(
+    list.files(path = file.path(path, file)),
+    list.dirs(path = file.path(path, file), full.names = FALSE)
+  )
+)
 
 hashes <-
-    tibble(filepath) %>%
-    mutate(filename = basename(filepath),
-           md5 = map(filepath, function(x) {
-                           x %>% md5sum() %>% str_c(collapse = '')
-                         }) %>% as.character) %>% 
-           mutate(md5_ref = c("5e9a0cb2a53f88001796bd7457a343ac"), # version 2023_v1
-           match = md5 == md5_ref) %>%
-    select(filename,
-           md5,
-           md5_ref,
-           match)
+  tibble(filepath) %>%
+  mutate(
+    filename = basename(filepath),
+    md5 = map(filepath, function(x) {
+      x %>%
+        md5sum() %>%
+        str_c(collapse = "")
+    }) %>% as.character()
+  ) %>%
+  mutate(
+    md5_ref = c("5e9a0cb2a53f88001796bd7457a343ac"), # version 2023_v1
+    match = md5 == md5_ref
+  ) %>%
+  select(
+    filename,
+    md5,
+    md5_ref,
+    match
+  )
 
 kable(hashes) %>%
   kable_styling()
 
 if (!all.equal(hashes$md5, hashes$md5_ref)) {
-    stop(cat("The source map is NOT up to date ! Please check the datasource. "))
+  stop(cat("The source map is NOT up to date ! Please check the datasource. "))
 }
 
 # load standardized habitatmap (since version 2023: with corrected geometry)
-habmap <- read_habitatmap_stdized() 
-
+habmap <- read_habitatmap_stdized()
 ```
 
 ### Watersurfaces map
@@ -55,50 +65,59 @@ Control the file hashes and read watersurfaces.
 In previous versions (until v1.0) the watersurface map did not have an attribute that contained a unique id. Since v1.1 the WVLC attribute is unique and can be used as identifier (field polygon_id). 
 
 ```{r read watersurfaces map}
-
 path <- fileman_up("n2khab_data")
-file <- "10_raw/watersurfaces" 
-filepath <- str_c(file.path(path, file), "/",
-        # list.files(path = file.path(path, file), recursive = TRUE)
-        setdiff(list.files(path = file.path(path, file)), 
-                list.dirs(path = file.path(path, file), full.names = FALSE))
-      )
+file <- "10_raw/watersurfaces"
+filepath <- str_c(
+  file.path(path, file), "/",
+  # list.files(path = file.path(path, file), recursive = TRUE)
+  setdiff(
+    list.files(path = file.path(path, file)),
+    list.dirs(path = file.path(path, file), full.names = FALSE)
+  )
+)
 
 hashes <-
-    tibble(filepath) %>%
-    mutate(filename = basename(filepath),
-           md5 = map(filepath, function(x) {
-                           x %>% md5sum() %>% str_c(collapse = '')
-                         }) %>% as.character) %>% 
-           mutate(md5_ref = c("d862df5b5e9ee8a2de4c333a7dcd7645"), # version 2024
-           match = md5 == md5_ref) %>%
-    select(filename,
-           md5,
-           md5_ref,
-           match)
+  tibble(filepath) %>%
+  mutate(
+    filename = basename(filepath),
+    md5 = map(filepath, function(x) {
+      x %>%
+        md5sum() %>%
+        str_c(collapse = "")
+    }) %>% as.character()
+  ) %>%
+  mutate(
+    md5_ref = c("d862df5b5e9ee8a2de4c333a7dcd7645"), # version 2024
+    match = md5 == md5_ref
+  ) %>%
+  select(
+    filename,
+    md5,
+    md5_ref,
+    match
+  )
 
 kable(hashes) %>%
   kable_styling()
 
 if (!all.equal(hashes$md5, hashes$md5_ref)) {
-    stop(cat("The source map is NOT up to date ! Please check the datasource. "))
+  stop(cat("The source map is NOT up to date ! Please check the datasource. "))
 }
 
 # Official n2khab not updated yet, I work with an updated dev version installed with
 # remotes::install_github(repo="inbo/n2khab", ref = "bd784a5") #0.11.0.9000
 # and included in renv
 
-# load watersurfaces with corrected geometry 
-# (argument fix_geom available since n2khab 0.9.0) 
+# load watersurfaces with corrected geometry
+# (argument fix_geom available since n2khab 0.9.0)
 watersurfaces <- read_watersurfaces(fix_geom = TRUE)
 
 unique_id <- nrow(watersurfaces) == n_distinct(watersurfaces$polygon_id)
-#TRUE
+# TRUE
 # we will call this id polygon_id_ws
 
-watersurfaces <- watersurfaces %>% 
+watersurfaces <- watersurfaces %>%
   rename(polygon_id_ws = polygon_id)
-
 ```
 
 ## Habitatmap 2190_a
@@ -108,20 +127,17 @@ For habitat subtype 2190_a we select all water surfaces within habitat map polyg
 ### Selection of dune habitat polygons
 
 ```{r select dune habitat polygons}
-
 habitatmap_21xx_types <- habmap$habitatmap_types %>%
-  filter((str_sub(type, 1, 2) == "21")) 
+  filter((str_sub(type, 1, 2) == "21"))
 
 habitatmap_21xx_polygons <- habmap$habitatmap_polygons %>%
-  filter(polygon_id %in% habitatmap_21xx_types$polygon_id) 
+  filter(polygon_id %in% habitatmap_21xx_types$polygon_id)
 ```
 
 ### Selection of water surfaces that overlap with dune habitat polygons in habitat map
 
 ```{r}
-
-watersurfaces_21xx <- watersurfaces[habitatmap_21xx_polygons,]
-
+watersurfaces_21xx <- watersurfaces[habitatmap_21xx_polygons, ]
 ```
 
 
@@ -145,16 +161,15 @@ The intersection step could be hampered by a faulty geometry, so we could need t
 Let us check the geometry of the habitat map and watersurfaces for 21xx.
 
 ```{r inspect geometry 21xx}
-
 # habitatmap 21xx
-n_invalid_hms <- sum(!st_is_valid(habitatmap_21xx_polygons) | is.na(st_is_valid(habitatmap_21xx_polygons))) 
+n_invalid_hms <- sum(!st_is_valid(habitatmap_21xx_polygons) | is.na(st_is_valid(habitatmap_21xx_polygons)))
 # expected: 0 - since version 2023, habitatmap_stdized has its geometry corrected
 cat(paste0("Habitatmap 21xx: there are ", n_invalid_hms, " polygons with invalid geometry"))
 
 # watersurfaces 21xx
-n_invalid_ws <- sum(!st_is_valid(watersurfaces_21xx) | is.na(st_is_valid(watersurfaces_21xx))) 
+n_invalid_ws <- sum(!st_is_valid(watersurfaces_21xx) | is.na(st_is_valid(watersurfaces_21xx)))
 # expected: 0 - since version 1.2 and n2khab 0.9.0 we can import watersurfaces with a corrected geometry
-cat(paste0("Watersurfaces 21xx: there are ", n_invalid_ws," polygons with invalid geometry"))
+cat(paste0("Watersurfaces 21xx: there are ", n_invalid_ws, " polygons with invalid geometry"))
 ```
 
 #### Create 2190_a map 
@@ -163,59 +178,72 @@ Now we can proceed to the intersect and add the attributes listed above.
 
 ```{r}
 intersection_ws_21xx <- watersurfaces_21xx %>%
-    st_intersection(habitatmap_21xx_polygons) %>%
-    select(polygon_id_ws, polygon_id, description_orig)
+  st_intersection(habitatmap_21xx_polygons) %>%
+  select(polygon_id_ws, polygon_id, description_orig)
 
 watersurfaces_2190_a_types <- intersection_ws_21xx %>%
-    st_drop_geometry() %>%
-    # add 'description_orig' attribute
-    left_join(habitatmap_21xx_types, by = "polygon_id", relationship = "many-to-many") %>% 
-    rename(polygon_id_habitatmap = polygon_id) %>%
-    distinct(polygon_id_ws, polygon_id_habitatmap, description_orig) %>%
-    mutate(type = "2190_a") %>%
-    group_by(polygon_id_ws, type) %>%
-    summarise(polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
-           description_orig =  str_c(description_orig, collapse = "+")) %>%
-    ungroup() 
+  st_drop_geometry() %>%
+  # add 'description_orig' attribute
+  left_join(
+    habitatmap_21xx_types,
+    by = "polygon_id",
+    relationship = "many-to-many"
+  ) %>%
+  rename(polygon_id_habitatmap = polygon_id) %>%
+  distinct(polygon_id_ws, polygon_id_habitatmap, description_orig) %>%
+  mutate(type = "2190_a") %>%
+  group_by(polygon_id_ws, type) %>%
+  summarise(
+    polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
+    description_orig = str_c(description_orig, collapse = "+")
+  ) %>%
+  ungroup()
 
 # we will add the description_orig attribute to the object that contains the polygons (analogous to habitatmap_stdized)
 description <- watersurfaces_2190_a_types %>%
-    distinct(polygon_id_ws, polygon_id_habitatmap, description_orig)
+  distinct(polygon_id_ws, polygon_id_habitatmap, description_orig)
 
 watersurfaces_2190_a_polygons <- watersurfaces_21xx %>%
-    left_join(description, by = "polygon_id_ws") %>%
-    mutate(polygon_type = "watersurface map",
-           polygon_id = polygon_id_ws) %>%
-    select(polygon_id, polygon_id_ws, polygon_id_habitatmap, description_orig, polygon_type)
+  left_join(description, by = "polygon_id_ws") %>%
+  mutate(
+    polygon_type = "watersurface map",
+    polygon_id = polygon_id_ws
+  ) %>%
+  select(
+    polygon_id,
+    polygon_id_ws,
+    polygon_id_habitatmap,
+    description_orig,
+    polygon_type
+  )
 
 check_unique_polygon <- nrow(watersurfaces_2190_a_polygons) == n_distinct(watersurfaces_2190_a_polygons$geom)
 check_unique_polygon
 
 watersurfaces_2190_a_types <- watersurfaces_2190_a_types %>%
-    select(-description_orig) %>%
-    mutate(code_orig = NA,
-           certain = TRUE,
-           polygon_id = polygon_id_ws) %>%
-    select(polygon_id, code_orig, certain, type)
-
-
+  select(-description_orig) %>%
+  mutate(
+    code_orig = NA,
+    certain = TRUE,
+    polygon_id = polygon_id_ws
+  ) %>%
+  select(polygon_id, code_orig, certain, type)
 ```
 
 ## Create standing water (excl. 2190)
 
 ```{r}
-
 standing_water <- read_types() %>%
-    filter(tag_1 == "SW") %>%
-    filter(main_type != "2190")
+  filter(tag_1 == "SW") %>%
+  filter(main_type != "2190")
 
 habitatmap_standw_types <- habmap$habitatmap_types %>%
-  filter(type %in% standing_water$type) 
+  filter(type %in% standing_water$type)
 
 habitatmap_standw_polygons <- habmap$habitatmap_polygons %>%
   filter(polygon_id %in% habitatmap_standw_types$polygon_id)
 
-watersurfaces_standw <- watersurfaces[habitatmap_standw_polygons,] 
+watersurfaces_standw <- watersurfaces[habitatmap_standw_polygons, ]
 
 check_id <- n_distinct(watersurfaces_standw$polygon_id_ws) == nrow(watersurfaces_standw)
 check_id
@@ -235,12 +263,13 @@ But let's first check if all geometries are valid.
 ```{r inspect geometry}
 # watersurfaces 21xx
 n_invalid_hmsw <- sum(!st_is_valid(habitatmap_standw_polygons) | is.na(st_is_valid(habitatmap_standw_polygons))) # expected: 0
-cat(paste0("habitatmap_standw_polygons: there are ", n_invalid_hmsw," polygons with invalid geometry"))
+cat(paste0("habitatmap_standw_polygons: there are ", n_invalid_hmsw, " polygons with invalid geometry"))
 
 # watersurfaces_standw
-n_invalid_wssw <- sum(!st_is_valid(watersurfaces_standw) | is.na(st_is_valid(watersurfaces_standw))) # expected: 0
-cat(paste0("watersurfaces_standw: there are ", n_invalid_wssw," polygons with invalid geometry"))
-
+n_invalid_wssw <- sum(
+  !st_is_valid(watersurfaces_standw) | is.na(st_is_valid(watersurfaces_standw))
+) # expected: 0
+cat(paste0("watersurfaces_standw: there are ", n_invalid_wssw, " polygons with invalid geometry"))
 ```
 
 
@@ -250,39 +279,52 @@ Now we can proceed to the intersect and add the needed attributes.
 
 ```{r}
 intersection_ws_standw <- watersurfaces_standw %>%
-    st_intersection(habitatmap_standw_polygons) %>%
-    select(polygon_id_ws, polygon_id, description_orig)
+  st_intersection(habitatmap_standw_polygons) %>%
+  select(polygon_id_ws, polygon_id, description_orig)
 
 watersurfaces_standw_types <- intersection_ws_standw %>%
-    st_drop_geometry() %>%
-    left_join(habitatmap_standw_types, by = "polygon_id", relationship = "many-to-many") %>%
-    rename(polygon_id_habitatmap = polygon_id) %>%
-    distinct(polygon_id_ws, polygon_id_habitatmap, description_orig, code_orig, certain, type) %>%
-    group_by(polygon_id_ws, code_orig, certain, type) %>%
-    summarise(polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
-           description_orig =  str_c(description_orig, collapse = "+")) %>%
-    ungroup() %>%
-    group_by(polygon_id_ws) %>%
-    mutate(polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
-           description_orig =  str_c(description_orig, collapse = "+")) %>%
-    ungroup()
+  st_drop_geometry() %>%
+  left_join(
+    habitatmap_standw_types,
+    by = "polygon_id",
+    relationship = "many-to-many"
+  ) %>%
+  rename(polygon_id_habitatmap = polygon_id) %>%
+  distinct(
+    polygon_id_ws,
+    polygon_id_habitatmap,
+    description_orig,
+    code_orig,
+    certain,
+    type
+  ) %>%
+  group_by(polygon_id_ws, code_orig, certain, type) %>%
+  summarise(
+    polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
+    description_orig = str_c(description_orig, collapse = "+")
+  ) %>%
+  ungroup() %>%
+  group_by(polygon_id_ws) %>%
+  mutate(
+    polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
+    description_orig = str_c(description_orig, collapse = "+")
+  ) %>%
+  ungroup()
 
 description <- watersurfaces_standw_types %>%
-    distinct(polygon_id_ws, polygon_id_habitatmap, description_orig)
+  distinct(polygon_id_ws, polygon_id_habitatmap, description_orig)
 
 watersurfaces_standw_polygons <- watersurfaces_standw %>%
-    # filter(polygon_id_ws %in% watersurfaces_standw_types$polygon_id_ws) %>%
-    left_join(description, by = "polygon_id_ws") %>%
-    mutate(polygon_type = "watersurface map") %>%
-    select(polygon_id_ws, polygon_id_habitatmap, description_orig, polygon_type)
+  # filter(polygon_id_ws %in% watersurfaces_standw_types$polygon_id_ws) %>%
+  left_join(description, by = "polygon_id_ws") %>%
+  mutate(polygon_type = "watersurface map") %>%
+  select(polygon_id_ws, polygon_id_habitatmap, description_orig, polygon_type)
 
 check_unique_polygon <- nrow(watersurfaces_standw_polygons) == n_distinct(watersurfaces_standw_polygons$geom)
 check_unique_polygon
-    
+
 watersurfaces_standw_types <- watersurfaces_standw_types %>%
-    select(-description_orig)
-
-
+  select(-description_orig)
 ```
 
 
@@ -291,33 +333,36 @@ watersurfaces_standw_types <- watersurfaces_standw_types %>%
 We also select all habitat map polygons that do not intersect with the water surface map (see map below). 
 
 ```{r}
-
 habitatmap_standw_polygons_no_ws <- habitatmap_standw_polygons %>%
-    filter(!polygon_id %in% intersection_ws_standw$polygon_id) %>%
-    rename(polygon_id_habitatmap = polygon_id) %>%
-    mutate(polygon_id_ws = NA,
-           polygon_type = "habitatmap")
+  filter(!polygon_id %in% intersection_ws_standw$polygon_id) %>%
+  rename(polygon_id_habitatmap = polygon_id) %>%
+  mutate(
+    polygon_id_ws = NA,
+    polygon_type = "habitatmap"
+  )
 
 habitatmap_standw_types_no_ws <- habitatmap_standw_types %>%
-    filter(!polygon_id %in% intersection_ws_standw$polygon_id) %>%
-    mutate(polygon_id_habitatmap = polygon_id,
-           polygon_id_ws = NA) %>%
-    select(-phab)
-
+  filter(!polygon_id %in% intersection_ws_standw$polygon_id) %>%
+  mutate(
+    polygon_id_habitatmap = polygon_id,
+    polygon_id_ws = NA
+  ) %>%
+  select(-phab)
 ```
 
 
 
 ```{r, out.width='800px', out.height='500px'}
-
-leaflet(habitatmap_standw_polygons_no_ws %>%
-            st_transform(crs = 4326)) %>%
+leaflet(
+  habitatmap_standw_polygons_no_ws %>%
+    st_transform(crs = 4326)
+) %>%
   addTiles(group = "OSM (default)") %>%
-  addPolygons(popup = ~htmltools::htmlEscape(description_orig)) %>% 
+  addPolygons(popup = ~ htmltools::htmlEscape(description_orig)) %>%
   addLayersControl(
     baseGroups = c("OSM (default)", "Esri.WorldImagery"),
-    options = layersControlOptions(collapsed = FALSE)) 
-
+    options = layersControlOptions(collapsed = FALSE)
+  )
 ```
 
 
@@ -326,38 +371,39 @@ leaflet(habitatmap_standw_polygons_no_ws %>%
 ### Combine habitatmap polygons and water surface polygons
 
 ```{r}
-
 habmap_standw_types <- watersurfaces_standw_types %>%
-    bind_rows(habitatmap_standw_types_no_ws) %>%
-    mutate(polygon_id = ifelse(is.na(polygon_id_ws),
-                               as.character(polygon_id_habitatmap),
-                               as.character(polygon_id_ws))) %>%
-    select(polygon_id, everything())
+  bind_rows(habitatmap_standw_types_no_ws) %>%
+  mutate(polygon_id = ifelse(is.na(polygon_id_ws),
+    as.character(polygon_id_habitatmap),
+    as.character(polygon_id_ws)
+  )) %>%
+  select(polygon_id, everything())
 
 habmap_standw_polygons <- watersurfaces_standw_polygons %>%
-    rbind(habitatmap_standw_polygons_no_ws) %>%
-    mutate(polygon_id = ifelse(is.na(polygon_id_ws),
-                               as.character(polygon_id_habitatmap),
-                               as.character(polygon_id_ws))) %>%
-    select(polygon_id, polygon_id_ws, polygon_id_habitatmap, everything())
-    
+  rbind(habitatmap_standw_polygons_no_ws) %>%
+  mutate(polygon_id = ifelse(is.na(polygon_id_ws),
+    as.character(polygon_id_habitatmap),
+    as.character(polygon_id_ws)
+  )) %>%
+  select(polygon_id, polygon_id_ws, polygon_id_habitatmap, everything())
 ```
 
 ## Combine 31xx and 2190_a map
 
 ```{r}
 watersurfaces_hab_types <- habmap_standw_types %>%
-    bind_rows(watersurfaces_2190_a_types) %>%
-    select(polygon_id, code_orig, certain, type)
+  bind_rows(watersurfaces_2190_a_types) %>%
+  select(polygon_id, code_orig, certain, type)
 
 watersurfaces_hab_polygons <- habmap_standw_polygons %>%
-    rbind(watersurfaces_2190_a_polygons) %>%
-    group_by(polygon_id, polygon_id_ws) %>%
-    summarise(polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
-              description_orig = str_c(description_orig, collapse = "+")
-              ) %>%
-    ungroup() %>%
-    arrange(polygon_id_ws)
+  rbind(watersurfaces_2190_a_polygons) %>%
+  group_by(polygon_id, polygon_id_ws) %>%
+  summarise(
+    polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
+    description_orig = str_c(description_orig, collapse = "+")
+  ) %>%
+  ungroup() %>%
+  arrange(polygon_id_ws)
 
 check_unique_id <- nrow(watersurfaces_hab_polygons) == n_distinct(watersurfaces_hab_polygons$polygon_id)
 check_unique_id
@@ -370,29 +416,28 @@ check_unique_polygon
 ## Write results into a geopackage
 
 ```{r}
-
-if(!dir.exists(file.path(path, "20_processed/watersurfaces_hab"))){
-    
-    dir.create(file.path(path, "20_processed/watersurfaces_hab"), recursive = TRUE)
+if (!dir.exists(file.path(path, "20_processed/watersurfaces_hab"))) {
+  dir.create(file.path(path, "20_processed/watersurfaces_hab"), recursive = TRUE)
 }
 
-filepath <- file.path(path,"20_processed/watersurfaces_hab/watersurfaces_hab.gpkg")
-
+filepath <- file.path(path, "20_processed/watersurfaces_hab/watersurfaces_hab.gpkg")
 ```
 
 
 ```{r}
+st_write(
+  watersurfaces_hab_polygons,
+  filepath,
+  layer = "watersurfaces_hab_polygons",
+  driver = "GPKG",
+  delete_dsn = TRUE
+)
 
-st_write(watersurfaces_hab_polygons, 
-         filepath, 
-         layer = "watersurfaces_hab_polygons", 
-         driver = "GPKG", 
-         delete_dsn = TRUE)
-
-st_write(watersurfaces_hab_types, 
-         filepath, 
-         layer = "watersurfaces_hab_types", 
-         driver = "GPKG", 
-         append = TRUE)
-
+st_write(
+  watersurfaces_hab_types,
+  filepath,
+  layer = "watersurfaces_hab_types",
+  driver = "GPKG",
+  append = TRUE
+)
 ```

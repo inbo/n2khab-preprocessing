@@ -7,22 +7,22 @@ Based on habitatmap_stdized_2023_v1 and watersurfaces_2024
 Checksums:
 
 ```{r}
-c("xxh64", "md5", "sha256") %>% 
-  map_dfr(~tibble(algorithm = ., 
-                  checksum = checksum(filepath, .))) %>% 
-  kable
+c("xxh64", "md5", "sha256") %>%
+  map_dfr(~ tibble(
+    algorithm = .,
+    checksum = checksum(filepath, .)
+  )) %>%
+  kable()
 ```
 
 Read file:
 
 ```{r paged.print=FALSE, warning=FALSE}
-(pol <- read_sf(filepath, 
-                layer = "watersurfaces_hab_polygons"))
+(pol <- read_sf(filepath, layer = "watersurfaces_hab_polygons"))
 ```
 
 ```{r paged.print=FALSE, warning=FALSE}
-(types <- read_sf(filepath, 
-                layer = "watersurfaces_hab_types"))
+(types <- read_sf(filepath, layer = "watersurfaces_hab_types"))
 ```
 
 
@@ -46,15 +46,15 @@ nrow(check_polygon_id_polygons) == 0
 - Is the number of unique IDs in the dataframe the same as the number of polygons in the sf object? 
   
 ```{r} 
- types %>%  
-   distinct(polygon_id) %>%  
-   nrow == nrow(pol) 
+types %>%
+  distinct(polygon_id) %>%
+  nrow() == nrow(pol)
 ``` 
 
 - Is the CRS conform EPSG:31370?
 
 ```{r} 
- st_crs(pol) == st_crs(31370) 
+st_crs(pol) == st_crs(31370)
 ```
 
 - Are the geometries valid?
@@ -69,30 +69,35 @@ sum(!validities | is.na(validities)) == 0
 We load the previous version of watersurfaces_hab (version 5 based on watersurfaces_v1.2 and habitatmap_stdized_2023_v1)
 
 ```{r paged.print=FALSE, warning=FALSE}
-
-filepath_v5 <- file.path(path,"20_processed/_versions/watersurfaces_hab/watersurfaces_hab_v5/watersurfaces_hab.gpkg")
+filepath_v5 <- file.path(path, "20_processed/_versions/watersurfaces_hab/watersurfaces_hab_v5/watersurfaces_hab.gpkg")
 
 hashes <-
-    tibble(filepath_v5) %>%
-    mutate(filename = basename(filepath_v5),
-           md5 = map(filepath_v5, function(x) {
-                           x %>% md5sum() %>% str_c(collapse = '')
-                         }) %>% as.character) %>% 
-           mutate(md5_ref = c("e7d9930938f5111de33de6ecaec31a66"),
-           match = md5 == md5_ref) %>%
-    select(filename,
-           md5,
-           md5_ref,
-           match)
+  tibble(filepath_v5) %>%
+  mutate(
+    filename = basename(filepath_v5),
+    md5 = map(filepath_v5, function(x) {
+      x %>%
+        md5sum() %>%
+        str_c(collapse = "")
+    }) %>% as.character()
+  ) %>%
+  mutate(
+    md5_ref = c("e7d9930938f5111de33de6ecaec31a66"),
+    match = md5 == md5_ref
+  ) %>%
+  select(
+    filename,
+    md5,
+    md5_ref,
+    match
+  )
 
 if (!all.equal(hashes$md5, hashes$md5_ref)) {
-    stop(cat("The source map is NOT v5 ! Please check the datasource. "))
+  stop(cat("The source map is NOT v5 ! Please check the datasource. "))
 }
-  
-(pol_v5 <- read_sf(filepath_v5, 
-                layer = "watersurfaces_hab_polygons"))
-(types_v5 <- read_sf(filepath_v5, 
-                layer = "watersurfaces_hab_types"))
+
+(pol_v5 <- read_sf(filepath_v5, layer = "watersurfaces_hab_polygons"))
+(types_v5 <- read_sf(filepath_v5, layer = "watersurfaces_hab_types"))
 ```
 
 - Are there differences between version v5 and version v6 and where are they located?
@@ -103,20 +108,26 @@ Note that for a large number of records only polygon_habitatmap_id changes, but 
 ```{r}
 # polygons with polygon_id in v6 but not in version v5
 check_polygon_id_v6_v5 <- pol %>%
-  anti_join(pol_v5 %>%
-              st_drop_geometry(), 
-            by = c("polygon_id_habitatmap", "polygon_id_ws")) %>%
-  left_join(pol_v5 %>%
-              mutate(geom_text_v5 = st_as_text(geom)) %>%
-              st_drop_geometry() %>%
-              select(polygon_id, description_orig_v5 = description_orig, geom_text_v5), 
-            by = c("polygon_id")) %>%
-  mutate(new_polygon_id = !(polygon_id %in% pol_v5$polygon_id),
-         new_polygon_id_ws = !(polygon_id_ws %in% pol_v5$polygon_id_ws),
-         new_polygon_id_habitatmap = !(polygon_id_habitatmap %in% pol_v5$polygon_id_habitatmap),
-         description_orig_update = description_orig != description_orig_v5,
-         geom_text_v6 = st_as_text(geom),  
-         geom_update = geom_text_v6 != geom_text_v5)
+  anti_join(
+    pol_v5 %>%
+      st_drop_geometry(),
+    by = c("polygon_id_habitatmap", "polygon_id_ws")
+  ) %>%
+  left_join(
+    pol_v5 %>%
+      mutate(geom_text_v5 = st_as_text(geom)) %>%
+      st_drop_geometry() %>%
+      select(polygon_id, description_orig_v5 = description_orig, geom_text_v5),
+    by = c("polygon_id")
+  ) %>%
+  mutate(
+    new_polygon_id = !(polygon_id %in% pol_v5$polygon_id),
+    new_polygon_id_ws = !(polygon_id_ws %in% pol_v5$polygon_id_ws),
+    new_polygon_id_habitatmap = !(polygon_id_habitatmap %in% pol_v5$polygon_id_habitatmap),
+    description_orig_update = description_orig != description_orig_v5,
+    geom_text_v6 = st_as_text(geom),
+    geom_update = geom_text_v6 != geom_text_v5
+  )
 
 check_polygon_id_v6_v5 %>%
   st_drop_geometry() %>%
@@ -125,7 +136,6 @@ check_polygon_id_v6_v5 %>%
   ungroup() %>%
   kable() %>%
   kable_styling()
-
 ```
 
 We check some of the polygons for which the geometry has changed. 
@@ -148,8 +158,8 @@ check_geom %>%
   addTiles() %>%
   addPolygons(group = "v6") %>%
   addPolygons(data = check_geom_v5, color = "red", group = "v5") %>%
-   addLayersControl(
-   overlayGroups = c("v6 (blue)", "v5 (red)"),
+  addLayersControl(
+    overlayGroups = c("v6 (blue)", "v5 (red)"),
     options = layersControlOptions(collapsed = FALSE)
   )
 ```
@@ -159,12 +169,14 @@ check_geom %>%
 
 ```{r}
 check_polygon_id_v5_v6 <- pol_v5 %>%
-  anti_join(pol %>%
-              st_drop_geometry(), 
-            by = c("polygon_id_habitatmap", "polygon_id_ws")) %>%
+  anti_join(
+    pol %>%
+      st_drop_geometry(),
+    by = c("polygon_id_habitatmap", "polygon_id_ws")
+  ) %>%
   mutate(ws_removed = !(polygon_id_ws %in% pol$polygon_id_ws))
 
-nrow(check_polygon_id_v5_v6) 
+nrow(check_polygon_id_v5_v6)
 ```
 
 Here we show:
@@ -174,7 +186,6 @@ Here we show:
 
 
 ```{r}
-
 ws_new <- check_polygon_id_v6_v5 %>%
   filter(new_polygon_id_ws) %>%
   st_transform(crs = 4326)
@@ -185,14 +196,22 @@ ws_removed <- check_polygon_id_v5_v6 %>%
 
 leaflet() %>%
   addTiles(group = "OSM (default)") %>%
-  addPolygons(data = ws_new, 
-            group = "in v6 and not v5 (blue)",
-            popup = paste("polygon_id_habitatmap:", ws_new$polygon_id_habitatmap, "<br>",
-                           "polygon_id_ws:", ws_new$polygon_id_ws)) %>%
-  addPolygons(data = ws_removed, 
-            color = "black", group = "in v5 and not v6 (black)",
-            popup = paste("polygon_id_habitatmap:", ws_removed$polygon_id_habitatmap, "<br>",
-                           "polygon_id_ws:", ws_removed$polygon_id_ws)) %>% 
+  addPolygons(
+    data = ws_new,
+    group = "in v6 and not v5 (blue)",
+    popup = paste(
+      "polygon_id_habitatmap:", ws_new$polygon_id_habitatmap, "<br>",
+      "polygon_id_ws:", ws_new$polygon_id_ws
+    )
+  ) %>%
+  addPolygons(
+    data = ws_removed,
+    color = "black", group = "in v5 and not v6 (black)",
+    popup = paste(
+      "polygon_id_habitatmap:", ws_removed$polygon_id_habitatmap, "<br>",
+      "polygon_id_ws:", ws_removed$polygon_id_ws
+    )
+  ) %>%
   addLayersControl(
     overlayGroups = c("in v6 and not v5 (blue)", "in v5 and not v6 (black)"),
     options = layersControlOptions(collapsed = FALSE)
