@@ -448,11 +448,11 @@ watersurfaces_hab_polygons <- habmap_standw_polygons %>%
   ungroup() %>%
   arrange(polygon_id_ws)
 
-check_unique_id <- nrow(watersurfaces_hab_polygons) == n_distinct(watersurfaces_hab_polygons$polygon_id)
-check_unique_id
-
-check_unique_polygon <- nrow(watersurfaces_hab_polygons) == n_distinct(watersurfaces_hab_polygons$geom)
-check_unique_polygon
+stopifnot(nrow(watersurfaces_hab_polygons) == n_distinct(watersurfaces_hab_polygons$polygon_id))
+stopifnot(
+  check_unique_polygon <- nrow(watersurfaces_hab_polygons) ==
+    n_distinct(watersurfaces_hab_polygons$geom)
+)
 ```
 
 
