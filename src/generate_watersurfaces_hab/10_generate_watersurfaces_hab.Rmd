@@ -430,12 +430,6 @@ watersurfaces_hab_types <- habmap_standw_types %>%
 
 watersurfaces_hab_polygons <- habmap_standw_polygons %>%
   rbind(watersurfaces_2190_a_polygons) %>%
-  group_by(polygon_id, polygon_id_ws) %>%
-  summarise(
-    polygon_id_habitatmap = str_flatten(polygon_id_habitatmap, collapse = "+"),
-    description_orig = str_flatten(description_orig, collapse = "+")
-  ) %>%
-  ungroup() %>%
   arrange(polygon_id_ws)
 
 stopifnot(nrow(watersurfaces_hab_polygons) == n_distinct(watersurfaces_hab_polygons$polygon_id))
