@@ -147,13 +147,13 @@ For each watersurface (that is situated in coastal dune habitat) we create follo
 * polygon_id: we will use polygon_id_ws as polygon_id
 * polygon_type: to indicate the source of the polygon, either the watersurface map or the habitatmap
 
-To create the attributes 'polygon_id_habitatmap' and 'description_orig', we make a spatial intersection between the watersurfaces within  coastal dunes and the habitatmap. Next we summarise for each watersurface and paste the different polygon_id_habitatmap's and description_orig's.  
+To create the attributes 'polygon_id_habitatmap' and 'description_orig', we make a spatial join between the watersurfaces within  coastal dunes and the habitatmap. Next we summarise for each watersurface and paste the different polygon_id_habitatmap's and description_orig's.  
 
 
 
 #### Checking feature geometries
 
-The intersection step could be hampered by a faulty geometry, so we could need to fix it.
+The spatial join step could be hampered by a faulty geometry, so we could need to fix it.
 Let us check the geometry of the habitat map and watersurfaces for 21xx.
 
 Note: this check is only kept in for illustration.
@@ -173,15 +173,16 @@ cat(paste0("Watersurfaces 21xx: there are ", n_invalid_ws, " polygons with inval
 
 #### Create 2190_a map 
 
-Now we can proceed to the intersect and add the attributes listed above.
+Now we can proceed to the spatial join and add the attributes listed above.
 
 ```{r}
-intersection_ws_21xx <- watersurfaces_21xx %>%
-  st_intersection(habitatmap_21xx_polygons) %>%
-  select(polygon_id_ws, polygon_id, description_orig)
+ws_hab_21xx <- watersurfaces_21xx %>%
+  st_join(habitatmap_21xx_polygons, left = FALSE) %>%
+  st_drop_geometry() %>% 
+  select(polygon_id_ws, polygon_id, description_orig) %>% 
+  arrange(polygon_id_ws, polygon_id, description_orig)
 
-watersurfaces_2190_a_types <- intersection_ws_21xx %>%
-  st_drop_geometry() %>%
+watersurfaces_2190_a_types <- ws_hab_21xx %>%
   rename(polygon_id_habitatmap = polygon_id) %>%
   distinct(polygon_id_ws, polygon_id_habitatmap, description_orig) %>%
   mutate(type = "2190_a") %>%
@@ -242,7 +243,7 @@ check_id
 ```
 
 
-### Intersection water surfaces and standing water habitat
+### Spatial join of water surfaces and standing water habitat
 
 We create the water surface map with standing water habitat in a very similar way than the 2190_a map.
 
@@ -270,15 +271,16 @@ cat(paste0("watersurfaces_standw: there are ", n_invalid_wssw, " polygons with i
 
 #### Create map 
 
-Now we can proceed to the intersect and add the needed attributes.
+Now we can proceed to the spatial join and add the needed attributes.
 
 ```{r}
-intersection_ws_standw <- watersurfaces_standw %>%
-  st_intersection(habitatmap_standw_polygons) %>%
-  select(polygon_id_ws, polygon_id, description_orig)
+ws_hab_standw <- watersurfaces_standw %>%
+  st_join(habitatmap_standw_polygons, left = FALSE) %>%
+  st_drop_geometry() %>% 
+  select(polygon_id_ws, polygon_id, description_orig) %>% 
+  arrange(polygon_id_ws, polygon_id, description_orig)
 
-watersurfaces_standw_types <- intersection_ws_standw %>%
-  st_drop_geometry() %>%
+watersurfaces_standw_types <- ws_hab_standw %>%
   left_join(
     habitatmap_standw_types,
     by = "polygon_id",
@@ -329,7 +331,7 @@ We also select all habitat map polygons that do not intersect with the water sur
 
 ```{r}
 habitatmap_standw_polygons_no_ws <- habitatmap_standw_polygons %>%
-  filter(!polygon_id %in% intersection_ws_standw$polygon_id) %>%
+  filter(!polygon_id %in% ws_hab_standw$polygon_id) %>%
   rename(polygon_id_habitatmap = polygon_id) %>%
   mutate(
     polygon_id_ws = NA,
@@ -337,7 +339,7 @@ habitatmap_standw_polygons_no_ws <- habitatmap_standw_polygons %>%
   )
 
 habitatmap_standw_types_no_ws <- habitatmap_standw_types %>%
-  filter(!polygon_id %in% intersection_ws_standw$polygon_id) %>%
+  filter(!polygon_id %in% ws_hab_standw$polygon_id) %>%
   mutate(
     polygon_id_habitatmap = polygon_id,
     polygon_id_ws = NA
