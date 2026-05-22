@@ -145,7 +145,6 @@ For each watersurface (that is situated in coastal dune habitat) we create follo
 * polygon_id_habitatmap: the id of all habitatmap polygons that overlap with the watersurfaces. The different id's are separated with a '+'
 * description_orig: all unique habitat descriptions (description_orig attribute in habitatmap_stdized) of habitatmap polygons that overlap with the watersurfaces. The different descriptions are separated with a '+'.
 * polygon_id: we will use polygon_id_ws as polygon_id
-* polygon_type: to indicate the source of the polygon, either the watersurface map or the habitatmap
 
 To create the attributes 'polygon_id_habitatmap' and 'description_orig', we make a spatial join between the watersurfaces within  coastal dunes and the habitatmap. Next we summarise for each watersurface and paste the different polygon_id_habitatmap's and description_orig's.  
 
@@ -227,18 +226,14 @@ description <- watersurfaces_2190_a_types %>%
 
 watersurfaces_2190_a_polygons <- watersurfaces_21xx %>%
   left_join(description, by = "polygon_id_ws") %>%
-  mutate(
-    polygon_type = "watersurface map",
-    polygon_id = polygon_id_ws
-  ) %>%
+  mutate(polygon_id = polygon_id_ws) %>%
   select(
     polygon_id,
     polygon_id_ws,
     polygon_id_habitatmap,
     description_orig,
     year_assessment,
-    method_assessment,
-    polygon_type
+    method_assessment
   )
 
 check_unique_polygon <- nrow(watersurfaces_2190_a_polygons) == n_distinct(watersurfaces_2190_a_polygons$geom)
@@ -360,19 +355,15 @@ watersurfaces_standw_polygons <- watersurfaces_standw %>%
     relationship = "one-to-one",
     unmatched = "error"
   ) %>%
-  mutate(
-    # using polygon_id_ws for the overall polygon_id
-    polygon_id = polygon_id_ws,
-    polygon_type = "watersurface map"
-  ) %>%
+  # using polygon_id_ws for the overall polygon_id
+  mutate(polygon_id = polygon_id_ws) %>%
   select(
     polygon_id,
     polygon_id_ws,
     polygon_id_habitatmap,
     description_orig,
     year_assessment,
-    method_assessment,
-    polygon_type
+    method_assessment
   )
 
 # check polygon uniqueness
@@ -392,8 +383,7 @@ habitatmap_standw_polygons_no_ws <- habitatmap_standw_polygons %>%
   filter(!polygon_id %in% ws_hab_standw$polygon_id) %>%
   mutate(
     polygon_id_habitatmap = polygon_id,
-    polygon_id_ws = NA,
-    polygon_type = "habitatmap"
+    polygon_id_ws = NA
   )
 
 habitatmap_standw_types_no_ws <- habitatmap_standw_types %>%
