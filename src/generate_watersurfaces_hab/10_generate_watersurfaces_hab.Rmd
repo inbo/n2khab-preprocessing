@@ -179,22 +179,51 @@ Now we can proceed to the spatial join and add the attributes listed above.
 ws_hab_21xx <- watersurfaces_21xx %>%
   st_join(habitatmap_21xx_polygons, left = FALSE) %>%
   st_drop_geometry() %>% 
-  select(polygon_id_ws, polygon_id, description_orig) %>% 
-  arrange(polygon_id_ws, polygon_id, description_orig)
+  select(
+    polygon_id_ws,
+    polygon_id,
+    description_orig,
+    year_assessment,
+    method_assessment
+  ) %>% 
+  arrange(polygon_id_ws, polygon_id)
 
 watersurfaces_2190_a_types <- ws_hab_21xx %>%
   rename(polygon_id_habitatmap = polygon_id) %>%
-  distinct(polygon_id_ws, polygon_id_habitatmap, description_orig) %>%
+  distinct(
+    polygon_id_ws,
+    polygon_id_habitatmap,
+    description_orig,
+    year_assessment,
+    method_assessment
+  ) %>%
   mutate(type = "2190_a") %>%
   summarise(
     polygon_id_habitatmap = str_flatten(polygon_id_habitatmap, collapse = "+"),
     description_orig = str_flatten(description_orig, collapse = " + "),
+    year_assessment = str_flatten(
+      unique(year_assessment),
+      collapse = "+",
+      na.rm = TRUE
+    ),
+    method_assessment = str_flatten(
+      unique(method_assessment),
+      collapse = " + ",
+      na.rm = TRUE
+    ),
     .by = c(polygon_id_ws, type)
-  )
+  ) %>% 
+  mutate(across(c(year_assessment, method_assessment), \(x) na_if(x, "")))
 
 # we will add the description_orig attribute to the object that contains the polygons (analogous to habitatmap_stdized)
 description <- watersurfaces_2190_a_types %>%
-  distinct(polygon_id_ws, polygon_id_habitatmap, description_orig)
+  distinct(
+    polygon_id_ws,
+    polygon_id_habitatmap,
+    description_orig,
+    year_assessment,
+    method_assessment
+  )
 
 watersurfaces_2190_a_polygons <- watersurfaces_21xx %>%
   left_join(description, by = "polygon_id_ws") %>%
@@ -207,6 +236,8 @@ watersurfaces_2190_a_polygons <- watersurfaces_21xx %>%
     polygon_id_ws,
     polygon_id_habitatmap,
     description_orig,
+    year_assessment,
+    method_assessment,
     polygon_type
   )
 
@@ -214,7 +245,7 @@ check_unique_polygon <- nrow(watersurfaces_2190_a_polygons) == n_distinct(waters
 check_unique_polygon
 
 watersurfaces_2190_a_types <- watersurfaces_2190_a_types %>%
-  select(-description_orig) %>%
+  select(-description_orig, -year_assessment, -method_assessment) %>%
   mutate(
     code_orig = NA,
     certain = TRUE,
@@ -279,8 +310,14 @@ Now we can proceed to the spatial join and add the needed attributes.
 ws_hab_standw <- watersurfaces_standw %>%
   st_join(habitatmap_standw_polygons, left = FALSE) %>%
   st_drop_geometry() %>% 
-  select(polygon_id_ws, polygon_id, description_orig) %>% 
-  arrange(polygon_id_ws, polygon_id, description_orig)
+  select(
+    polygon_id_ws,
+    polygon_id,
+    description_orig,
+    year_assessment,
+    method_assessment
+  ) %>% 
+  arrange(polygon_id_ws, polygon_id)
 
 # deriving the types data frame
 watersurfaces_standw_types <- ws_hab_standw %>%
@@ -303,8 +340,19 @@ description <- ws_hab_standw %>%
   summarise(
     polygon_id_habitatmap = str_flatten(polygon_id_habitatmap, collapse = "+"),
     description_orig = str_flatten(description_orig, collapse = " + "),
+    year_assessment = str_flatten(
+      unique(year_assessment),
+      collapse = "+",
+      na.rm = TRUE
+    ),
+    method_assessment = str_flatten(
+      unique(method_assessment),
+      collapse = " + ",
+      na.rm = TRUE
+    ),
     .by = polygon_id_ws
-  )
+  ) %>% 
+  mutate(across(c(year_assessment, method_assessment), \(x) na_if(x, "")))
 watersurfaces_standw_polygons <- watersurfaces_standw %>%
   inner_join(
     description,
@@ -322,6 +370,8 @@ watersurfaces_standw_polygons <- watersurfaces_standw %>%
     polygon_id_ws,
     polygon_id_habitatmap,
     description_orig,
+    year_assessment,
+    method_assessment,
     polygon_type
   )
 
