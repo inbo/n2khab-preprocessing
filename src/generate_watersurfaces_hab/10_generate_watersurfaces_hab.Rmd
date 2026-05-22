@@ -274,54 +274,62 @@ cat(paste0("watersurfaces_standw: there are ", n_invalid_wssw, " polygons with i
 Now we can proceed to the spatial join and add the needed attributes.
 
 ```{r}
+# spatial relationship between watersurface and habitatmap polygons for standing
+# water types (excl 2190_a)
 ws_hab_standw <- watersurfaces_standw %>%
   st_join(habitatmap_standw_polygons, left = FALSE) %>%
   st_drop_geometry() %>% 
   select(polygon_id_ws, polygon_id, description_orig) %>% 
   arrange(polygon_id_ws, polygon_id, description_orig)
 
+# deriving the types data frame
 watersurfaces_standw_types <- ws_hab_standw %>%
   left_join(
     habitatmap_standw_types,
     by = "polygon_id",
     relationship = "many-to-many"
   ) %>%
-  rename(polygon_id_habitatmap = polygon_id) %>%
   distinct(
-    polygon_id_ws,
-    polygon_id_habitatmap,
-    description_orig,
+    # using polygon_id_ws for the overall polygon_id
+    polygon_id = polygon_id_ws,
     code_orig,
     certain,
     type
-  ) %>%
-  group_by(polygon_id_ws, code_orig, certain, type) %>%
+  )
+
+# deriving the polygons data frame
+description <- ws_hab_standw %>%
+  rename(polygon_id_habitatmap = polygon_id) %>%
   summarise(
     polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
-    description_orig = str_c(description_orig, collapse = " + ")
-  ) %>%
-  ungroup() %>%
-  group_by(polygon_id_ws) %>%
-  mutate(
-    polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
-    description_orig = str_c(description_orig, collapse = " + ")
-  ) %>%
-  ungroup()
-
-description <- watersurfaces_standw_types %>%
-  distinct(polygon_id_ws, polygon_id_habitatmap, description_orig)
-
+    description_orig = str_c(description_orig, collapse = " + "),
+    .by = polygon_id_ws
+  )
 watersurfaces_standw_polygons <- watersurfaces_standw %>%
-  # filter(polygon_id_ws %in% watersurfaces_standw_types$polygon_id_ws) %>%
-  left_join(description, by = "polygon_id_ws") %>%
-  mutate(polygon_type = "watersurface map") %>%
-  select(polygon_id_ws, polygon_id_habitatmap, description_orig, polygon_type)
+  inner_join(
+    description,
+    join_by(polygon_id_ws),
+    relationship = "one-to-one",
+    unmatched = "error"
+  ) %>%
+  mutate(
+    # using polygon_id_ws for the overall polygon_id
+    polygon_id = polygon_id_ws,
+    polygon_type = "watersurface map"
+  ) %>%
+  select(
+    polygon_id,
+    polygon_id_ws,
+    polygon_id_habitatmap,
+    description_orig,
+    polygon_type
+  )
 
-check_unique_polygon <- nrow(watersurfaces_standw_polygons) == n_distinct(watersurfaces_standw_polygons$geom)
-check_unique_polygon
-
-watersurfaces_standw_types <- watersurfaces_standw_types %>%
-  select(-description_orig)
+# check polygon uniqueness
+stopifnot(
+  nrow(watersurfaces_standw_polygons) == 
+    n_distinct(watersurfaces_standw_polygons$geom)
+)
 ```
 
 
