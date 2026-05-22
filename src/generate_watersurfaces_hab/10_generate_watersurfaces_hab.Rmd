@@ -15,7 +15,7 @@ To be sure we will use the correct version of the data sources (version 2023 for
 Control the file hashes and read habitatmap_stdized.
 
 ```{r read processed habmap}
-path <- fileman_up("n2khab_data")
+path <- locate_n2khab_data()
 file <- "20_processed/habitatmap_stdized"
 filepath <- str_c(
   file.path(path, file), "/",
@@ -65,7 +65,7 @@ Control the file hashes and read watersurfaces.
 In previous versions (until v1.0) the watersurface map did not have an attribute that contained a unique id. Since v1.1 the WVLC attribute is unique and can be used as identifier (field polygon_id). 
 
 ```{r read watersurfaces map}
-path <- fileman_up("n2khab_data")
+path <- locate_n2khab_data()
 file <- "10_raw/watersurfaces"
 filepath <- str_c(
   file.path(path, file), "/",
