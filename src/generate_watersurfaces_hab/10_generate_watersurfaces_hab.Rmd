@@ -156,6 +156,9 @@ To create the attributes 'polygon_id_habitatmap' and 'description_orig', we make
 The intersection step could be hampered by a faulty geometry, so we could need to fix it.
 Let us check the geometry of the habitat map and watersurfaces for 21xx.
 
+Note: this check is only kept in for illustration.
+Both `habitatmap_stdized` and the result of `read_watersurfaces(fix_geom = TRUE)` are already ensured to only contain valid geometries.
+
 ```{r inspect geometry 21xx}
 # habitatmap 21xx
 n_invalid_hms <- sum(!st_is_valid(habitatmap_21xx_polygons) | is.na(st_is_valid(habitatmap_21xx_polygons)))
@@ -255,6 +258,9 @@ For each water surface we will create a record for every standing water habitat 
 But let's first check if all geometries are valid. 
 
 #### Checking feature geometries
+
+Note: this check is only kept in for illustration.
+Both `habitatmap_stdized` and the result of `read_watersurfaces(fix_geom = TRUE)` are already ensured to only contain valid geometries.
 
 ```{r inspect geometry}
 # watersurfaces 21xx
