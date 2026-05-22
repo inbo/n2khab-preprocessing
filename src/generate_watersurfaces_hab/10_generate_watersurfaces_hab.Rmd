@@ -413,12 +413,11 @@ leaflet(
 
 ```{r}
 habmap_standw_types <- watersurfaces_standw_types %>%
-  bind_rows(habitatmap_standw_types_no_ws) %>%
-  select(polygon_id, everything())
+  bind_rows(habitatmap_standw_types_no_ws)
 
 habmap_standw_polygons <- watersurfaces_standw_polygons %>%
   rbind(habitatmap_standw_polygons_no_ws) %>%
-  select(polygon_id, polygon_id_ws, polygon_id_habitatmap, everything())
+  relocate(polygon_id, polygon_id_ws, polygon_id_habitatmap)
 ```
 
 ## Combine 31xx and 2190_a map
