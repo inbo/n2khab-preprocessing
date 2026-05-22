@@ -185,12 +185,11 @@ watersurfaces_2190_a_types <- intersection_ws_21xx %>%
   rename(polygon_id_habitatmap = polygon_id) %>%
   distinct(polygon_id_ws, polygon_id_habitatmap, description_orig) %>%
   mutate(type = "2190_a") %>%
-  group_by(polygon_id_ws, type) %>%
   summarise(
     polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
-    description_orig = str_c(description_orig, collapse = "+")
-  ) %>%
-  ungroup()
+    description_orig = str_c(description_orig, collapse = "+"),
+    .by = c(polygon_id_ws, type)
+  )
 
 # we will add the description_orig attribute to the object that contains the polygons (analogous to habitatmap_stdized)
 description <- watersurfaces_2190_a_types %>%
