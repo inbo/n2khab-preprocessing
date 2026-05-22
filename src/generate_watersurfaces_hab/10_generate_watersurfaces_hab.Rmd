@@ -390,18 +390,14 @@ We also select all habitat map polygons that do not intersect with the water sur
 ```{r}
 habitatmap_standw_polygons_no_ws <- habitatmap_standw_polygons %>%
   filter(!polygon_id %in% ws_hab_standw$polygon_id) %>%
-  rename(polygon_id_habitatmap = polygon_id) %>%
   mutate(
+    polygon_id_habitatmap = polygon_id,
     polygon_id_ws = NA,
     polygon_type = "habitatmap"
   )
 
 habitatmap_standw_types_no_ws <- habitatmap_standw_types %>%
   filter(!polygon_id %in% ws_hab_standw$polygon_id) %>%
-  mutate(
-    polygon_id_habitatmap = polygon_id,
-    polygon_id_ws = NA
-  ) %>%
   select(-phab)
 ```
 
@@ -428,18 +424,10 @@ leaflet(
 ```{r}
 habmap_standw_types <- watersurfaces_standw_types %>%
   bind_rows(habitatmap_standw_types_no_ws) %>%
-  mutate(polygon_id = ifelse(is.na(polygon_id_ws),
-    as.character(polygon_id_habitatmap),
-    as.character(polygon_id_ws)
-  )) %>%
   select(polygon_id, everything())
 
 habmap_standw_polygons <- watersurfaces_standw_polygons %>%
   rbind(habitatmap_standw_polygons_no_ws) %>%
-  mutate(polygon_id = ifelse(is.na(polygon_id_ws),
-    as.character(polygon_id_habitatmap),
-    as.character(polygon_id_ws)
-  )) %>%
   select(polygon_id, polygon_id_ws, polygon_id_habitatmap, everything())
 ```
 
