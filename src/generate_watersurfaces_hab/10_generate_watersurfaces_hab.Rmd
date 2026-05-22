@@ -327,6 +327,12 @@ watersurfaces_standw_types <- ws_hab_standw %>%
     code_orig,
     certain,
     type
+  ) %>%
+  # make unique by polygon_id & type: collapse code_orig and certain (#78)
+  summarise(
+    certain = any(certain),
+    code_orig = str_flatten(sort(unique(code_orig)), collapse = " + "),
+    .by = c("polygon_id", "type")
   )
 
 # deriving the polygons data frame
