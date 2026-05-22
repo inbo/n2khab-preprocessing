@@ -257,7 +257,7 @@ Note: this check is only kept in for illustration.
 Both `habitatmap_stdized` and the result of `read_watersurfaces(fix_geom = TRUE)` are already ensured to only contain valid geometries.
 
 ```{r inspect geometry}
-# watersurfaces 21xx
+# habitatmap standw
 n_invalid_hmsw <- sum(!st_is_valid(habitatmap_standw_polygons) | is.na(st_is_valid(habitatmap_standw_polygons))) # expected: 0
 cat(paste0("habitatmap_standw_polygons: there are ", n_invalid_hmsw, " polygons with invalid geometry"))
 
