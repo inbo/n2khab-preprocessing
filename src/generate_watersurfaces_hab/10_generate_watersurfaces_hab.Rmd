@@ -187,8 +187,8 @@ watersurfaces_2190_a_types <- ws_hab_21xx %>%
   distinct(polygon_id_ws, polygon_id_habitatmap, description_orig) %>%
   mutate(type = "2190_a") %>%
   summarise(
-    polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
-    description_orig = str_c(description_orig, collapse = " + "),
+    polygon_id_habitatmap = str_flatten(polygon_id_habitatmap, collapse = "+"),
+    description_orig = str_flatten(description_orig, collapse = " + "),
     .by = c(polygon_id_ws, type)
   )
 
@@ -301,8 +301,8 @@ watersurfaces_standw_types <- ws_hab_standw %>%
 description <- ws_hab_standw %>%
   rename(polygon_id_habitatmap = polygon_id) %>%
   summarise(
-    polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
-    description_orig = str_c(description_orig, collapse = " + "),
+    polygon_id_habitatmap = str_flatten(polygon_id_habitatmap, collapse = "+"),
+    description_orig = str_flatten(description_orig, collapse = " + "),
     .by = polygon_id_ws
   )
 watersurfaces_standw_polygons <- watersurfaces_standw %>%
@@ -404,8 +404,8 @@ watersurfaces_hab_polygons <- habmap_standw_polygons %>%
   rbind(watersurfaces_2190_a_polygons) %>%
   group_by(polygon_id, polygon_id_ws) %>%
   summarise(
-    polygon_id_habitatmap = str_c(polygon_id_habitatmap, collapse = "+"),
-    description_orig = str_c(description_orig, collapse = "+")
+    polygon_id_habitatmap = str_flatten(polygon_id_habitatmap, collapse = "+"),
+    description_orig = str_flatten(description_orig, collapse = "+")
   ) %>%
   ungroup() %>%
   arrange(polygon_id_ws)
