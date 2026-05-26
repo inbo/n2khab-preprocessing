@@ -64,6 +64,36 @@ validities <- st_is_valid(pol)
 sum(!validities | is.na(validities)) == 0
 ```
 
+- Are concatenated values contained in the polygons element composed of unique strings? This refers to <https://github.com/inbo/n2khab-preprocessing/issues/75>.
+
+```{r}
+pol %>% 
+  st_drop_geometry() %>% 
+  filter(if_any(-c(polygon_id, polygon_id_ws), \(x) str_detect(x, "\\+"))) %>% 
+  pivot_longer(
+    cols = -c(polygon_id, polygon_id_ws),
+    names_to = "variable",
+    values_to = "string"
+  ) %>% 
+  filter(!is.na(string)) %>% 
+  mutate(
+    unique_combs = map_lgl(string, function(x) {
+      pieces <- str_match(x, "(.+)(?:\\s?\\+\\s?)?(.+)")[, -1]
+      n_distinct(pieces) == length(pieces)
+    })
+  ) %>% 
+  .$unique_combs %>% 
+  all()
+```
+
+- Are the rows of the watersurfaces_hab_types table unique by polygon_id and type column?
+
+```{r}
+types %>% 
+  distinct(polygon_id, type) %>% 
+  nrow() == nrow(types)
+```
+
 ## Compare with the previous version 
 
 We load the previous version of watersurfaces_hab (version 6 based on watersurfaces_2024 and habitatmap_stdized_2023_v1)
