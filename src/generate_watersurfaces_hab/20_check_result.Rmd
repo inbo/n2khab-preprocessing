@@ -130,7 +130,21 @@ if (!identical(hashes$md5, hashes$md5_ref)) {
 (types_previous <- read_sf(filepath_previous, layer = "watersurfaces_hab_types"))
 ```
 
-- Are there differences between version v5 and version v6 and where are they located?
+
+Apparently the previous version uses MULTIPOLYGONs while the current uses POLYGONs:
+
+```{r}
+st_geometry_type(pol$geom) %>% unique() %>% as.character()
+st_geometry_type(pol_previous$geom) %>% unique() %>% as.character()
+```
+
+So we'd better convert them all to the same type before comparing:
+
+```{r}
+pol <- pol %>% st_cast("MULTIPOLYGON")
+```
+
+Are there differences between previous and current version and where are they located?
 
 In the table below we check the differences between both versions.
 Note that for a large number of records only polygon_habitatmap_id changes, but the geometry and the type description remain the same.
