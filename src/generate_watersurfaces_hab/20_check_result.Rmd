@@ -1,8 +1,8 @@
 # Check results
 
-## The new version v6
+## The new version v7
 
-Based on habitatmap_stdized_2023_v1 and watersurfaces_2024
+Based on habitatmap_stdized_2025_v1 and watersurfaces_2024
 
 Checksums:
 
@@ -66,7 +66,7 @@ sum(!validities | is.na(validities)) == 0
 
 ## Compare with the previous version 
 
-We load the previous version of watersurfaces_hab (version 5 based on watersurfaces_v1.2 and habitatmap_stdized_2023_v1)
+We load the previous version of watersurfaces_hab (version 6 based on watersurfaces_2024 and habitatmap_stdized_2023_v1)
 
 ```{r paged.print=FALSE, warning=FALSE}
 filepath_v5 <- file.path(path, "20_processed/_versions/watersurfaces_hab/watersurfaces_hab_v5/watersurfaces_hab.gpkg")
