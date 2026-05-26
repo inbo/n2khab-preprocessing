@@ -99,20 +99,20 @@ types %>%
 We load the previous version of watersurfaces_hab (version 6 based on watersurfaces_2024 and habitatmap_stdized_2023_v1)
 
 ```{r paged.print=FALSE, warning=FALSE}
-filepath_v5 <- file.path(path, "20_processed/_versions/watersurfaces_hab/watersurfaces_hab_v5/watersurfaces_hab.gpkg")
+filepath_previous <- file.path(path, "20_processed/_versions/watersurfaces_hab/watersurfaces_hab_v6/watersurfaces_hab.gpkg")
 
 hashes <-
-  tibble(filepath_v5) %>%
+  tibble(filepath_previous) %>%
   mutate(
-    filename = basename(filepath_v5),
-    md5 = map(filepath_v5, function(x) {
+    filename = basename(filepath_previous),
+    md5 = map(filepath_previous, function(x) {
       x %>%
         md5sum() %>%
         str_c(collapse = "")
     }) %>% as.character()
   ) %>%
   mutate(
-    md5_ref = c("e7d9930938f5111de33de6ecaec31a66"),
+    md5_ref = c("4f589b43c6d3d38e06ee3ea81e3d2058"),
     match = md5 == md5_ref
   ) %>%
   select(
@@ -126,8 +126,8 @@ if (!all.equal(hashes$md5, hashes$md5_ref)) {
   stop(cat("The source map is NOT v5 ! Please check the datasource. "))
 }
 
-(pol_v5 <- read_sf(filepath_v5, layer = "watersurfaces_hab_polygons"))
-(types_v5 <- read_sf(filepath_v5, layer = "watersurfaces_hab_types"))
+(pol_previous <- read_sf(filepath_previous, layer = "watersurfaces_hab_polygons"))
+(types_previous <- read_sf(filepath_previous, layer = "watersurfaces_hab_types"))
 ```
 
 - Are there differences between version v5 and version v6 and where are they located?
