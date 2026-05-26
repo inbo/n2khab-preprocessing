@@ -147,94 +147,99 @@ pol <- pol %>% st_cast("MULTIPOLYGON")
 Are there differences between previous and current version and where are they located?
 
 In the table below we check the differences between both versions.
-Note that for a large number of records only polygon_habitatmap_id changes, but the geometry and the type description remain the same.
 
 ```{r}
-# polygons with polygon_id in v6 but not in version v5
-check_polygon_id_v6_v5 <- pol %>%
+# polygons with polygon_id in current but not in previous version
+check_polygon_id_current_previous <- pol %>%
   anti_join(
-    pol_v5 %>%
+    pol_previous %>%
       st_drop_geometry(),
     by = c("polygon_id_habitatmap", "polygon_id_ws")
   ) %>%
   left_join(
-    pol_v5 %>%
-      mutate(geom_text_v5 = st_as_text(geom)) %>%
+    pol_previous %>%
+      mutate(geom_text_previous = st_as_text(geom)) %>%
       st_drop_geometry() %>%
-      select(polygon_id, description_orig_v5 = description_orig, geom_text_v5),
+      select(polygon_id, description_orig_previous = description_orig, geom_text_previous),
     by = c("polygon_id")
   ) %>%
   mutate(
-    new_polygon_id = !(polygon_id %in% pol_v5$polygon_id),
-    new_polygon_id_ws = !(polygon_id_ws %in% pol_v5$polygon_id_ws),
-    new_polygon_id_habitatmap = !(polygon_id_habitatmap %in% pol_v5$polygon_id_habitatmap),
-    description_orig_update = description_orig != description_orig_v5,
-    geom_text_v6 = st_as_text(geom),
-    geom_update = geom_text_v6 != geom_text_v5
+    new_polygon_id = !(polygon_id %in% pol_previous$polygon_id),
+    new_polygon_id_ws = !(polygon_id_ws %in% pol_previous$polygon_id_ws),
+    new_polygon_id_habitatmap = !(polygon_id_habitatmap %in% pol_previous$polygon_id_habitatmap),
+    description_orig_update = description_orig != description_orig_previous,
+    geom_text_current = st_as_text(geom),
+    geom_update = geom_text_current != geom_text_previous
   )
 
-check_polygon_id_v6_v5 %>%
+check_polygon_id_current_previous %>%
   st_drop_geometry() %>%
-  group_by(new_polygon_id, new_polygon_id_ws, new_polygon_id_habitatmap, geom_update, description_orig_update) %>%
-  summarise(n_records = n()) %>%
-  ungroup() %>%
+  count(
+    new_polygon_id,
+    new_polygon_id_ws,
+    new_polygon_id_habitatmap,
+    geom_update,
+    description_orig_update,
+    name = "n_records"
+  ) %>% 
   kable() %>%
   kable_styling()
 ```
 
-We check some of the polygons for which the geometry has changed. 
+The geometries haven't changed but there are differences in the descriptions 
+(which is perfectly plausible with a new version of the habitatmap).
 
-In this case there are only 2 polygons with modified geometry
-Changes are minor for Stappersven, and bigger extent for Houtsaegerduinen.
+Let us take a look at the modified descriptions:
 
 ```{r}
-check_geom <- check_polygon_id_v6_v5 %>%
-  filter(geom_update & !is.na(geom_update)) %>%
-  slice_head(n = 5) %>%
-  st_transform(4326)
-
-check_geom_v5 <- pol_v5 %>%
-  filter(polygon_id %in% check_geom$polygon_id) %>%
-  st_transform(4326)
-
-check_geom %>%
-  leaflet() %>%
-  addTiles() %>%
-  addPolygons(group = "v6") %>%
-  addPolygons(data = check_geom_v5, color = "red", group = "v5") %>%
-  addLayersControl(
-    overlayGroups = c("v6 (blue)", "v5 (red)"),
-    options = layersControlOptions(collapsed = FALSE)
-  )
+check_polygon_id_current_previous %>%
+  st_drop_geometry() %>% 
+  filter(description_orig_update) %>% 
+  select(
+    polygon_id,
+    polygon_id_ws,
+    description_orig_previous,
+    description_orig_current = description_orig
+  ) %>% 
+  kable() %>%
+  kable_styling() %>% 
+  scroll_box(height = "600px")
 ```
 
+There is a major effect of fixing duplicates and of the fact that the separator '+' is now surrounded by spaces.
 
-
+Number of `polygon_id` values unique to the previous version:
 
 ```{r}
-check_polygon_id_v5_v6 <- pol_v5 %>%
+check_polygon_id_previous_current <- pol_previous %>%
   anti_join(
     pol %>%
       st_drop_geometry(),
-    by = c("polygon_id_habitatmap", "polygon_id_ws")
+    join_by(polygon_id)
   ) %>%
   mutate(ws_removed = !(polygon_id_ws %in% pol$polygon_id_ws))
-
-nrow(check_polygon_id_v5_v6)
+nrow(check_polygon_id_previous_current)
 ```
 
-Here we show:
+Subset of the above where the corresponding `polygon_id_ws` is not at all represented in the current version.
+This is the number of actually dropped watersurfaces:
 
-+ new polygons from the watersurfaces layer that are included in `watersurfaces_hab_v6` (blue polygons)
-+ polygons from the watersurfaces layer that are removed in `watersurfaces_hab_v6` compared to `watersurfaces_hab_v5` (black polygons)
+```{r}
+sum(check_polygon_id_previous_current$ws_removed)
+```
+
+Below we show:
+
++ new polygons from the watersurfaces layer that are included in the current version of `watersurfaces_hab` (blue polygons)
++ polygons from the watersurfaces layer that are removed in the current version of `watersurfaces_hab` compared to the previous version (black polygons)
 
 
 ```{r}
-ws_new <- check_polygon_id_v6_v5 %>%
+ws_new <- check_polygon_id_current_previous %>%
   filter(new_polygon_id_ws) %>%
   st_transform(crs = 4326)
 
-ws_removed <- check_polygon_id_v5_v6 %>%
+ws_removed <- check_polygon_id_previous_current %>%
   filter(ws_removed) %>%
   st_transform(crs = 4326)
 
@@ -242,7 +247,7 @@ leaflet() %>%
   addTiles(group = "OSM (default)") %>%
   addPolygons(
     data = ws_new,
-    group = "in v6 and not v5 (blue)",
+    group = "in current and not previous (blue)",
     popup = paste(
       "polygon_id_habitatmap:", ws_new$polygon_id_habitatmap, "<br>",
       "polygon_id_ws:", ws_new$polygon_id_ws
@@ -250,14 +255,14 @@ leaflet() %>%
   ) %>%
   addPolygons(
     data = ws_removed,
-    color = "black", group = "in v5 and not v6 (black)",
+    color = "black", group = "in previous and not current (black)",
     popup = paste(
       "polygon_id_habitatmap:", ws_removed$polygon_id_habitatmap, "<br>",
       "polygon_id_ws:", ws_removed$polygon_id_ws
     )
   ) %>%
   addLayersControl(
-    overlayGroups = c("in v6 and not v5 (blue)", "in v5 and not v6 (black)"),
+    overlayGroups = c("in current and not previous (blue)", "in previous and not current (black)"),
     options = layersControlOptions(collapsed = FALSE)
   )
 ```
