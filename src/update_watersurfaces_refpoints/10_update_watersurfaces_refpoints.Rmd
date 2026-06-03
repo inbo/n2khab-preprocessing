@@ -149,9 +149,11 @@ wsh <-
 Checking that all polygons of the previous version of watersurfaces_hab are present in the previous version of watersurfaces_refpoints.
 
 ```{r}
-wsh_previous$watersurfaces_polygons %>% 
-  anti_join(refpoints_previous, join_by(polygon_id)) %>% 
-  nrow() == 0
+stopifnot(
+  wsh_previous$watersurfaces_polygons %>% 
+    anti_join(refpoints_previous, join_by(polygon_id)) %>% 
+    nrow() == 0
+)
 ```
 
 ### New polygon IDs
