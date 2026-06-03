@@ -193,8 +193,7 @@ refpoints_previous_sf <-
 Note however that we only accept points that are marked to be inside a polygon at the time of their creation.
 This is done to prevent that points outside the polygon that they represent can also be used to represent another (new) polygon that contains it.
 
-Indeed, it is possible that such mismatches would otherwise happen.
-If any are present, then this is shown by the following tibble.
+Checking whether (and which) mismatches would otherwise happen for illustration:
 
 ```{r paged.print = FALSE}
 wsh_new %>% 
@@ -208,7 +207,7 @@ wsh_new %>%
   st_drop_geometry()
 ```
 
-Before applying this in-polygon restriction in recycling existing reference points, we also want make sure that no polygons of `wsh_new` actually do match a polygon from the previous watersurfaces_hab version with an out-of-polygon reference point.
+Before applying this in-polygon restriction in recycling existing reference points, we also want to make sure that no polygons of `wsh_new` actually do match a polygon from the previous watersurfaces_hab version with an out-of-polygon reference point.
 If this occurs, we should still recycle that point for those cases and then this workflow needs updating.
 (The majority of out-of-polygon reference points in `refpoints_previous` effectively refers to a polygon still existing in the previous watersurfaces_hab version.)
 
