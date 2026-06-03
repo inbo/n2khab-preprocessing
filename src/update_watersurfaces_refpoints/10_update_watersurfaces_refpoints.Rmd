@@ -117,8 +117,7 @@ stopifnot(xxh64sum(wsh_path_previous) == xxh64sum_wsh_previous)
 wsh_previous <- 
   read_watersurfaces_hab(
     file = wsh_path_previous,
-    version = str_c("watersurfaces_hab_", previous_version),
-    interpreted = TRUE
+    version = str_c("watersurfaces_hab_", previous_version)
   )
 ```
 
@@ -143,8 +142,7 @@ stopifnot(xxh64sum(wsh_path_current) == xxh64sum_wsh_current)
 wsh <- 
   read_watersurfaces_hab(
     file = wsh_path_current,
-    version = str_c("watersurfaces_hab_", current_version),
-    interpreted = TRUE
+    version = str_c("watersurfaces_hab_", current_version)
   )
 ```
 
