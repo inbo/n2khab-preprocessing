@@ -369,6 +369,47 @@ refpoints_new
 ```
 
 
+## Constructing the current version of watersurfaces_refpoints
+
+Combining previous and new refpoints; potentially dropping 'interim' `polygon_id` values if the previous version is an interim version.
+
+Values for `polygon_id` can be accepted if they appear in `refpoints_last_regular` _or_ in the current version of watersurfaces_hab.
+
+We should not forget that some values from the current version of watersurfaces_hab may already be present in `refpoints_previous` even if it is an interim version, so we must start from `refpoints_previous` in compiling `refpoints_current`.
+
+```{r}
+refpoints_all <- 
+  refpoints_previous %>% 
+  bind_rows(refpoints_new)
+refpoints_last_regular <- 
+  read_vc("watersurfaces_refpoints", root = refpoints_path_last_regular) %>% 
+  as_tibble()
+accepted_polygon_ids <- 
+  refpoints_last_regular %>% 
+  select(polygon_id) %>% 
+  bind_rows(
+    wsh$watersurfaces_types %>% 
+      distinct(polygon_id)
+  ) %>% 
+  distinct(polygon_id) %>% 
+  pull(polygon_id)
+```
+
+Checking that all new refpoints have a `polygon_id` that can be accepted in a regular version.
+
+```{r}
+stopifnot(all(refpoints_new$polygon_id %in% accepted_polygon_ids))
+```
+
+Deriving the current (new) version of watersurfaces_refpoints by dropping the 'interim' `polygon_id` values from `refpoints_all`.
+
+```{r}
+refpoints_current <- 
+  refpoints_all %>% 
+  filter(polygon_id %in% accepted_polygon_ids) %>% 
+  arrange(polygon_id)
+```
+
 
 ## Writing new version of watersurfaces_refpoints
 
@@ -387,12 +428,12 @@ if (!dir.exists(refpoints_path_current)) {
 }
 ```
 
-Copying previous version into target directory, so that overwriting it with git2rdata will minimize diffs between versions.
+Copying last regular version into target directory, so that overwriting it with git2rdata will minimize diffs between versions.
 
 ```{r}
 file.copy(
   file.path(
-    refpoints_path_previous,
+    refpoints_path_last_regular,
     str_c("watersurfaces_refpoints",c(".tsv", ".yml"))),
   refpoints_path_current,
   overwrite = TRUE
@@ -402,9 +443,7 @@ file.copy(
 
 
 ```{r}
-refpoints_previous %>% 
-  bind_rows(refpoints_new) %>% 
-  arrange(polygon_id) %>% 
+refpoints_current %>% 
   write_vc(
     "watersurfaces_refpoints",
     root = refpoints_path_current,
