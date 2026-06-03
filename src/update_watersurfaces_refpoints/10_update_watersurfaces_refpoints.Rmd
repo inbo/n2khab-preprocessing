@@ -90,8 +90,8 @@ verify_file(
 Reading the previous version of watersurfaces_refpoints.
 
 ```{r paged.print = FALSE}
-refpoints_previous <- 
-  read_vc("watersurfaces_refpoints", root = refpoints_path_previous) %>% 
+refpoints_previous <-
+  read_vc("watersurfaces_refpoints", root = refpoints_path_previous) %>%
   as_tibble()
 refpoints_previous
 ```
@@ -114,7 +114,7 @@ wsh_path_previous <- file.path(
 # file version verification
 stopifnot(xxh64sum(wsh_path_previous) == xxh64sum_wsh_previous)
 # read
-wsh_previous <- 
+wsh_previous <-
   read_watersurfaces_hab(
     file = wsh_path_previous,
     version = str_c("watersurfaces_hab_", previous_version)
@@ -139,7 +139,7 @@ wsh_path_current <- file.path(
 # file version verification
 stopifnot(xxh64sum(wsh_path_current) == xxh64sum_wsh_current)
 # read
-wsh <- 
+wsh <-
   read_watersurfaces_hab(
     file = wsh_path_current,
     version = str_c("watersurfaces_hab_", current_version)
@@ -150,8 +150,8 @@ Checking that all polygons of the previous version of watersurfaces_hab are pres
 
 ```{r}
 stopifnot(
-  wsh_previous$watersurfaces_polygons %>% 
-    anti_join(refpoints_previous, join_by(polygon_id)) %>% 
+  wsh_previous$watersurfaces_polygons %>%
+    anti_join(refpoints_previous, join_by(polygon_id)) %>%
     nrow() == 0
 )
 ```
@@ -161,9 +161,9 @@ stopifnot(
 Listing new polygons in watersurfaces_hab according to `polygon_id`:
 
 ```{r paged.print = FALSE}
-wsh_new <- 
-  wsh$watersurfaces_polygons %>% 
-  select(polygon_id) %>% 
+wsh_new <-
+  wsh$watersurfaces_polygons %>%
+  select(polygon_id) %>%
   anti_join(refpoints_previous, join_by(polygon_id))
 wsh_new
 ```
@@ -185,7 +185,7 @@ For the above reason, we need to check which 'new polygons by `polygon_id`' spat
 Those polygons should adopt that point instead of receiving a new one.
 
 ```{r}
-refpoints_previous_sf <- 
+refpoints_previous_sf <-
   refpoints_previous %>%
   st_as_sf(coords = c("x", "y"), crs = 31370, remove = FALSE)
 ```
@@ -196,14 +196,14 @@ This is done to prevent that points outside the polygon that they represent can 
 Checking whether (and which) mismatches would otherwise happen for illustration:
 
 ```{r paged.print = FALSE}
-wsh_new %>% 
+wsh_new %>%
   st_join(
     refpoints_previous_sf %>%
       filter(!in_polygon) %>%
       select(polygon_id_previous = polygon_id),
     join = st_contains,
     left = FALSE
-  ) %>% 
+  ) %>%
   st_drop_geometry()
 ```
 
@@ -213,17 +213,17 @@ If this occurs, we should still recycle that point for those cases and then this
 
 ```{r}
 stopifnot(
-  wsh_new %>% 
+  wsh_new %>%
     st_join(
-      wsh_previous$watersurfaces_polygons %>% 
-        semi_join(refpoints_previous %>% filter(!in_polygon), join_by(polygon_id)) %>% 
-        select(polygon_id_previous = polygon_id) %>% 
-        st_sf(agr = "identity") %>% 
+      wsh_previous$watersurfaces_polygons %>%
+        semi_join(refpoints_previous %>% filter(!in_polygon), join_by(polygon_id)) %>%
+        select(polygon_id_previous = polygon_id) %>%
+        st_sf(agr = "identity") %>%
         st_point_on_surface(),
       join = st_contains,
       left = FALSE
-    ) %>% 
-    st_drop_geometry() %>% 
+    ) %>%
+    st_drop_geometry() %>%
     nrow() == 0
 )
 ```
@@ -234,8 +234,8 @@ stopifnot(
 Polygons with new `polygon_id` but existing reference point:
 
 ```{r paged.print = FALSE}
-wsh_new_point_exists_sf <- 
-  wsh_new %>% 
+wsh_new_point_exists_sf <-
+  wsh_new %>%
   st_join(
     refpoints_previous_sf %>%
       filter(in_polygon) %>%
@@ -253,25 +253,25 @@ wsh_new_point_exists_sf
 Checking whether the point to be adopted is unique.
 
 ```{r}
-wsh_new_point_exists_sf %>% 
-  st_drop_geometry() %>% 
-  count(polygon_id) %>% 
-  filter(n > 1) %>% 
+wsh_new_point_exists_sf %>%
+  st_drop_geometry() %>%
+  count(polygon_id) %>%
+  filter(n > 1) %>%
   nrow() == 0
 ```
 
 We can see that some polygons match multiple reference points, i.e. correspond to multiple polygons of the previous reference points version:
 
 ```{r paged.print = FALSE}
-wsh_new_point_exists_sf %>% 
+wsh_new_point_exists_sf %>%
   select(polygon_id, polygon_id_previous) %>%
-  st_drop_geometry() %>% 
+  st_drop_geometry() %>%
   mutate(
     nr_points = n(),
     .by = c(polygon_id)
-  ) %>% 
-  filter(nr_points > 1) %>% 
-  arrange(desc(nr_points)) %>% 
+  ) %>%
+  filter(nr_points > 1) %>%
+  arrange(desc(nr_points)) %>%
   print(n = Inf)
 ```
 
@@ -283,40 +283,40 @@ In these cases, we will choose the point according to the following successive f
 This will prefer regular `polygon_id_previous` values over interim ones (assuming that the latter begin with `"{"`).
 
 ```{r}
-wsh_new_point_exists <- 
-  wsh_new_point_exists_sf %>% 
-  st_sf(agr = "identity") %>% 
-  st_point_on_surface() %>% 
+wsh_new_point_exists <-
+  wsh_new_point_exists_sf %>%
+  st_sf(agr = "identity") %>%
+  st_point_on_surface() %>%
   mutate(
     x = st_coordinates(.)[, 1],
     y = st_coordinates(.)[, 2],
     distance = sqrt((x - x_previous)^2 + (y - y_previous)^2),
-    year_hms_previous = str_match(polygon_id_previous, "_v(\\d+)$")[, 2] %>% 
+    year_hms_previous = str_match(polygon_id_previous, "_v(\\d+)$")[, 2] %>%
       as.integer(),
     polygon_id = as.character(polygon_id)
-    ) %>% 
-  st_drop_geometry() %>% 
-  select(starts_with("polygon"), distance, year_hms_previous) %>% 
+  ) %>%
+  st_drop_geometry() %>%
+  select(starts_with("polygon"), distance, year_hms_previous) %>%
   filter(
     distance == min(distance),
     .by = polygon_id
-  ) %>% 
+  ) %>%
   # following step deliberately only leads to non-NA values if all values of
   # year_hms_previous in a group are non-NA (so we use the default na.rm =
   # FALSE)
   mutate(
     year_hms_previous_resolved = min(year_hms_previous),
     .by = polygon_id
-  ) %>% 
+  ) %>%
   filter(
     (is.na(year_hms_previous) & is.na(year_hms_previous_resolved)) |
       (!is.na(year_hms_previous) & year_hms_previous == year_hms_previous_resolved)
-  ) %>% 
-  arrange(polygon_id, polygon_id_previous) %>% 
+  ) %>%
+  arrange(polygon_id, polygon_id_previous) %>%
   filter(
     polygon_id_previous == first(polygon_id_previous),
     .by = polygon_id
-  ) %>% 
+  ) %>%
   select(polygon_id, polygon_id_previous)
 ```
 
@@ -324,9 +324,9 @@ Rechecking that the point to be adopted is unique.
 
 ```{r}
 stopifnot(
-  wsh_new_point_exists %>% 
-    count(polygon_id) %>% 
-    filter(n > 1) %>% 
+  wsh_new_point_exists %>%
+    count(polygon_id) %>%
+    filter(n > 1) %>%
     nrow() == 0
 )
 ```
@@ -342,27 +342,27 @@ They are composed of:
 - and totally new polygons, which receive a new point.
 
 ```{r paged.print = FALSE}
-refpoints_new <- 
-  wsh_new %>% 
+refpoints_new <-
+  wsh_new %>%
   st_join(
-    refpoints_previous_sf %>% 
-      filter(in_polygon) %>% 
+    refpoints_previous_sf %>%
+      filter(in_polygon) %>%
       # defining which point to take if multiple match:
       semi_join(
         wsh_new_point_exists,
         join_by(polygon_id == polygon_id_previous)
-      ) %>% 
+      ) %>%
       select(x, y),
     join = st_contains
-  ) %>% 
-  st_sf(agr = "identity") %>% 
-  st_point_on_surface() %>% 
+  ) %>%
+  st_sf(agr = "identity") %>%
+  st_point_on_surface() %>%
   mutate(
     x = ifelse(is.na(x), round(st_coordinates(.)[, 1], 2), x),
     y = ifelse(is.na(y), round(st_coordinates(.)[, 2], 2), y)
   ) %>%
-  st_drop_geometry() %>% 
-  mutate(in_polygon = TRUE) %>% 
+  st_drop_geometry() %>%
+  mutate(in_polygon = TRUE) %>%
   relocate(in_polygon, .after = polygon_id)
 refpoints_new
 ```
@@ -377,20 +377,20 @@ Values for `polygon_id` can be accepted if they appear in `refpoints_last_regula
 We should not forget that some values from the current version of watersurfaces_hab may already be present in `refpoints_previous` even if it is an interim version, so we must start from `refpoints_previous` in compiling `refpoints_current`.
 
 ```{r}
-refpoints_all <- 
-  refpoints_previous %>% 
+refpoints_all <-
+  refpoints_previous %>%
   bind_rows(refpoints_new)
-refpoints_last_regular <- 
-  read_vc("watersurfaces_refpoints", root = refpoints_path_last_regular) %>% 
+refpoints_last_regular <-
+  read_vc("watersurfaces_refpoints", root = refpoints_path_last_regular) %>%
   as_tibble()
-accepted_polygon_ids <- 
-  refpoints_last_regular %>% 
-  select(polygon_id) %>% 
+accepted_polygon_ids <-
+  refpoints_last_regular %>%
+  select(polygon_id) %>%
   bind_rows(
-    wsh$watersurfaces_types %>% 
+    wsh$watersurfaces_types %>%
       distinct(polygon_id)
-  ) %>% 
-  distinct(polygon_id) %>% 
+  ) %>%
+  distinct(polygon_id) %>%
   pull(polygon_id)
 ```
 
@@ -403,9 +403,9 @@ stopifnot(all(refpoints_new$polygon_id %in% accepted_polygon_ids))
 Deriving the current (new) version of watersurfaces_refpoints by dropping the 'interim' `polygon_id` values from `refpoints_all`.
 
 ```{r}
-refpoints_current <- 
-  refpoints_all %>% 
-  filter(polygon_id %in% accepted_polygon_ids) %>% 
+refpoints_current <-
+  refpoints_all %>%
+  filter(polygon_id %in% accepted_polygon_ids) %>%
   arrange(polygon_id)
 ```
 
@@ -433,23 +433,24 @@ Copying last regular version into target directory, so that overwriting it with 
 file.copy(
   file.path(
     refpoints_path_last_regular,
-    str_c("watersurfaces_refpoints",c(".tsv", ".yml"))),
+    str_c("watersurfaces_refpoints", c(".tsv", ".yml"))
+  ),
   refpoints_path_current,
   overwrite = TRUE
-) %>% 
+) %>%
   invisible()
 ```
 
 
 ```{r}
-refpoints_current %>% 
+refpoints_current %>%
   write_vc(
     "watersurfaces_refpoints",
     root = refpoints_path_current,
     sorting = "polygon_id",
     strict = FALSE,
     digits = 10
-  ) %>% 
+  ) %>%
   convert_line_endings(
     root = refpoints_path_current,
     silent = FALSE
