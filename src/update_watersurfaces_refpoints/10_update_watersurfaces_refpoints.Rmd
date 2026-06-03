@@ -5,64 +5,91 @@ Spatial attributes can always be added as needed, provided that the CRS is set c
 
 # Update the watersurfaces_refpoints data source
 
-Setting version specific information, defining what the 'previous' and 'current' version mean.
+## Define versions and verify files
+
+Setting version specific information, defining what the 'previous' and 'current' version mean, as well as the last regular and the last interim version, one of which will match the previous version.
+
 The current version refers to the version of watersurfaces_hab to be used to derive new points for watersurfaces_refpoints.
+The previous version can be an interim version as well, where point coordinates for new polygons have been defined already.
+We will not adopt 'interim' `polygon_id` values in (the upcoming regular version of) watersurfaces_refpoints -- i.e. values that can only be identified using the interim version of watersurfaces_hab.
+However we should reuse their associated point coordinates for polygons from the current version of watersurfaces_hab that have a spatial match.
 
 ```{r}
-previous_version <- "v5"
-current_version <- "v6"
-xxh64sum_refpoints_previous_tsv <- "8b74e5f80082595b"
-xxh64sum_refpoints_previous_yml <- "e8376d961a06e76a"
-xxh64sum_wsh_previous <- "bd860c4d8b2b1de7"
-xxh64sum_wsh_current <- "e2920c4932008387"
+previous_version <- "v6.1_interim"
+current_version <- "v7"
+last_regular_version <- "v6"
+last_interim_version <- "v6.1_interim"
+xxh64sum_refpoints_previous_tsv <- "6265212c91eca006"
+xxh64sum_refpoints_previous_yml <- "d7383155b7165697"
+xxh64sum_refpoints_last_regular_tsv <- "b075fbc80c0b55a4"
+xxh64sum_refpoints_last_regular_yml <- "308325c4f278404f"
+xxh64sum_refpoints_last_interim_tsv <- xxh64sum_refpoints_previous_tsv
+xxh64sum_refpoints_last_interim_yml <- xxh64sum_refpoints_previous_yml
+xxh64sum_wsh_previous <- "d35532db5c4b41ff"
+xxh64sum_wsh_current <- "832d8861293a5942"
 ```
 
-Locating `n2khab_data`.
+Locating `n2khab_data` and setting file paths.
+Note that the code requires a setup of `n2khab_data` that supports concurrent versions, by implementing approach \[3] of <https://github.com/inbo/n2khab/issues/113>.
 
 ```{r}
 n2khab_data_path <- locate_n2khab_data()
-```
-
-Note that the code requires a setup of `n2khab_data` that supports concurrent versions, by implementing approach \[3] of <https://github.com/inbo/n2khab/issues/113>.
-
-## Reading the previous versions of watersurfaces_refpoints and watersurfaces_hab
-
-Verifying and reading the previous version of watersurfaces_refpoints.
-
-```{r paged.print = FALSE}
-refpoints_path_previous <- file.path(
+refpoints_path_last_interim <- file.path(
   n2khab_data_path,
   str_c(
     "20_processed/_versions/watersurfaces_refpoints/watersurfaces_refpoints_",
-    previous_version
+    last_interim_version
   )
 )
+refpoints_path_last_regular <- file.path(
+  n2khab_data_path,
+  str_c(
+    "20_processed/_versions/watersurfaces_refpoints/watersurfaces_refpoints_",
+    last_regular_version
+  )
+)
+refpoints_path_previous <- refpoints_path_last_interim
+```
+
+File verification for the last interim and the last regular version of watersurfaces_refpoints.
+
+```{r paged.print = FALSE}
 # file version verification, including EOL conversion as needed
-if (
-  xxh64sum(file.path(refpoints_path_previous, "watersurfaces_refpoints.tsv")) !=
-    xxh64sum_refpoints_previous_tsv
-) {
-  convert_line_endings(
-    file.path(refpoints_path_previous, "watersurfaces_refpoints.tsv")
-  )
+verify_file <- function(dir, filename, ref_xxh64sum) {
+  filepath <- file.path(dir, filename)
+  if (xxh64sum(filepath) != ref_xxh64sum) {
+    convert_line_endings(filepath)
+  }
+  stopifnot(xxh64sum(filepath) == ref_xxh64sum)
 }
-stopifnot(
-  xxh64sum(file.path(refpoints_path_previous, "watersurfaces_refpoints.tsv")) ==
-    xxh64sum_refpoints_previous_tsv
+verify_file(
+  dir = refpoints_path_last_interim,
+  filename = "watersurfaces_refpoints.tsv",
+  ref_xxh64sum = xxh64sum_refpoints_last_interim_tsv
 )
-if (
-  xxh64sum(file.path(refpoints_path_previous, "watersurfaces_refpoints.yml")) !=
-    xxh64sum_refpoints_previous_yml
-) {
-  convert_line_endings(
-    file.path(refpoints_path_previous, "watersurfaces_refpoints.yml")
-  )
-}
-stopifnot(
-  xxh64sum(file.path(refpoints_path_previous, "watersurfaces_refpoints.yml")) ==
-    xxh64sum_refpoints_previous_yml
+verify_file(
+  dir = refpoints_path_last_interim,
+  filename = "watersurfaces_refpoints.yml",
+  ref_xxh64sum = xxh64sum_refpoints_last_interim_yml
 )
-# read as tibble
+verify_file(
+  dir = refpoints_path_last_regular,
+  filename = "watersurfaces_refpoints.tsv",
+  ref_xxh64sum = xxh64sum_refpoints_last_regular_tsv
+)
+verify_file(
+  dir = refpoints_path_last_regular,
+  filename = "watersurfaces_refpoints.yml",
+  ref_xxh64sum = xxh64sum_refpoints_last_regular_yml
+)
+```
+
+
+## Reading the previous versions of watersurfaces_refpoints and watersurfaces_hab
+
+Reading the previous version of watersurfaces_refpoints.
+
+```{r paged.print = FALSE}
 refpoints_previous <- 
   read_vc("watersurfaces_refpoints", root = refpoints_path_previous) %>% 
   as_tibble()
@@ -150,8 +177,6 @@ Another reason may be the unstable presence of habitat types and ribs in watersu
 
 For the above reason, we need to check which 'new polygons by `polygon_id`' spatially still match an existing reference point.
 Those polygons should adopt that point instead of receiving a new one.
-
-<!-- XXXX IN FUTURE, ALSO TAKE CARE TO ADDITIONALLY RECYCLE POINTS THAT HAVE BEEN DEFINED IN AN INTERIM VERSION, IF THE LATTER IS MORE RECENT THAN THE LAST REGULAR VERSION OF watersurfaces_hab !! -->
 
 ```{r}
 refpoints_previous_sf <- 
