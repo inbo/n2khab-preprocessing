@@ -129,8 +129,8 @@ DBI::dbDisconnect(con)
 
 ```{r}
 ws %>% 
-  st_drop_geometry %>% 
-  summary
+  st_drop_geometry() %>% 
+  summary()
 ```
 
 Compared to version 2024:
@@ -142,7 +142,7 @@ Let us look for a few typical errors more systematically.
 
 ### Are there `NA` values?
 
-There are plenty of `NA`'s but only in fields where we expect them.
+There are plenty of `NA`s but only in fields where we expect them.
 
 ```{r}
 sapply(ws, function(x) sum(is.na(x)))
