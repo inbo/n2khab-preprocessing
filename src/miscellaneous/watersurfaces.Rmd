@@ -415,24 +415,26 @@ ggplot() +
   geom_sf(data = sf_fl, fill = NA)
 ```
 
-<!-- ### Are all the watersurfaces in Flanders? -->
+### Do all the watersurfaces intersect Flanders?
 
-<!-- ```{r streams-in-fl} -->
-<!-- in_vl <- st_contains(x = sf_vl, y = ws) -->
+```{r in-fl}
+in_fl <- st_intersects(x = sf_fl, y = ws)
 
-<!-- not_contained <- ws %>%  -->
-<!--   st_drop_geometry() %>%  -->
-<!--   mutate(orig_rowname = rownames(.)) %>%  -->
-<!--   filter(!rownames(.) %in% in_vl[[1]]) -->
+not_in_flanders <- ws %>%
+  st_drop_geometry() %>%
+  mutate(orig_rowname = rownames(.)) %>%
+  filter(!rownames(.) %in% in_fl[[1]])
 
-<!-- # 61 watersurfaces -->
-<!-- print(not_contained %>% nrow()) -->
+nrow(not_in_flanders) == 0
+```
 
-<!-- not_contained %>%  -->
-<!--   distinct(WVLC, NAAM) %>%  -->
-<!--   kable() -->
-<!-- ``` -->
-<!-- 61 watersurfaces are not 'contained' within the polygon for Flanders (see list above) -->
+```{r in-fl2, echo = FALSE}
+if (nrow(not_in_flanders) > 0) {
+  not_in_flanders %>%
+  distinct(WVLC, NAAM) %>%
+  kable()
+}
+```
 
 # Tidyverse-styled, internationalized column names when using the data source in R
 
