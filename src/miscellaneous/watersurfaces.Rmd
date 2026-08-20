@@ -17,6 +17,7 @@ output:
 ```{r setup, message=FALSE, echo=FALSE}
 library(sf)
 library(dplyr)
+library(stringr)
 library(tmap)
 library(n2khab)
 library(ggplot2)
@@ -219,6 +220,22 @@ We can compare the levels for each factor variable with the information given in
 a draft metadata report.
 
 We do not check `NAAM` and `GEBIED` since there are many possible options.
+
+**WVLC**:
+
+We check whether the structure of `WVLC` is correct.
+
+- Does `WVLC` start with a province code?
+
+```{r}
+substr(levels(ws$WVLC),1 ,3) %>% unique()
+```
+
+- How many records with an unexpected length? (not 10 characters)?
+
+```{r}
+ws %>% filter(str_length(WVLC) != 10) %>% nrow()
+```
 
 **KRWTYPE**: the codes are correct but there are more codes mentioned in the metadata report.
 
