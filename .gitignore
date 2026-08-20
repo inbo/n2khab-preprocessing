@@ -2,6 +2,7 @@
 .Rhistory
 *.html
 !header.html
+*.RData
 *.tex
 !header.tex
 n2khab_data/
