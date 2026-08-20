@@ -409,19 +409,10 @@ Refer to <https://github.com/inbo/n2khab-preprocessing/issues/60> and <https://r
 ## Let's plot the watersurfaces as a map
 
 ```{r plot}
-
-# plot watersurfaces
- p <- ggplot() +
-  geom_sf(data = ws, aes(), color = "blue")
-
-# Flanders
-sf_vl <- read_admin_areas()
-
-p <- p + 
-  geom_sf(data = sf_vl, fill = NA)
-
-print(p)
-
+sf_fl <- read_admin_areas()
+ggplot() +
+  geom_sf(data = ws, aes(), color = "blue") + 
+  geom_sf(data = sf_fl, fill = NA)
 ```
 
 <!-- ### Are all the watersurfaces in Flanders? -->
