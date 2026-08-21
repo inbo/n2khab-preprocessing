@@ -359,7 +359,7 @@ ws_validity %>% table
 invalid_geoms <- ws[!ws_validity | is.na(ws_validity), ]
 ```
 
-Identifying the invalid geometries:
+Identifying invalid geometries:
 
 ```{r}
 invalid_geoms |> 
@@ -368,16 +368,20 @@ invalid_geoms |>
   st_drop_geometry()
 ```
 
-```{r}
+```{r, eval = nrow(invalid_geoms) > 0, echo = nrow(invalid_geoms) > 0}
 tm_shape(invalid_geoms) + tm_borders() + tm_facets(by = "WVLC")
 ```
 
-The geometry invalidity is the consequence of self-intersecting rings, as a consequence of digitalization errors.
+<!-- The geometry invalidity is the consequence of self-intersecting rings, as a consequence of digitalization errors. -->
 
-Let's compare with the same geoms after fixing the self-intersecting rings:
+<!-- Let's compare with the same geoms after fixing the self-intersecting rings: -->
 
 ```{r}
 valid_geoms <- st_make_valid(invalid_geoms)
+```
+
+
+```{r, eval = nrow(invalid_geoms) > 0, echo = nrow(invalid_geoms) > 0}
 tm_shape(valid_geoms) + tm_borders() + tm_facets(by = "WVLC")
 ```
 
@@ -387,8 +391,8 @@ Are all geometries valid now?
 all(st_is_valid(valid_geoms))
 ```
 
-So this works well; in derived data we will fix these geometries.
-Note that `n2khab::read_watersurfaces()` also has a `fix_geom` argument to apply this to the raw data source.
+<!-- So this works well; in derived data we will fix these geometries. -->
+<!-- Note that `n2khab::read_watersurfaces()` also has a `fix_geom` argument to apply this to the raw data source. -->
 
 We also check that no empty geometries are present:
 
