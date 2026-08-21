@@ -183,7 +183,7 @@ sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == '-', na.rm =
 
 ### Are there empty (`""`) values?
 
-Yes, in `KRWTYPEA`, see further:
+None:
 
 ```{r}
 sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == "", na.rm = TRUE))
@@ -269,12 +269,6 @@ ws |>
   print(n = Inf)
 ```
 
-Note that one record has `KRWTYPEA` equal to `""` while it should be a missing value:
-
-```{r}
-ws |> filter(KRWTYPEA == "") |> as.data.frame()
-```
-
 One record has `KRWTYPES` set to 'voorlopig':
 
 ```{r}
@@ -349,11 +343,10 @@ levels(ws$PEILBEHEER)
 
 ## Potential issues
 
-- One record has an empty string for `KRWTYPEA`; given that `KRWTYPE` is a missing value this should also be the case for `KRWTYPEA`.
 - `KRWTYPE`, `PEILBEHEER`, `FUNCTIE`: more levels in the metadata report than in the dataset.
 This is not necessarily a problem.
 
-These will be reported to the authors of the layers.
+Potential issues will be reported to the authors of the layers.
 
 
 ## Validity of the geometries
