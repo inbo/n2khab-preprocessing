@@ -17,6 +17,7 @@ output:
 ```{r setup, message=FALSE, echo=FALSE}
 library(sf)
 library(dplyr)
+library(stringr)
 library(tmap)
 library(n2khab)
 library(ggplot2)
@@ -39,7 +40,6 @@ Make the database connection and the queries:
 con <- inbodb::connect_inbo_dbase("G0102_00_AquaMorf")
 query <- sql("SELECT P.CodePlas AS WVLC, 
                   plasnaamalt AS WTRLICHC,
-                  NP_ID AS HYLAC,
                   plasnaam AS NAAM, 
                   P.gebied AS GEBIED,
                   P.watertype AS KRWTYPE,
@@ -70,7 +70,7 @@ query_functie <- sql("SELECT PG.gebruiksfunctie AS FUNCTIE,
                       WHERE GDB_TO_DATE >= '9999'")
 ```
 
-Note that we map variable names of version 1.2 in capitals to database column names.
+Note that we map variable names to uppercase column names from the last released version where possible.
 Some other available names have been kept lowercase.
 
 Import the spatial layer:
@@ -130,26 +130,129 @@ DBI::dbDisconnect(con)
 
 ```{r}
 ws %>% 
-  st_drop_geometry %>% 
-  summary
+  st_drop_geometry() %>% 
+  summary()
 ```
 
-Compared to version 1.2:
+Compared to version 2024:
 
 - `FUNCTIE` is absent from the query (it has to be retrieved via a separate query).
-- `KRWTYPEA` is a new variable.
-- `CONNECT` has new levels.
-- Note: `HYLAC` is going to be removed in the official version.
-- Several columns are available (lowercase names in the query) which haven't been part of the official version yet (except for `connect_old`, which was `CONNECT` in previous versions).
+- Several columns are available (lowercase names in the query) which haven't been part of the official version yet (except for `connect_old`, which was `CONNECT` in older versions).
 
 Let us look for a few typical errors more systematically.
 
 ### Are there `NA` values?
 
-There are plenty of `NA`'s but only in fields where we expect them.
+There are plenty of `NA`s but only in fields where we expect them.
 
 ```{r}
 sapply(ws, function(x) sum(is.na(x)))
+```
+
+### Are there `"NA"` values?
+
+None:
+
+```{r}
+sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == "NA", na.rm = TRUE))
+```
+
+### Are there `<Null>` values?
+
+None:
+
+```{r}
+sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == '<Null>', na.rm = TRUE))
+```
+
+### Are there any "/" values?
+
+None :
+
+```{r}
+sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == "/", na.rm = TRUE))
+```
+
+### Are there `-` values?
+
+Yes, in `KRWTYPEA`, but it's expected (described in the metadata):
+
+```{r}
+sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == '-', na.rm = TRUE))
+```
+
+### Are there empty (`""`) values?
+
+None:
+
+```{r}
+sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == "", na.rm = TRUE))
+```
+
+### Are there Zero (0) values?
+
+None:
+
+```{r}
+sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == '0', na.rm = TRUE))
+```
+
+### Are WVLC codes unique?
+
+Yes:
+
+```{r}
+ws$WVLC %>% unique() %>% length() == nrow(ws)
+```
+
+<!-- Which codes are duplicated? -->
+
+<!-- ```{r} -->
+<!-- ws |>  -->
+<!--   st_drop_geometry() |>  -->
+<!--   count(WVLC) |>  -->
+<!--   filter(n > 1) -->
+<!-- ``` -->
+
+### Levels for each factor
+
+We can compare the levels for each factor variable with the information given in 
+a draft metadata report.
+
+We do not check `NAAM` and `GEBIED` since there are many possible options.
+
+**WVLC**:
+
+We check whether the structure of `WVLC` is correct.
+
+- Does `WVLC` start with a province code?
+
+```{r}
+substr(levels(ws$WVLC),1 ,3) %>% unique()
+```
+
+- How many records with an unexpected length? (not 10 characters)?
+
+```{r}
+ws %>% filter(str_length(WVLC) != 10) %>% nrow()
+```
+
+**KRWTYPE**: the codes are correct but there are more codes mentioned in the metadata report.
+
+```{r}
+levels(ws$KRWTYPE)
+```
+
+**KRWTYPEA** (alternative type): the codes in the spatial layer comply with the metadata report, except for the empty string.
+
+```{r}
+levels(ws$KRWTYPEA)
+```
+
+**KRWTYPES** (status): the codes in the spatial layer are the same as in the metadata report.
+
+```{r}
+levels(ws$KRWTYPES)
 ```
 
 `KRWTYPE` / `KRWTYPEA` / `KRWTYPES` consistency:
@@ -169,91 +272,12 @@ ws |>
 One record has `KRWTYPES` set to 'voorlopig':
 
 ```{r}
-ws |> filter(KRWTYPES == "voorlopig") |> as.matrix() |> t()
+ws |> filter(KRWTYPES == "voorlopig") |> as.data.frame()
 ```
 
+After discussion with the authors, this seems to be correct.
 
-### Are there `<Null>` values?
-
-None:
-
-```{r}
-sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == '<Null>', na.rm = TRUE))
-```
-
-### Are there `-` values?
-
-Yes, in `KRWTYPEA`, but it's expected (see further):
-
-```{r}
-sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == '-', na.rm = TRUE))
-```
-
-### Are there Zero (0) values?
-
-None:
-
-```{r}
-sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == '0', na.rm = TRUE))
-```
-
-Number of unique values of numeric variable `HYLAC`:
-
-```{r}
-n_distinct(ws$HYLAC)
-```
-
-How many `NA` values for numeric variable `HYLAC`?
-
-Many! So the zeroes were replaced by `NA`.
-
-```{r}
-ws$HYLAC %>% is.na %>% sum
-```
-
-### Are WVLC codes unique?
-
-No:
-
-```{r}
-ws$WVLC %>% unique %>% length == nrow(ws)
-```
-
-Which codes are duplicated?
-
-```{r}
-ws |> 
-  st_drop_geometry() |> 
-  count(WVLC) |> 
-  filter(n > 1)
-```
-
-### Levels for each factor
-
-We can compare the levels for each factor variable with the information given in 
-a draft metadata report.
-
-We do not check `NAAM` and `GEBIED` since there are many possible options.
-
-**KRWTYPE**: the codes are correct but there are more codes mentioned in the metadata report.
-
-```{r}
-levels(ws$KRWTYPE)
-```
-
-**KRWTYPEA** (alternative type): the codes in the spatial layer comply with the metadata report.
-
-```{r}
-levels(ws$KRWTYPEA)
-```
-
-**KRWTYPES** (status): the codes in the spatial layer are the same as in the metadata report.
-
-```{r}
-levels(ws$KRWTYPES)
-```
-
-**DIEPKL**: the only codes in the dataset are "0 - 2 m", "2 - 4 m", "4 - 6 m" and "> 6 m"; the codes are different in the metadata report.
+**DIEPKL**: the codes in the spatial layer are the same as in the metadata report.
 
 ```{r}
 levels(ws$DIEPKL)
@@ -266,15 +290,17 @@ However this was just for exploratory purposes as it was not the purpose to alwa
 - also in the future we will not rectify this (by default) in reading functions for raw data sources: problems in the data will be returned as-is and should be solved in a future version of the data source.
 By default we just streamline column names and variable types, we make sure that values referring to `NA` are effectively returned as `NA` and we try to avoid some encoding problems.
 
-Because on Windows the ≥/\u2265 character is not well displayed, we will recode it into '=>'
-(otherwise "≥" in ws$DIEPKL are rendered as "=" in the html output):
+Because on Windows the ≥/\u2265 character is not well displayed, we had to recode it into '=>'
+(otherwise "≥" in ws$DIEPKL was rendered as "=" in the html output). 
+Note that this is not needed anymore since version 2024, which does not contain the character ≥ anymore, 
+but we will keep this in the read function for the previous versions.
 
 ```{r}
 levels(ws$DIEPKL) <- gsub(pattern = "\u2265", ">=", levels(ws$DIEPKL))
 levels(ws$DIEPKL)
 ```
 
-**CONNECT**: the codes in the spatial layer are the same as in the metadata report (and they differ from previous official versions).
+**CONNECT**: the codes in the spatial layer are the same as in the metadata report.
 
 ```{r}
 levels(ws$CONNECT)
@@ -286,20 +312,20 @@ levels(ws$CONNECT)
 levels(ws_functie$FUNCTIE)
 ```
 
-And here are the categories in the metadata report for `FUNCTIE`:
+Here are the categories in the metadata report for `FUNCTIE`:
 
 functie                       toewijzing
 ----------------------        ---------------------
 natuur                        doelstelling natuurbehoud
-hengelintensief               intensief hengelen (met infrastructuur, bepoting of gebruikt voor wedstrijdhengelen)
+hengelIntensief               intensief hengelen (met infrastructuur, bepoting of gebruikt voor wedstrijdhengelen)
 hengelextensief               extensief hengelen (geen infrastructuur, bepoting of wedstrijdhengelen)
 jacht                         jagen
-tuin/park                     esthetisch (verblijfsrecreatie, tuin- en parkvijvers)
+tuin_park                     esthetisch (verblijfsrecreatie, tuin- en parkvijvers)
 vogel                         waterpartij voor gedomesticeerde watervogels
 viskweek                      opkweken van vis
 zwemmen                       zwemmen
 duik                          duiken
-zachterecreatie               niet gemotoriseerde waterrecreatie
+zachteRecreatie               niet gemotoriseerde waterrecreatie
 motorrecreatie                gemotoriseerde waterrecreatie
 waterberging                       waterberging ten behoeve van overstromings- of peilbeheer
 opslag                        reservoir voor water (industrie, landbouw, bluswater, waterkracht…)
@@ -309,7 +335,7 @@ bezinking                     bezinking van proceswater
 veedrenk                      watervoorziening voor vee
 geen                          geen specifieke functie
 
-**PEILBEHEER**: one code less than in the report.
+**PEILBEHEER**: the codes are correct but there is one code less than in the report.
 
 ```{r}
 levels(ws$PEILBEHEER)
@@ -317,13 +343,10 @@ levels(ws$PEILBEHEER)
 
 ## Potential issues
 
-- There is a duplicated value of `WVLC`.
-- One record has `KRWTYPES` as 'voorlopig' (after discussion with the authors, this seems to be correct).
-- `DIEPKL`: codes in the dataset differ from those in the report.
 - `KRWTYPE`, `PEILBEHEER`, `FUNCTIE`: more levels in the metadata report than in the dataset.
 This is not necessarily a problem.
 
-These will be discussed with the authors of the layers.
+Potential issues will be reported to the authors of the layers.
 
 
 ## Validity of the geometries
@@ -336,7 +359,7 @@ ws_validity %>% table
 invalid_geoms <- ws[!ws_validity | is.na(ws_validity), ]
 ```
 
-Identifying the invalid geometries:
+Identifying invalid geometries:
 
 ```{r}
 invalid_geoms |> 
@@ -345,16 +368,20 @@ invalid_geoms |>
   st_drop_geometry()
 ```
 
-```{r}
+```{r, eval = nrow(invalid_geoms) > 0, echo = nrow(invalid_geoms) > 0}
 tm_shape(invalid_geoms) + tm_borders() + tm_facets(by = "WVLC")
 ```
 
-The geometry invalidity is the consequence of self-intersecting rings, as a consequence of digitalization errors.
+<!-- The geometry invalidity is the consequence of self-intersecting rings, as a consequence of digitalization errors. -->
 
-Let's compare with the same geoms after fixing the self-intersecting rings:
+<!-- Let's compare with the same geoms after fixing the self-intersecting rings: -->
 
 ```{r}
 valid_geoms <- st_make_valid(invalid_geoms)
+```
+
+
+```{r, eval = nrow(invalid_geoms) > 0, echo = nrow(invalid_geoms) > 0}
 tm_shape(valid_geoms) + tm_borders() + tm_facets(by = "WVLC")
 ```
 
@@ -364,8 +391,8 @@ Are all geometries valid now?
 all(st_is_valid(valid_geoms))
 ```
 
-So this works well; in derived data we will fix these geometries.
-We might also consider an optional geometry reparation step in `read_watersurfaces()`.
+<!-- So this works well; in derived data we will fix these geometries. -->
+<!-- Note that `n2khab::read_watersurfaces()` also has a `fix_geom` argument to apply this to the raw data source. -->
 
 We also check that no empty geometries are present:
 
@@ -379,39 +406,32 @@ Refer to <https://github.com/inbo/n2khab-preprocessing/issues/60> and <https://r
 ## Let's plot the watersurfaces as a map
 
 ```{r plot}
-
-# plot watersurfaces
- p <- ggplot() +
-  geom_sf(data = ws, aes(), color = "blue")
-
-# Flanders
-sf_vl <- read_admin_areas()
-
-p <- p + 
-  geom_sf(data = sf_vl, fill = NA)
-
-print(p)
-
+sf_fl <- read_admin_areas()
+ggplot() +
+  geom_sf(data = ws, aes(), color = "blue") + 
+  geom_sf(data = sf_fl, fill = NA)
 ```
 
-<!-- ### Are all the watersurfaces in Flanders? -->
+### Do all the watersurfaces intersect Flanders?
 
-<!-- ```{r streams-in-fl} -->
-<!-- in_vl <- st_contains(x = sf_vl, y = ws) -->
+```{r in-fl}
+in_fl <- st_intersects(x = sf_fl, y = ws)
 
-<!-- not_contained <- ws %>%  -->
-<!--   st_drop_geometry() %>%  -->
-<!--   mutate(orig_rowname = rownames(.)) %>%  -->
-<!--   filter(!rownames(.) %in% in_vl[[1]]) -->
+not_in_flanders <- ws %>%
+  st_drop_geometry() %>%
+  mutate(orig_rowname = rownames(.)) %>%
+  filter(!rownames(.) %in% in_fl[[1]])
 
-<!-- # 61 watersurfaces -->
-<!-- print(not_contained %>% nrow()) -->
+nrow(not_in_flanders) == 0
+```
 
-<!-- not_contained %>%  -->
-<!--   distinct(WVLC, NAAM) %>%  -->
-<!--   kable() -->
-<!-- ``` -->
-<!-- 61 watersurfaces are not 'contained' within the polygon for Flanders (see list above) -->
+```{r in-fl2, echo = FALSE}
+if (nrow(not_in_flanders) > 0) {
+  not_in_flanders %>%
+  distinct(WVLC, NAAM) %>%
+  kable()
+}
+```
 
 # Tidyverse-styled, internationalized column names when using the data source in R
 
@@ -423,7 +443,6 @@ data source variable          data frame variable
 ----------------------        ---------------------
 `WVLC`                        `polygon_id` 
 `WTRLICHC`                    `wfd_code`
-`HYLAC`                       `hyla_code`
 `NAAM`                        `name`
 `GEBIED`                      `area_name`
 `KRWTYPE`                     `wfd_type `
@@ -438,12 +457,14 @@ data source variable          data frame variable
 
 - not uptaking `OPPWVL`, `OMTWVL`, `SHAPE_Length`, `SHAPE_Area` (area & perimeter are easily calculated etc) -- OK
 - sort by `polygon_id` -- OK
-- add translations to long text for `wfd_type ` and `connectivity`  -- OK but not by default
+- add translations to long text for `wfd_type `, `wfd_type_alternative ` and `connectivity`  -- OK but not by default
 - add translations to long text for  `usage`? -- for a later version (as more 
 codes will be used)
-- converting null / 0 values to `NA` -- OK
-- support new variable `water_level_management` -- OK
-
+- converting null / 0 / "" values to `NA` -- OK
+- support variable `water_level_management` (since 1.2) – OK
+- support variable `wfd_type_alternative` (since v2024) – OK
+- make variable `hyla_code` optional (dropped in v2024) – OK
+- apply a natural order to the `depth_class` levels
 
 # Used environment
 
