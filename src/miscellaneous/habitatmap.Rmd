@@ -36,7 +36,7 @@ opts_chunk$set(
 Interim version March 2025 (habitatmap_2024_v99_interim, based on field work until 2024)
 
 ```{r read-habitatmap}
-filepath <- file.path(fileman_up("n2khab_data"),
+filepath <- file.path(locate_n2khab_data(),
                       "10_raw/habitatmap")
 
 if (length(grep("gpkg", list.files(path = filepath))) > 0){
@@ -117,7 +117,10 @@ sapply(habitatmap, function(x) sum(is.na(x)))
 There is one `<Null>` string.
 
 ```{r null-values}
-sapply(habitatmap |> st_drop_geometry(), function(x) sum(as.character(x) == '<Null>', na.rm = TRUE))
+sapply(
+  habitatmap |> st_drop_geometry(),
+  function(x) sum(as.character(x) == "<Null>", na.rm = TRUE)
+)
 ```
 
 ```{r}
@@ -130,7 +133,10 @@ habitatmap |> st_drop_geometry() %>%
 Yes,  in `phab2`, `phab3`, `phab4`, `phab5` (as expected), but also a few in `tag`.
 
 ```{r zero-values}
-sapply(habitatmap |> st_drop_geometry(), function(x) sum(as.character(x) == '0', na.rm = TRUE))
+sapply(
+  habitatmap |> st_drop_geometry(),
+  function(x) sum(as.character(x) == '0', na.rm = TRUE)
+)
 ```
 
 ```{r}
@@ -143,7 +149,10 @@ habitatmap |> st_drop_geometry() %>%
 There are many empty strings (apparently used instead of NAs), in most of the cases in the fields where empty values can be expected though.
 
 ```{r empty-strings}
-sapply(habitatmap |> st_drop_geometry(), function(x) sum(as.character(x) == '', na.rm = TRUE))
+sapply(
+  habitatmap |> st_drop_geometry(),
+  function(x) sum(as.character(x) == '', na.rm = TRUE)
+)
 ```
 
 The following records might need to be checked since we don't expect empty values in the fields `eval`, `eenh1`, `herkbwk`, `hab1`, `herkhab`, `herkphab`.
@@ -169,7 +178,10 @@ The `tag`will be added for the publication. In the meantime we might use
 There are records with one or several spaces.
 
 ```{r spaces}
-sapply(habitatmap |> st_drop_geometry(), function(x) sum(grepl(pattern = "^\\s+$", x), na.rm = TRUE))
+sapply(
+  habitatmap |> st_drop_geometry(),
+  function(x) sum(grepl(pattern = "^\\s+$", x), na.rm = TRUE)
+)
 ```
 
 As for `tag` and `eenh2` until `eenh8`, ...: there are too many of them to print the list. 
@@ -232,7 +244,7 @@ list_habs <- n2khab::read_types()
 # long version with all the habitats in one column
 habitatmap_lg <- habitatmap %>% 
   st_drop_geometry() %>% 
-  select(id, starts_with("hab")|starts_with("phab"), -any_of(c("HABLEGENDE", "hablegende"))) %>% 
+  select(id, starts_with("hab") | starts_with("phab"), -any_of(c("HABLEGENDE", "hablegende"))) %>%
   pivot_longer(cols = starts_with("hab"), 
                names_to = "habnr", 
                names_prefix = "hab", 
@@ -292,6 +304,44 @@ habitatmap_lg %>%
   nrow()
 
 ```
+
+
+## Are HERKHAB codes OK?
+
+The included years look OK.
+
+```{r check-herkhab-1, paged.print = FALSE}
+habitatmap %>%
+  st_drop_geometry() %>%
+  as_tibble() %>%
+  mutate(
+    year_hab = ifelse(
+      str_detect(HERKHAB, "^\\d{2}"),
+      str_sub(HERKHAB, 1, 2),
+      NA_character_
+    ) %>%
+      as.integer()
+  ) %>%
+  count(year_hab) %>%
+  print(n = Inf)
+```
+
+The included methods look OK.
+
+```{r check-herkhab-2, paged.print = FALSE}
+habitatmap %>%
+  st_drop_geometry() %>%
+  as_tibble() %>%
+  mutate(method = str_extract(
+    HERKHAB,
+    # extract the methods, not the season-letters [vznw] that may be added to
+    # fieldwork years:
+    "^\\d*?([a-mo-ux-yA-MO-UX-Y]{1,2})",
+    group = 1
+  )) %>%
+  count(method)
+```
+
 
 ## Is the CRS correct?
 
