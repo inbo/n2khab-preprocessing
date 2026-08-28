@@ -41,23 +41,25 @@ Because it was found that sf has difficulties with correcting certain (invalid) 
 We do keep the geometry-type attribute of the data as read directly by sf, to further check selected MULTISURFACE geometries.
 
 ```{r read-habitatmap}
-filepath <- file.path(locate_n2khab_data(),
-                      "10_raw/habitatmap")
+filepath <- file.path(
+  locate_n2khab_data(),
+  "10_raw/habitatmap"
+)
 
 if (length(grep("gpkg", list.files(path = filepath))) > 0) {
   # format = geopackage
   filepath <- file.path(filepath, "habitatmap.gpkg")
 }
 # all formats
-habitatmap_sf <- 
-  read_sf(filepath) %>% 
+habitatmap_sf <-
+  read_sf(filepath) %>%
   mutate(geomtype_sf = st_geometry_type(.))
-habitatmap <- 
-  vect(filepath) %>% 
+habitatmap <-
+  vect(filepath) %>%
   st_as_sf() %>%
   as_tibble() %>%
-  bind_cols(habitatmap_sf %>% st_drop_geometry() %>% select(geomtype_sf)) %>% 
-  st_as_sf() %>% 
+  bind_cols(habitatmap_sf %>% st_drop_geometry() %>% select(geomtype_sf)) %>%
+  st_as_sf() %>%
   # since we get a combination of POLYGON and MULTIPOLYGON, we entirely cast
   # as MULTIPOLYGON
   st_cast("MULTIPOLYGON")
@@ -67,26 +69,26 @@ The number of rows is `r nrow(habitatmap)`.
 
 Checksums:
 ```{r checksums}
-filepath %>% 
-  n2khab::md5sum() %>% 
+filepath %>%
+  n2khab::md5sum() %>%
   `names<-`("md5sum")
-filepath %>% 
-  n2khab::sha256sum() %>% 
+filepath %>%
+  n2khab::sha256sum() %>%
   `names<-`("sha256sum")
-filepath %>% 
-  n2khab::xxh64sum() %>% 
+filepath %>%
+  n2khab::xxh64sum() %>%
   `names<-`("xxh64sum")
 ```
 
 Compare the geometry types between `habitatmap_sf` and `habitatmap`:
 
 ```{r paged.print = FALSE}
-habitatmap_sf %>% 
-  st_drop_geometry() %>% 
+habitatmap_sf %>%
+  st_drop_geometry() %>%
   count(geomtype_sf)
-habitatmap %>% 
-  mutate(geomtype = st_geometry_type(.)) %>% 
-  st_drop_geometry() %>% 
+habitatmap %>%
+  mutate(geomtype = st_geometry_type(.)) %>%
+  st_drop_geometry() %>%
   count(geomtype)
 ```
 
@@ -96,21 +98,21 @@ Optionally checking that the geometries of type MULTIPOLYGON in `habitatmap_sf` 
 # the comparison at the end takes a lot of time; not running this by default
 habitatmap_sf %>%
   select(globalid_BWK) %>%
-  mutate(id = row_number()) %>% 
-  filter(geomtype_sf == "MULTIPOLYGON") %>% 
+  mutate(id = row_number()) %>%
+  filter(geomtype_sf == "MULTIPOLYGON") %>%
   inner_join(
     habitatmap %>%
       # drop sf class but not the geometry column:
-      as_tibble() %>% 
+      as_tibble() %>%
       select(globalid_BWK) %>%
       mutate(id = row_number()),
     # it has been checked separately that row order is the same between both
     # objects
     join_by(id)
-  ) %>% 
-  as_tibble() %>% 
-  mutate(equalgeom = geom == geometry) %>% 
-  select(id, equalgeom) %>% 
+  ) %>%
+  as_tibble() %>%
+  mutate(equalgeom = geom == geometry) %>%
+  select(id, equalgeom) %>%
   count(equalgeom)
 # # A tibble: 1 × 2
 # equalgeom      n
@@ -149,8 +151,8 @@ names(habitatmap) <- str_to_lower(
 ## A summary of the layer
 
 ```{r summary-habitatmap}
-habitatmap %>% 
-  st_drop_geometry() %>% 
+habitatmap %>%
+  st_drop_geometry() %>%
   summary()
 ```
 
@@ -176,8 +178,8 @@ sapply(
 ```
 
 ```{r}
-habitatmap %>% 
-  st_drop_geometry() %>% 
+habitatmap %>%
+  st_drop_geometry() %>%
   filter(info == "<Null>")
 ```
 
@@ -188,14 +190,14 @@ Yes,  in `phab2`, `phab3`, `phab4`, `phab5` (as expected), but also in `herkphab
 ```{r zero-values}
 sapply(
   habitatmap |> st_drop_geometry(),
-  function(x) sum(as.character(x) == '0', na.rm = TRUE)
+  function(x) sum(as.character(x) == "0", na.rm = TRUE)
 )
 ```
 
 ```{r}
-habitatmap %>% 
-  st_drop_geometry() %>% 
-  filter(herkphab == '0')
+habitatmap %>%
+  st_drop_geometry() %>%
+  filter(herkphab == "0")
 ```
 
 ## Are there empty strings instead of NA?
@@ -205,14 +207,15 @@ There are many empty strings (apparently used instead of NAs), in most of the ca
 ```{r empty-strings}
 sapply(
   habitatmap |> st_drop_geometry(),
-  function(x) sum(as.character(x) == '', na.rm = TRUE)
+  function(x) sum(as.character(x) == "", na.rm = TRUE)
 )
 ```
 
 The following records might need to be checked since we don't expect empty values in the columns `eval`, `eenh1`, `herkbwk`, `hab1`, `herkhab`, `herkphab`.
 
 ```{r}
-habitatmap |> st_drop_geometry() %>% 
+habitatmap |>
+  st_drop_geometry() %>%
   select(
     objectid,
     tag,
@@ -225,7 +228,7 @@ habitatmap |> st_drop_geometry() %>%
     herkhab,
     herkphab,
     globalidbwk
-  ) %>% 
+  ) %>%
   filter(if_any(c(eval, eenh1, herkbwk, hab1, herkhab, herkphab), \(x) x == ""))
 ```
 
@@ -250,7 +253,8 @@ As for `eenh2` until `eenh8`, ...: there are too many of them to print the list.
 Here are the cases with spaces for the other variables: 
 
 ```{r}
-habitatmap |> st_drop_geometry() %>% 
+habitatmap |>
+  st_drop_geometry() %>%
   select(
     objectid,
     tag,
@@ -263,7 +267,7 @@ habitatmap |> st_drop_geometry() %>%
     herkhab,
     herkphab,
     globalidbwk
-  ) %>% 
+  ) %>%
   filter(if_any(
     c(eval, eenh1, herkbwk, hab1, herkhab, herkphab),
     \(x) grepl(pattern = "^\\s+$", x) & nchar(x) > 0
@@ -276,17 +280,21 @@ habitatmap |> st_drop_geometry() %>%
 Even if we remove the records with `tag` = 0, there are duplicates.
 
 ```{r}
-habitatmap$tag %>% unique() %>% length() == nrow(habitatmap)
-habitatmap$tag[habitatmap$tag != '0'] %>% unique %>% length == (nrow(habitatmap) - 1)
+habitatmap$tag %>%
+  unique() %>%
+  length() == nrow(habitatmap)
+habitatmap$tag[habitatmap$tag != "0"] %>%
+  unique() %>%
+  length() == (nrow(habitatmap) - 1)
 ```
 
 How many repeated TAGs?
 
 ```{r}
-duplic_tags <- 
-  habitatmap %>% 
-  st_drop_geometry() %>% 
-  count(tag) %>% 
+duplic_tags <-
+  habitatmap %>%
+  st_drop_geometry() %>%
+  count(tag) %>%
   filter(n > 1)
 nrow(duplic_tags)
 ```
@@ -300,16 +308,18 @@ duplic_tags
 And is globalidbwk unique?
 
 ```{r}
-habitatmap$globalidbwk %>% unique() %>% length() == nrow(habitatmap)
+habitatmap$globalidbwk %>%
+  unique() %>%
+  length() == nrow(habitatmap)
 ```
 
 How many repeated values of `globalidbwk`?
 
 ```{r}
-duplic_globalid <- 
-  habitatmap %>% 
-  st_drop_geometry() %>% 
-  count(globalidbwk) %>% 
+duplic_globalid <-
+  habitatmap %>%
+  st_drop_geometry() %>%
+  count(globalidbwk) %>%
   filter(n > 1)
 nrow(duplic_globalid)
 ```
@@ -326,7 +336,7 @@ From here on we will use as identifier: `globalidbwk` with a suffix that makes i
 can be used with any version of the habitatmap). 
 
 ```{r add-id}
-habitatmap <- habitatmap %>% 
+habitatmap <- habitatmap %>%
   mutate(
     id = str_c(
       globalidbwk,
@@ -347,29 +357,35 @@ habitatmap <- habitatmap %>%
 list_habs <- n2khab::read_types()
 
 # long version with all the habitats in one column
-habitatmap_lg <- habitatmap %>% 
-  st_drop_geometry() %>% 
+habitatmap_lg <- habitatmap %>%
+  st_drop_geometry() %>%
   select(id, starts_with("hab") | starts_with("phab"), -any_of(c("HABLEGENDE", "hablegende"))) %>%
-  pivot_longer(cols = starts_with("hab"), 
-               names_to = "habnr", 
-               names_prefix = "hab", 
-               values_to = "hab") %>%
-  pivot_longer(cols = starts_with("phab"), 
-               names_to = "phabnr", 
-               names_prefix = "phab", 
-               values_to = "phab") %>% 
-  filter(habnr == phabnr) %>% 
+  pivot_longer(
+    cols = starts_with("hab"),
+    names_to = "habnr",
+    names_prefix = "hab",
+    values_to = "hab"
+  ) %>%
+  pivot_longer(
+    cols = starts_with("phab"),
+    names_to = "phabnr",
+    names_prefix = "phab",
+    values_to = "phab"
+  ) %>%
+  filter(habnr == phabnr) %>%
   select(-phabnr)
 
 # habitats in habitatmap but not in official list n2khab:
-habitatmap_lg %>% 
-  filter(!is.na(hab) & 
-           !hab %in% c("gh", "", '<Null>') & 
-           !grepl(pattern = "^\\s*$", hab)) %>%  
-  mutate(hab = gsub(hab, pattern = ",gh", replacement = ""),
-         hab = gsub(hab, pattern = ",bos", replacement = "")) %>% 
-  anti_join(list_habs, by = c("hab" = "type")) %>% 
-  count(hab) 
+habitatmap_lg %>%
+  filter(!is.na(hab) &
+    !hab %in% c("gh", "", "<Null>") &
+    !grepl(pattern = "^\\s*$", hab)) %>%
+  mutate(
+    hab = gsub(hab, pattern = ",gh", replacement = ""),
+    hab = gsub(hab, pattern = ",bos", replacement = "")
+  ) %>%
+  anti_join(list_habs, by = c("hab" = "type")) %>%
+  count(hab)
 ```
 
 Several codes exist with superfluous space at the end, which needs solving.
@@ -382,11 +398,11 @@ There should not be any row returned with sum phab < 100% or > 100%
 (except when habitat 1130 is present):
 
 ```{r sum-phab-100}
-habitatmap %>% 
-  st_drop_geometry() %>% 
-  mutate(phab_tot = phab1 + phab2 + phab3 + phab4 + phab5) %>% 
+habitatmap %>%
+  st_drop_geometry() %>%
+  mutate(phab_tot = phab1 + phab2 + phab3 + phab4 + phab5) %>%
   filter(phab_tot < 100 |
-           (phab_tot > 100 & hab1 != "1130")) %>% 
+    (phab_tot > 100 & hab1 != "1130")) %>%
   nrow()
 ```
 
@@ -398,15 +414,15 @@ Mostly used for habitats only present on a small surface, for instance as small
 landscape elements.
 
 ```{r phab0}
-habitatmap_lg %>% 
+habitatmap_lg %>%
   filter(
     !(
       is.na(hab) |
-        hab %in% c("gh", "", '<Null>') |
-        grepl(pattern = "^\\s*$", hab) 
-    )
-    & 
-      phab == 0 ) %>% 
+        hab %in% c("gh", "", "<Null>") |
+        grepl(pattern = "^\\s*$", hab)
+    ) &
+      phab == 0
+  ) %>%
   nrow()
 ```
 
@@ -475,13 +491,13 @@ Let's inspect features with invalid or corrupt geometry:
 
 ```{r check-geometry}
 start_time <- Sys.time()
-#st_is_valid(habitatmap) %>% table
+# st_is_valid(habitatmap) %>% table
 validities <- st_is_valid(habitatmap)
 # invalid but not NA
-invalid_geoms <- habitatmap[!is.na(validities) & !validities, ] %>% 
+invalid_geoms <- habitatmap[!is.na(validities) & !validities, ] %>%
   mutate(geom_valid = "invalid")
 # NA
-navalid_geoms <- habitatmap[is.na(validities), ] %>% 
+navalid_geoms <- habitatmap[is.na(validities), ] %>%
   mutate(geom_valid = "na")
 # invalid_geoms <- habitatmap[!validities | is.na(validities), ] # returns all invalid and NA
 end_time <- Sys.time()
@@ -492,15 +508,17 @@ end_time - start_time
 ```{r count-invalid-geoms}
 st_is_valid(rbind(invalid_geoms, navalid_geoms), reason = TRUE) %>%
   as_tibble() %>%
-  filter(is.na(value) | value != "Valid Geometry") %>% 
-  mutate(problem = str_extract(string = value, 
-                                pattern = "[^\\[]+")) %>% 
+  filter(is.na(value) | value != "Valid Geometry") %>%
+  mutate(problem = str_extract(
+    string = value,
+    pattern = "[^\\[]+"
+  )) %>%
   bind_cols(
     rbind(invalid_geoms, navalid_geoms) %>%
       st_drop_geometry() %>%
       select(geomtype_sf)
-  ) %>% 
-  count(geomtype_sf, problem) 
+  ) %>%
+  count(geomtype_sf, problem)
 ```
 
 The geometry invalidities comprise [self-touching rings](https://gdal.org/en/latest/user/geometry_validity.html#polygon-with-self-touching-ring) and [nested multipolygons](https://gdal.org/en/latest/user/geometry_validity.html#nested-multipolygons), as a consequence of digitization errors.
@@ -523,15 +541,16 @@ tm_shape(invalid_geoms) + tm_borders() + tm_facets(by = "id")
 
 ```{r map-invalid-geoms-ring}
 # there are many invalid polygons, so we show them with leaflet:
-invalid_geoms_wgs84 <- invalid_geoms %>% 
-  st_transform(crs = 4326) 
+invalid_geoms_wgs84 <- invalid_geoms %>%
+  st_transform(crs = 4326)
 
 leaflet(height = "600px", width = "700px") %>%
   inbospatial::add_wms_be_cartoweb("topo_grey") %>%
-  addPolygons(data = invalid_geoms_wgs84,
-              color = "darkred",
-              popup = paste("id:", 
-                          invalid_geoms_wgs84$id)) 
+  addPolygons(
+    data = invalid_geoms_wgs84,
+    color = "darkred",
+    popup = paste("id:", invalid_geoms_wgs84$id)
+  )
 ```
 
 ### Fixing invalid geometries and inspecting the result
@@ -551,19 +570,25 @@ tm_shape(valid_geoms) + tm_borders() + tm_facets(by = "id")
 
 ```{r map-corrected-geoms}
 # there were many invalid polygons, so we show them with leaflet:
-valid_geoms_wgs84 <- valid_geoms %>% 
-  st_transform(crs = 4326) 
+valid_geoms_wgs84 <- valid_geoms %>%
+  st_transform(crs = 4326)
 
 leaflet(height = "600px", width = "700px") %>%
-  inbospatial::add_wms_be_cartoweb("topo_grey") %>% 
-  addPolygons(data = invalid_geoms_wgs84, 
-              group = "before correction (red)",
-              color = "darkred") %>% 
-  addPolygons(data = valid_geoms_wgs84,
-              group = "after correction (blue)",
-              popup = paste("id:", valid_geoms_wgs84$id)) %>%
-  addLayersControl(overlayGroups = c("before correction (red)", "after correction (blue)"),
-                   options = layersControlOptions(collapsed = FALSE))
+  inbospatial::add_wms_be_cartoweb("topo_grey") %>%
+  addPolygons(
+    data = invalid_geoms_wgs84,
+    group = "before correction (red)",
+    color = "darkred"
+  ) %>%
+  addPolygons(
+    data = valid_geoms_wgs84,
+    group = "after correction (blue)",
+    popup = paste("id:", valid_geoms_wgs84$id)
+  ) %>%
+  addLayersControl(
+    overlayGroups = c("before correction (red)", "after correction (blue)"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
 ```
 
 Are all geometries valid now?
@@ -596,14 +621,14 @@ Note: it appeared that directly plotting (valid or invalid) MULTISURFACE geometr
 
 ```{r eval=FALSE, include=FALSE}
 # invalid geometries
-invalid_geoms_sf_multisurface <- 
+invalid_geoms_sf_multisurface <-
   habitatmap_sf[!is.na(validities) & !validities, ] %>%
   filter(geomtype_sf == "MULTISURFACE")
 ggplot(invalid_geoms_sf_multisurface) +
   geom_sf() +
   facet_wrap(~globalid_BWK)
 # sampled valid geometries
-valid_geoms_sf_multisurface <- 
+valid_geoms_sf_multisurface <-
   habitatmap_sf[!is.na(validities) & validities, ] %>%
   filter(geomtype_sf == "MULTISURFACE")
 tm_shape(valid_geoms_sf_multisurface %>% slice_sample(n = 15)) +
@@ -644,7 +669,9 @@ habitatmap <- habitatmap %>% select(-geomtype_sf)
 # Tidyverse-styled, internationalized column names when using the data source in R
 
 ```{r eval = FALSE}
-habitatmap %>% colnames %>% cat(sep = "\n")
+habitatmap %>%
+  colnames() %>%
+  cat(sep = "\n")
 ```
 
 data source variable          data frame variable
@@ -686,8 +713,10 @@ sprintf("- **%s**: %s\n", names(p), p) %>%
 
 ```{r results = "asis", echo=FALSE}
 si$packages %>%
-    as_tibble %>%
-    select(package, loadedversion, date, source) %>%
-pander::pandoc.table(caption = "Loaded R packages",
-                     split.table = Inf)
+  as_tibble() %>%
+  select(package, loadedversion, date, source) %>%
+  pander::pandoc.table(
+    caption = "Loaded R packages",
+    split.table = Inf
+  )
 ```
