@@ -527,7 +527,7 @@ invalid_geoms_wgs84 <- invalid_geoms %>%
   st_transform(crs = 4326) 
 
 leaflet(height = "600px", width = "700px") %>%
-  addTiles(group = "OSM (default)") %>%
+  inbospatial::add_wms_be_cartoweb("topo_grey") %>%
   addPolygons(data = invalid_geoms_wgs84,
               color = "darkred",
               popup = paste("id:", 
@@ -555,7 +555,7 @@ valid_geoms_wgs84 <- valid_geoms %>%
   st_transform(crs = 4326) 
 
 leaflet(height = "600px", width = "700px") %>%
-  addTiles(group = "OSM (default)") %>%
+  inbospatial::add_wms_be_cartoweb("topo_grey") %>% 
   addPolygons(data = invalid_geoms_wgs84, 
               group = "before correction (red)",
               color = "darkred") %>% 
