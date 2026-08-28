@@ -22,47 +22,53 @@ start directly with the standardized version.
 Flanders is not online, and will be imported manually.
 
 To be sure we will use the correct version of the data source (habitatmap_2024_v99_interim), 
-we will derive the md5 file hashes and compare it to the file hashes in the 
+we will derive the md5 file checksums and compare it to the file checksums in the 
 [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
 
 ```{r}
-
-path <- fileman_up("n2khab_data")
+path <- locate_n2khab_data()
 file <- "10_raw/habitatmap"
 
 mypath <- file.path(path, file)
 
-hashes <-
-    tibble(filepath = str_c(mypath, "/",
-        list.files(path = mypath,
-            recursive = TRUE)
-      )) %>%
-    mutate(filename = str_match(filepath, "(.+\\/)*(.+)")[,3],
-           md5 = map(filepath, function(x) {
-                           file(x) %>% md5 %>% str_c(collapse = '')
-                         }) %>% as.character,
-           md5_ref = c("0421100ccd30f09f1060524324528232"),
-           match = md5 == md5_ref) %>%
-    select(filename,
-           md5,
-           md5_ref,
-           match)
+checksums <-
+  tibble(filepath = str_c(
+    mypath, "/",
+    list.files(
+      path = mypath,
+      recursive = TRUE
+    )
+  )) %>%
+  mutate(
+    filename = str_match(filepath, "(.+\\/)*(.+)")[, 3],
+    md5 = unname(md5sum(filepath)),
+    md5_ref = c("0421100ccd30f09f1060524324528232"),
+    match = md5 == md5_ref
+  ) %>%
+  select(
+    filename,
+    md5,
+    md5_ref,
+    match
+  )
 
-kable(hashes) %>%
+kable(checksums) %>%
   kable_styling()
 
-if (!all.equal(hashes$md5, hashes$md5_ref)) {
-    stop(cat("The source map is NOT up to date ! Please check  the datasource. "))
+if (!all.equal(checksums$md5, checksums$md5_ref)) {
+  stop(
+    "The data source is not at the right version! ",
+    "Please check the data source."
+  )
 }
 ```
 
 
 ```{r read_raw_data}
-
-habitatmap_sf <- st_read(file.path(path, file, "habitatmap.gpkg"),
-                  #layer = "habitatmap", 
-                  crs = 31370)
-
+habitatmap_sf <- read_sf(
+  file.path(mypath, "habitatmap.gpkg"),
+  crs = 31370
+)
 ```
 
 ## Clean up of the interim version
@@ -86,29 +92,36 @@ habitatmap_sf <- habitatmap_sf %>%
 ```
 
 
+## Filter the data source according to habitat or rib types
+
+We also add a `description_orig` column to store original codes.
+
+```{r select_polygons}
+habmap_sf <- habitatmap_sf %>%
+  filter(!(HAB1 == "gh" & PHAB1 == 100)) %>%
+  mutate(
+    polygon_id = TAG, # unieke id
+    description_orig = str_c(
+      PHAB1, "% ", HAB1,
+      ifelse(is.na(HAB2), "", str_c("; ", PHAB2, "% ", HAB2)),
+      ifelse(is.na(HAB3), "", str_c("; ", PHAB3, "% ", HAB3)),
+      ifelse(is.na(HAB4), "", str_c("; ", PHAB4, "% ", HAB4)),
+      ifelse(is.na(HAB5), "", str_c("; ", PHAB5, "% ", HAB5))
+    )
+  )
+```
+
+
 ## Processing of the attribute table
+
+### Converting to long format
 
 Every polygon in the habitat map can consist of maximum 5 different vegetation types. This information is stored in the columns 'HAB1', 'HAB2',..., 'HAB5' of the attribute table. The estimated fraction of each vegetation type within the polygons is stored in the columns 'PHAB1', 'PHAB2', ..., 'PHAB5'.
 
 We will convert the attribute table to a long format, so that every row contains one vegetation type.
 
 
-```{r select_polygons}
-
-habmap_sf <- habitatmap_sf %>%
-            filter(!(HAB1 == "gh" & PHAB1 == 100)) %>%
-            mutate(polygon_id = TAG, # unieke id
-                   description_orig = str_c(PHAB1, "% ", HAB1,
-                                      ifelse(is.na(HAB2), "", str_c("; ", PHAB2, "% ", HAB2)),
-                                      ifelse(is.na(HAB3), "", str_c("; ", PHAB3, "% ", HAB3)),
-                                      ifelse(is.na(HAB4), "", str_c("; ", PHAB4, "% ", HAB4)),
-                                      ifelse(is.na(HAB5), "", str_c("; ", PHAB5, "% ", HAB5)))) 
-
-```
-
-
 ```{r long_format}
-
 habmap_longPHAB <- habmap_sf %>%
     st_drop_geometry() %>%
     gather(PHAB1, PHAB2, PHAB3, PHAB4, PHAB5, key = "phabn", value = "phab") %>%
@@ -118,27 +131,30 @@ habmap_longPHAB <- habmap_sf %>%
 
 habmap_longHAB <- habmap_sf %>%
     st_drop_geometry() %>%
-    select(polygon_id, polygon_area = OPPERVL, 
-           starts_with("HAB"), -any_of(c("HABLEGENDE"))) %>%
+    select(
+      polygon_id,
+      polygon_area = OPPERVL,
+      starts_with("HAB"),
+      -any_of(c("HABLEGENDE"))
+    ) %>%
     gather(HAB1, HAB2, HAB3, HAB4, HAB5, key = "hab", value = "code") %>%
     mutate(patch_id = substr(hab, 4, 4)) %>%
     filter(!is.na(code)) %>%
     filter(!code %in% c("gh", "x"))
-
 ```
 
 Here are the vegetation codes used in this version of the habitatmap:
 
 ```{r showListHabitats}
 habmap_longHAB %>%
-  distinct(code) %>% 
-  arrange(code) %>% 
+  distinct(code) %>%
+  arrange(code) %>%
   kable(caption = "List codes in habitat map", label = NA) %>%
-  kable_styling() %>% 
+  kable_styling() %>%
   scroll_box(height = "300px")
 ```
 
-## Correction of some of the codes in the Habitat map
+### Correction of some of the codes in the Habitat map
 
 Some polygons in the habitat map contain codes that do not correspond with the standardized list of habitat types. 
 We correct these codes to make processing of the habitat map more straightforward.
@@ -146,15 +162,15 @@ Table \@ref(tab:codeCorrected) shows the corrected codes and the number of polyg
 
 
 ```{r }
-
 habmap_correction <- read_vc("habmap_correction/habmap_correction")
 
 overview_habmap_correction <- habmap_longHAB %>%
   inner_join(habmap_correction, by = "code") %>%
-  group_by(code, code_corrected) %>%
-  summarise(n_polygons = n()) %>%
-  ungroup()
-
+  summarise(
+    n_polygons = n(),
+    .by = c(code, code_corrected)
+  ) %>%
+  arrange(code_corrected)
 ```
 
 
@@ -165,52 +181,54 @@ overview_habmap_correction %>%
 ```
 
 ```{r}
-if(sum(habmap_correction$code %in% habmap_longHAB$code) > 0){
-
-    habmap_longHAB <- habmap_longHAB %>%
-        left_join(habmap_correction, by = "code") %>%
-        mutate(code_orig = code,
-            code = ifelse(is.na(code_corrected),
-                             code,
-                             code_corrected)) %>%
-        select(-code_corrected)
-    
-    } else {
-      
-      habmap_longHAB <- habmap_longHAB %>%
-        mutate(code_orig = code)
+if (sum(habmap_correction$code %in% habmap_longHAB$code) > 0) {
+  habmap_longHAB <- habmap_longHAB %>%
+    left_join(habmap_correction, by = "code") %>%
+    mutate(
+      code_orig = code,
+      code = ifelse(is.na(code_corrected),
+        code,
+        code_corrected
+      )
+    ) %>%
+    select(-code_corrected)
+} else {
+  habmap_longHAB <- habmap_longHAB %>%
+    mutate(code_orig = code)
 }
 ```
 
 
-## Splitting codes that contain different types
+### Splitting codes that contain different types
 
 In several cases the code contains 2 or 3 possible vegetation types which are separated with a ','. 
 We will split the different possible vegetation types and create one row for each of them. 
-An additional variable 'certain' will be FALSE if the orginal habitatmap code consists of 2 or 3 possible vegetation types, and TRUE if only one vegetation type is provided.
+An additional variable 'certain' will be FALSE if the original habitatmap code consists of 2 or 3 possible vegetation types, and TRUE if only one vegetation type is provided.
 
 An exception to this rule are following codes: `3130_rbbmr`, `3140_rbbmr`, `3150_rbbmr` and `3160_rbbmr` (converted in the previous step into `31x0,rbbmr`).
 These are standing water bodies that contain both `rbbmr` and the habitat type.
 Therefore `certain` will be set to `TRUE` for both types included in `code`.
 
 ```{r}
-
 habmap_long <- habmap_longHAB %>%
-    left_join(habmap_longPHAB, by = c("polygon_id", "patch_id")) %>%
-    mutate(certain = !str_detect(code, ","),
-           certain = ifelse(code_orig %in% 
-                              c("3130_rbbmr", "3140_rbbmr", "3150_rbbmr", "3160_rbbmr"), 
-                            TRUE, 
-                            certain)) %>%
-    separate(code,
-             into = c("type1", "type2", "type3"),
-             sep = ",",
-             remove = FALSE) %>%
-    gather(type1, type2, type3, key = "ntype", value = "type") %>%
-    filter(!is.na(type)) %>%
-    filter(!(type %in% c("gh", "bos"))) %>%
-    select(-patch_id)
-
+  left_join(habmap_longPHAB, by = c("polygon_id", "patch_id")) %>%
+  mutate(
+    certain = !str_detect(code, ","),
+    certain = ifelse(code_orig %in%
+      c("3130_rbbmr", "3140_rbbmr", "3150_rbbmr", "3160_rbbmr"),
+    TRUE,
+    certain
+    )
+  ) %>%
+  separate(code,
+    into = c("type1", "type2", "type3"),
+    sep = ",",
+    remove = FALSE
+  ) %>%
+  gather(type1, type2, type3, key = "ntype", value = "type") %>%
+  filter(!is.na(type)) %>%
+  filter(!(type %in% c("gh", "bos"))) %>%
+  select(-patch_id)
 ```
 
 Sometimes you get two records for the same type within the same habitatmap polygon.
@@ -237,7 +255,6 @@ In this case we will sum the phab-values and create one record for each type.
 + a certain and an uncertain record of the same type, for example:
 
 ```{r}
-
 example <- habmap_long %>%
   group_by(polygon_id, type) %>%
   filter(n() > 1) %>%
@@ -253,27 +270,24 @@ habmap_long %>%
 
 We will not aggregate the certain and uncertain record, because we will lose some information used to create `habitatmap_terr`. It is some of the uncertain records (such as `9120, gh`) are eliminated when processing `habitatmap_terr`. 
 
-```{r}
+```{rinclude=FALSE, eval=FALSE}
 check_double_type <- habmap_long %>%
   group_by(polygon_id, type) %>%
   mutate(n_type = n()) %>%
   ungroup() %>%
   filter(n_type > 1) %>% 
   arrange(polygon_id)
-  
 ```
 
 
 ```{r}
 habmap_long_aggr <- habmap_long %>%
-  # group_by(polygon_id, code) %>%
-  #     mutate(n = n()) %>%
-  #   ungroup() %>%
-    group_by(polygon_id, type, certain) %>%
-     summarise(phab = sum(phab),
-              code_orig = str_c(code_orig, collapse = "; "),
-              certain = all(certain)) %>%
-    ungroup() 
+  summarise(
+    phab = sum(phab),
+    code_orig = str_c(code_orig, collapse = "; "),
+    certain = all(certain),
+    .by = c(polygon_id, type, certain)
+  )
 ```
 See below the result of the aggregation for the first example. 
 
@@ -282,7 +296,7 @@ habmap_long_aggr %>%
   filter(polygon_id == polygon_id_example_1)
 ```
 
-## Select vegetation types that belong to the standard list of habitat and rbb types  
+### Select vegetation types that belong to the standard list of habitat and rbb types  
 
 Table \@ref(tab:selectTypes) shows the records with habitat types that do not belong to the standard list of habitat and rbb types.
 
@@ -290,7 +304,6 @@ Good news!
 The table is empty
 
 ```{r selectTypes}
-
 types <- read_types() %>%
   select(type, typelevel, main_type, typeclass)
 
@@ -300,10 +313,7 @@ habmap_long_aggr <- habmap_long_aggr %>%
 habmap_types <- habmap_long_aggr %>%
   filter(!is.na(typelevel)) %>%
   select(polygon_id, type, certain, code_orig, phab) %>%
-  mutate(type = factor(type,
-                       levels = levels(types$type)
-                       )
-         ) %>%
+  mutate(type = factor(type, levels = levels(types$type))) %>%
   arrange(polygon_id, desc(phab))
   
 habmap_other_type <- habmap_long_aggr %>%
@@ -311,24 +321,14 @@ habmap_other_type <- habmap_long_aggr %>%
 
 habmap_other_type %>%
   select(polygon_id, type, certain, code_orig, phab) %>%
-  kable(caption = "Polygons with types that do not correspond with the standard list of types and rbb",
-        label = NA) %>%
+  kable(
+    caption = "Polygons with types that do not correspond with the standard list of types and rbb",
+    label = NA
+  ) %>%
   kable_styling()
-
 ```
 
-
-## Select features that contain habitat or rbb types
-
-```{r}
-
-habmap_types_sf <- habmap_sf %>%
-  select(polygon_id, description_orig) %>%
-  filter(polygon_id %in% habmap_types$polygon_id)
-
-```
-
-## Let 's have a quick look at the result
+### Let 's have a quick look at the result
 
 In the official version, the ID of each polygon in the habitatmap contains the 
 year in which the polygon was last updated.
@@ -339,15 +339,31 @@ In the table below we show the number of records per type and per update year.
 # polygon_id of the interim version does not contain the year 
 habmap_types %>%
   mutate(polygon_version = str_sub(polygon_id, start = -4)) %>%
-  group_by(type, polygon_version) %>%
-  summarise(n_records = n()) %>%
-  ungroup() %>%
-  pivot_wider(names_from = "polygon_version", values_from = "n_records", values_fill = 0) %>%
+  summarise(
+    n_records = n(),
+    .by = c(type, polygon_version)
+  ) %>%
+  pivot_wider(
+    names_from = "polygon_version",
+    names_sort = TRUE,
+    values_from = "n_records",
+    values_fill = 0
+  ) %>%
+  arrange(type) %>% 
   kable() %>%
   kable_styling()
 ```
 
-## Control and fix geometries
+## Transforming the spatial object
+
+### Only select features that contain habitat or rbb types
+
+```{r}
+habmap_types_sf <- habmap_sf %>%
+  filter(polygon_id %in% habmap_types$polygon_id)
+```
+
+### Control and fix geometries
 
 We want to make sure that the layer has valid geometries so that we can use it 
 in spatial analysis in GIS. 
@@ -531,25 +547,94 @@ leaflet(height = "600px", width = "700px") %>%
                      options = layersControlOptions(collapsed = FALSE))
 ```
 
+### Add the assessment year and method for each feature
 
-## Write results into a geopackage
+```{r sources}
+habmap_sf <- 
+  habmap_sf %>% 
+  mutate(
+    source_for_year = case_when(
+      str_detect(source_hab, "^\\d{2}") ~ "hab",
+      # only turn to BWK year if the habitat type was translated automatically
+      # without further alteration
+      str_detect(source, "^\\d{2}") & 
+        str_detect(source_hab, "^\\d*?(a|A)") ~ "bwk",
+      .default = NA_character_
+      ) %>% 
+      factor(),
+    year_short = recode_values(
+      source_for_year,
+      "hab" ~ str_sub(source_hab, 1, 2),
+      "bwk" ~ str_sub(source, 1, 2),
+      ),
+    year_short = as.integer(year_short),
+    year_assessment = ifelse(
+      year_short < 90,
+      2000L + year_short,
+      1900L + year_short
+    ),
+    method_abbrev = 
+      # extract the methods, not the season-letters [vznw] that may be added to
+      # fieldwork years:
+      str_extract(source_hab, "^\\d*?([a-mo-ux-yA-MO-UX-Y]{1,2})", group = 1),
+    method_assessment = case_when(
+      method_abbrev %in% c("A", "a") ~ "Automated translation from BWK",
+      method_abbrev == "mk" ~ 
+        "Adjustment of BWK-translation, based on field knowledge",
+      method_abbrev == "o" ~ 
+        "Adjustment of BWK-translation, based on orthophoto interpretation",
+      method_abbrev == "l" ~ "Assessment based on literature or extra files",
+      method_abbrev == "ex" ~ "Field assessment by an external expert",
+      is.na(source_for_year) ~ "Field assessment but year is missing??",
+      .default = "Field assessment"
+    ) %>% 
+      factor()
+  ) %>% 
+  # checking that no other methods occur
+  {
+    fieldobs <- filter(
+      .,
+      str_detect(method_assessment, "Field"),
+      !str_detect(method_assessment, "external")
+    )
+    if (any(!is.na(fieldobs$method_abbrev))) {
+      stop("Unsupported method abbreviation detected in source_hab")
+    } else {
+      .
+    }
+  } %>% 
+  select(-source_for_year, -year_short, -method_abbrev)
+```
+
+### Select specific columns
+
+```{r}
+habmap_types_sf <- habmap_sf %>%
+  select(polygon_id, description_orig, year_assessment, method_assessment)
+```
+
+
+## Write results to a geopackage
 
 ```{r}
 dir.create(file.path(path, "20_processed/habitatmap_stdized"), recursive = TRUE)
-filepath <- file.path(path,"20_processed/habitatmap_stdized/habitatmap_stdized.gpkg")
+filepath <- file.path(path, "20_processed/habitatmap_stdized/habitatmap_stdized.gpkg")
 ```
 
 ```{r write_gpkg}
+st_write(
+  habmap_types_sf,
+  filepath,
+  layer = "habitatmap_polygons",
+  driver = "GPKG",
+  delete_dsn = TRUE
+)
 
-st_write(habmap_types_sf, 
-         filepath, 
-         layer = "habitatmap_polygons", 
-         driver = "GPKG", 
-         delete_dsn = TRUE)
-
-st_write(habmap_types, 
-         filepath, 
-         layer = "habitatmap_types", 
-         driver = "GPKG", 
-         append = TRUE)
+st_write(
+  habmap_types,
+  filepath,
+  layer = "habitatmap_types",
+  driver = "GPKG",
+  append = TRUE
+)
 ```
