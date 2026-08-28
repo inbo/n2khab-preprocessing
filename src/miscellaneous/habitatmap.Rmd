@@ -24,6 +24,7 @@ library(knitr)
 library(tmap)
 library(leaflet)
 library(ggplot2)
+library(terra)
 opts_chunk$set(
   echo = TRUE,
   dpi = 300
@@ -35,6 +36,10 @@ opts_chunk$set(
 
 We check the interim version of April 2026: **habitatmap_2025_v99_interim**, based on field work until 2025.
 
+Because it was found that sf has difficulties with correcting certain (invalid) MULTISURFACE geometries, terra is being used to read the file and the result is converted to sf: terra automatically casts all geometries to polygons on reading; after conversion to sf we get no missing reasons for invalidity and `st_make_valid()` works for all invalid geometries.
+
+We do keep the geometry-type attribute of the data as read directly by sf, to further check selected MULTISURFACE geometries.
+
 ```{r read-habitatmap}
 filepath <- file.path(locate_n2khab_data(),
                       "10_raw/habitatmap")
@@ -42,13 +47,20 @@ filepath <- file.path(locate_n2khab_data(),
 if (length(grep("gpkg", list.files(path = filepath))) > 0) {
   # format = geopackage
   filepath <- file.path(filepath, "habitatmap.gpkg")
-  habitatmap <- read_sf(filepath) 
-  # omit layer name because it can be inconsistent in interim versions
-} else {
-  # format = shapefile
-  filepath <- file.path(filepath, "habitatmap.shp")
-  habitatmap <- read_sf(filepath, layer = "habitatmap")
 }
+# all formats
+habitatmap_sf <- 
+  read_sf(filepath) %>% 
+  mutate(geomtype_sf = st_geometry_type(.))
+habitatmap <- 
+  vect(filepath) %>% 
+  st_as_sf() %>%
+  as_tibble() %>%
+  bind_cols(habitatmap_sf %>% st_drop_geometry() %>% select(geomtype_sf)) %>% 
+  st_as_sf() %>% 
+  # since we get a combination of POLYGON and MULTIPOLYGON, we entirely cast
+  # as MULTIPOLYGON
+  st_cast("MULTIPOLYGON")
 ```
 
 The number of rows is `r nrow(habitatmap)`.
@@ -66,7 +78,48 @@ filepath %>%
   `names<-`("xxh64sum")
 ```
 
-## Field names
+Compare the geometry types between `habitatmap_sf` and `habitatmap`:
+
+```{r paged.print = FALSE}
+habitatmap_sf %>% 
+  st_drop_geometry() %>% 
+  count(geomtype_sf)
+habitatmap %>% 
+  mutate(geomtype = st_geometry_type(.)) %>% 
+  st_drop_geometry() %>% 
+  count(geomtype)
+```
+
+Optionally checking that the geometries of type MULTIPOLYGON in `habitatmap_sf` have the exact same geometry in `habitatmap`.
+
+```{r eval = FALSE}
+# the comparison at the end takes a lot of time; not running this by default
+habitatmap_sf %>%
+  select(globalid_BWK) %>%
+  mutate(id = row_number()) %>% 
+  filter(geomtype_sf == "MULTIPOLYGON") %>% 
+  inner_join(
+    habitatmap %>%
+      # drop sf class but not the geometry column:
+      as_tibble() %>% 
+      select(globalid_BWK) %>%
+      mutate(id = row_number()),
+    # it has been checked separately that row order is the same between both
+    # objects
+    join_by(id)
+  ) %>% 
+  as_tibble() %>% 
+  mutate(equalgeom = geom == geometry) %>% 
+  select(id, equalgeom) %>% 
+  count(equalgeom)
+# # A tibble: 1 × 2
+# equalgeom      n
+# <lgl>      <int>
+#   1 TRUE      696990
+```
+
+
+## Converting field names
 
 ```{r field-names}
 names(habitatmap)
@@ -83,12 +136,12 @@ And the following names are different between regular and interim version:
 - `HERKPHAB` => `HERK_pHAB`
 - `SHAPE_Leng` => `SHAPE_Length` (probably due to the fact that the previous version was a shapefile)
 
-We convert all the field names to lowercase and remove all the underscores.
-(only for this script: to be able to use the checks in this script with different 
-versions of the habitatmap without the need to modify every chunk)
+We convert all the column names to lowercase and remove most underscores, in order to make the code less dependent on the habitatmap version.
 
 ```{r lowercase-no-underscore}
-names(habitatmap) <- tolower(gsub("_", "", names(habitatmap)))
+names(habitatmap) <- str_to_lower(
+  str_replace_all(names(habitatmap), "_(?!sf)", "")
+)
 ```
 
 
@@ -410,23 +463,22 @@ st_crs(habitatmap)
 
 ## Validity of the geometries
 
+### Listing invalid geometries
+
 First we check that no empty geometries are present:
 
 ```{r check-empty-geom}
-all(!is.na(st_dimension(habitatmap$geom)))
+all(!is.na(st_dimension(habitatmap$geometry)))
 ```
 
 Let's inspect features with invalid or corrupt geometry:
 
 ```{r check-geometry}
-# can run for a while! (several minutes)
-
 start_time <- Sys.time()
-
 #st_is_valid(habitatmap) %>% table
 validities <- st_is_valid(habitatmap)
 # invalid but not NA
-invalid_geoms <- habitatmap[!is.na(validities) & validities == FALSE , ] %>% 
+invalid_geoms <- habitatmap[!is.na(validities) & !validities, ] %>% 
   mutate(geom_valid = "invalid")
 # NA
 navalid_geoms <- habitatmap[is.na(validities), ] %>% 
@@ -434,20 +486,6 @@ navalid_geoms <- habitatmap[is.na(validities), ] %>%
 # invalid_geoms <- habitatmap[!validities | is.na(validities), ] # returns all invalid and NA
 end_time <- Sys.time()
 end_time - start_time
-
-# important: since we need several minutes to calculate invalid_geoms, it is probably not 
-# an option to use the same code as in read_watersurfaces
-# the calculation of n_invalid would be too slow, so probably better to drop the if
-# taken from read_watersurfaces: 
- # if (fix_geom) {
- #      n_invalid <- sum(
- #        !st_is_valid(watersurfaces) | is.na(st_is_valid(watersurfaces))
- #      )
- #      if (n_invalid > 0) {
- #        watersurfaces <- st_make_valid(watersurfaces)
- #        message("Fixed ", n_invalid, " invalid or corrupt geometries.")
- #      }
- #    }
 ```
 
 
@@ -457,28 +495,26 @@ st_is_valid(rbind(invalid_geoms, navalid_geoms), reason = TRUE) %>%
   filter(is.na(value) | value != "Valid Geometry") %>% 
   mutate(problem = str_extract(string = value, 
                                 pattern = "[^\\[]+")) %>% 
-  count(problem) 
+  bind_cols(
+    rbind(invalid_geoms, navalid_geoms) %>%
+      st_drop_geometry() %>%
+      select(geomtype_sf)
+  ) %>% 
+  count(geomtype_sf, problem) 
 ```
 
-The geometry invalidity is the consequence of self-intersecting rings, as a 
-consequence of digitization errors. Note that there are also polygons that 
-return `NA`.
+The geometry invalidities comprise [self-touching rings](https://gdal.org/en/latest/user/geometry_validity.html#polygon-with-self-touching-ring) and [nested multipolygons](https://gdal.org/en/latest/user/geometry_validity.html#nested-multipolygons), as a consequence of digitization errors.
+The nested multipolygons are confined to the geometries that were seen as MULTISURFACE by sf.
 
-`st_make_valid` gives an error with this dataset "GeometryFixer::getResult called 
-on unknown geometry type". The invalid polygons returning `NA` are the ones 
-causing this error: in this version of the map there are apparently exotic 
-geometry types: `CURVEPOLYGON, COMPOUNDCURVE, CIRCULARSTRING` included in a `MULTISURFACE`.
-These geometries cannot be plotted with `leaflet` or `plotly` either. We need to
-find a workaround to be able to work with them.
-
+There are no polygons that return `NA`.
 
 ```{r}
-unique(st_geometry_type(navalid_geoms))
+nrow(navalid_geoms)
 ```
 
-### Invalid polygons with ring self-intersection
+### Inspecting invalid geometries
 
-First, let us take a look at the **invalid polygons with ring self-intersection**:
+First, let us take a look at the **invalid polygons**:
 
 ```{r graph-invalid-geoms, eval = FALSE}
 # only use this if there are not too many invalid polygons
@@ -498,8 +534,9 @@ leaflet(height = "600px", width = "700px") %>%
                           invalid_geoms_wgs84$id)) 
 ```
 
+### Fixing invalid geometries and inspecting the result
 
-We can fix the geoms with the self-intersecting rings easily with `st_make_valid`.
+We can fix the invalid geoms easily with `st_make_valid`.
 
 Let's compare with the same geoms after fixing the rings:
 
@@ -535,136 +572,52 @@ Are all geometries valid now?
 all(st_is_valid(valid_geoms))
 ```
 
-### Invalid polygons returning NA
+We specifically compare geometries seen as MULTISURFACE geometries by sf, before and after correction.
 
-And now let us take a look at the **invalid polygons with NA**:
+Before:
 
-```{r map-navalid-geoms-ex1}
-# there are many invalid NA-polygons, 
-# but unfortunately we cannot plot them with leaflet, plotly, tmap...
-
-# an example with ggplot then:
-ggplot(data = head(navalid_geoms, n = 1)) +
-  geom_sf(aes(geometry = geom)) +
-  scale_x_continuous(name = NULL) +
-  scale_y_continuous(name = NULL) +
-  theme_bw()
+```{r}
+tm_shape(invalid_geoms %>% filter(geomtype_sf == "MULTISURFACE")) +
+  tm_polygons() +
+  tm_facets(by = "id")
 ```
 
-```{r map-navalid-geoms-ex2}
-# another example with ggplot:
-ggplot(data = tail(navalid_geoms, n = 1)) +
-  geom_sf(aes(geometry = geom)) +
-  scale_x_continuous(name = NULL) +
-  scale_y_continuous(name = NULL) +
-  theme_bw()
+After:
+
+```{r}
+tm_shape(valid_geoms %>% filter(geomtype_sf == "MULTISURFACE")) +
+  tm_polygons() +
+  tm_facets(by = "id")
 ```
 
-These polygons contain curved lines and fixing the geoms with `st_make_valid` 
-does not work with them.
+We see that the nested multipolygons have been unioned, which looks fine.
 
-We find a workaround using `gdalUtilities::ogr2ogr`:
-<https://stackoverflow.com/questions/74479973/casting-from-geometrycollection-with-multiple-nested-geometries-r-sf> 
+Note: it appeared that directly plotting (valid or invalid) MULTISURFACE geometries in `habitatmap_sf` is not supported by ggplot, tmap or leaflet.
 
-```{r make-valid-na-geom}
-# convert curve to line with ogr2ogr
-st_write(navalid_geoms,
-         './habitatmap_navalid.gpkg',
-         layer = "habitatmap_navalid",
-         driver = "GPKG",
-         delete_dsn = TRUE)
-
-gdalUtilities::ogr2ogr('./habitatmap_navalid.gpkg',
-                       './habitatmap_corr.gpkg',
-                       explodecollections = T, nlt = 'CONVERT_TO_LINEAR')
-
-navalid_geoms_corr <- st_read("./habitatmap_corr.gpkg")
-
-file.remove('./habitatmap_navalid.gpkg') 
-file.remove('./habitatmap_corr.gpkg') 
+```{r eval=FALSE, include=FALSE}
+# invalid geometries
+invalid_geoms_sf_multisurface <- 
+  habitatmap_sf[!is.na(validities) & !validities, ] %>%
+  filter(geomtype_sf == "MULTISURFACE")
+ggplot(invalid_geoms_sf_multisurface) +
+  geom_sf() +
+  facet_wrap(~globalid_BWK)
+# sampled valid geometries
+valid_geoms_sf_multisurface <- 
+  habitatmap_sf[!is.na(validities) & validities, ] %>%
+  filter(geomtype_sf == "MULTISURFACE")
+tm_shape(valid_geoms_sf_multisurface %>% slice_sample(n = 15)) +
+  tm_polygons() +
+  tm_facets(by = "globalid_BWK")
+ggplot(valid_geoms_sf_multisurface %>% slice_sample(n = 15)) +
+  geom_sf() +
+  facet_wrap(~globalid_BWK)
 ```
 
-The result is a `POLYGON` instead of a `MULTISURFACE`, but there are now 461 
-records instead of 452. What happened?
+So the geometry correction works well.
+Derived data (habitatmap_stdized etc) will contain the fixed geometries.
 
-Let us search for the duplicates:
-
-```{r }
-supl_polygons <- navalid_geoms_corr %>%
-  st_drop_geometry() %>%
-  count(id) %>%
-  filter(n > 1)
-
-leaflet(height = "600px", width = "700px") %>%
-  addTiles(group = "OSM (default)") %>%
-  addPolygons(data = navalid_geoms_corr %>%
-                filter(id %in% supl_polygons$id) %>%
-                st_transform(crs = 4326),
-              color = "darkred",
-              popup = paste("id:", 
-                          invalid_geoms_wgs84$id))
-```
-
-
-- {2914A831-4B0E-469A-9480-3F26E4603E80} n=2 - a small circle inside a bigger polygon
-- {2B35801E-3B98-4003-97F6-DA28A4AAC71B} n=2 - a small circle inside a bigger polygon
-- {380DA352-1F74-43E9-BEA2-621C11D68A9A} n=5 - 4 small circles inside a bigger polygon
-- {575462C9-EAA1-46E2-AE80-5787A69BD283} n=2 - a small circle inside a bigger polygon
-- {8E3D05E3-323A-4795-8B27-E0F57A8E5349} n=2 - a small circle inside a bigger polygon
-- {DE8BCA5B-C10E-4035-8FD1-1AFF6F237481} n=2 - problem in the eastern part of the polygon (1 without visible perimeter?)
-
-```{r }
-# We can probably merge these polygons
-navalid_geoms_corr_dissolved  <- navalid_geoms_corr %>%
-  group_by(across(objectid:id)) %>% #all fields are the same
-  summarize(geom = sf::st_union(geom),
-            #across(everything(), first),
-            .groups = "drop") %>%
-  mutate(shapelength = st_length(geom),
-         shapearea = st_area(geom))
-```
-
-And now let's take a look at the corrected geoms:
-
-```{r }
-# plot one example before - after
-ggplot() +
-  geom_sf(data = navalid_geoms %>% 
-            filter(id == "{DE8BCA5B-C10E-4035-8FD1-1AFF6F237481}"), 
-          alpha = .2, color = 'red', lwd = 2) +
-  geom_sf(data = navalid_geoms_corr_dissolved %>% 
-            filter(id == "{DE8BCA5B-C10E-4035-8FD1-1AFF6F237481}"), 
-          alpha = .2, fill = 'blue') +
-  ggtitle('old (red) & corrected (blue) overplotted')
-```
-
-```{r }
-# plot one example before - after
-ggplot() +
-  geom_sf(data = navalid_geoms %>% 
-            filter(id == "{8E3D05E3-323A-4795-8B27-E0F57A8E5349}"), 
-          alpha = .2, color = 'red', lwd = 2) +
-  geom_sf(data = navalid_geoms_corr_dissolved %>% 
-            filter(id == "{8E3D05E3-323A-4795-8B27-E0F57A8E5349}"), 
-          alpha = .2, fill = 'blue') +
-  ggtitle('old (red) & corrected (blue) overplotted')
-
-```
-
-```{r }
-# plot all corrected polygons:
-leaflet(height = "600px", width = "700px") %>%
-  addTiles(group = "OSM (default)") %>%
-  addPolygons(data = navalid_geoms_corr_dissolved %>%
-                st_transform(crs = 4326),
-              popup = paste("id:",
-                            navalid_geoms_corr$id))
-```
-
-
-So this works well. In the derived data (habitatmap_stdized) we will fix these geometries.
-
-For the official version of the habitatmap we also consider an optional geometry 
+For the official version of the habitatmap we also have an optional geometry 
 reparation step in `read_habitatmap(fix_geom = TRUE)`.
 
 How long would it take to repair the geometries 'on the fly' while importing the habitatmap? 
@@ -672,21 +625,26 @@ How long would it take to repair the geometries 'on the fly' while importing the
 ```{r fix-geometry, eval = FALSE}
 # official version
 start_time <- Sys.time()
-hmv <- st_make_valid(habitatmap)
+invisible(st_make_valid(habitatmap))
 end_time <- Sys.time()
-
 end_time - start_time
-
 ```
 
+Refer to <https://github.com/inbo/n2khab-preprocessing/issues/60>, <https://r-spatial.org/r/2017/03/19/invalid.html> and <https://gdal.org/en/latest/user/geometry_validity.html> for more information!
 
-Refer to <https://github.com/inbo/n2khab-preprocessing/issues/60> and <https://r-spatial.org/r/2017/03/19/invalid.html> for more information!
+### Dropping geomtype_sf
+
+We had included geomtype_sf in order to explore the MULTISURFACE geometries, but it is superfluous now.
+
+```{r}
+habitatmap <- habitatmap %>% select(-geomtype_sf)
+```
+
 
 # Tidyverse-styled, internationalized column names when using the data source in R
 
 ```{r eval = FALSE}
 habitatmap %>% colnames %>% cat(sep = "\n")
-
 ```
 
 data source variable          data frame variable
