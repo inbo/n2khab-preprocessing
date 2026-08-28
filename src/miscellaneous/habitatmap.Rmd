@@ -119,16 +119,16 @@ habitatmap_sf %>%
 ```
 
 
-## Converting field names
+## Converting column names
 
-```{r field-names}
+```{r column-names}
 names(habitatmap)
 ```
 
 Some names are in uppercase, others in lowercase or mixed case.
-This is different from the regular version (where all the field names are in uppercase).
-A few fields from the regular version are missing in the interim version: `OIDN`, `UIDN`, `BWKLABEL`, `HABLEGENDE`, `LENGTE`, `OPPERVL`.
-Other fields are missing in the regular version: `referentie`, `info`, `globalid_BWK`.
+This is different from the regular version (where all the column names are in uppercase).
+A few columns from the regular version are missing in the interim version: `OIDN`, `UIDN`, `BWKLABEL`, `HABLEGENDE`, `LENGTE`, `OPPERVL`.
+Other columns are missing in the regular version: `referentie`, `info`, `globalid_BWK`.
 And the following names are different between regular and interim version: 
 
 - `HERK` => `herk_bwk`
@@ -200,7 +200,7 @@ habitatmap %>%
 
 ## Are there empty strings instead of NA?
 
-There are many empty strings (apparently used instead of NAs), in most of the cases in the fields where empty values can be expected though.
+There are many empty strings (apparently used instead of NAs), in most of the cases in the columns where empty values can be expected though.
 
 ```{r empty-strings}
 sapply(
@@ -209,7 +209,7 @@ sapply(
 )
 ```
 
-The following records might need to be checked since we don't expect empty values in the fields `eval`, `eenh1`, `herkbwk`, `hab1`, `herkhab`, `herkphab`.
+The following records might need to be checked since we don't expect empty values in the columns `eval`, `eenh1`, `herkbwk`, `hab1`, `herkhab`, `herkphab`.
 
 ```{r}
 habitatmap |> st_drop_geometry() %>% 
@@ -322,7 +322,7 @@ quantile(duplic_globalid$n, seq(0, 1, 0.1))
 
 ### Selecting or constructing a unique code
 
-From here on we will use as identifier: `globalidbwk` with a suffix that makes it unique where needed (in a new `id` field that 
+From here on we will use as identifier: `globalidbwk` with a suffix that makes it unique where needed (in a new `id` column that 
 can be used with any version of the habitatmap). 
 
 ```{r add-id}
