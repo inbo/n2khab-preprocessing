@@ -429,8 +429,6 @@ habitatmap_lg %>%
 
 ## Are HERKHAB codes OK?
 
-The included years look OK.
-
 ```{r check-herkhab-1, paged.print = FALSE}
 habitatmap %>%
   st_drop_geometry() %>%
@@ -446,7 +444,7 @@ habitatmap %>%
   print(n = Inf)
 ```
 
-The included methods look OK.
+The included years look OK.
 
 ```{r check-herkhab-2, paged.print = FALSE}
 habitatmap %>%
@@ -460,6 +458,19 @@ habitatmap %>%
   )) %>%
   count(method)
 ```
+
+The included methods contain unsupported values "m" and "ha" (actually "hab", but above code expects only two characters).
+
+```{r}
+habitatmap %>%
+  st_drop_geometry() %>% 
+  filter(
+    str_extract(herkhab, "^\\d*?([a-mo-ux-yA-MO-UX-Y]{1,2})", group = 1) %in%
+      c("m", "ha")
+  )
+```
+
+After consulting the authors, it was clear that the method should become "mk" in these cases.
 
 
 ## Is the CRS correct?
