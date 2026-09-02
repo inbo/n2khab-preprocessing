@@ -471,7 +471,7 @@ pal <- colorFactor(palette = c("black", "darkred"),
                    domain = habmap_types_geom_invalid_wgs84$problem)
 
 leaflet(height = "600px", width = "700px") %>%
-  addTiles(group = "OSM (default)") %>%
+  inbospatial::add_wms_be_cartoweb("topo_grey") %>%
   addPolygons(data = habmap_types_geom_invalid_wgs84,
               color = pal(habmap_types_geom_invalid_wgs84$problem),
               popup = paste("polygon_id:", 
@@ -533,10 +533,10 @@ habmap_types_geom_corrected_wgs84 <- habmap_types_sf %>%
   st_transform(crs = 4326) 
 
 leaflet(height = "600px", width = "700px") %>%
-  addTiles(group = "OSM (default)") %>%
-    addPolygons(data = habmap_types_geom_invalid_wgs84, 
-                group = "before correction (red)",
-                color = "darkred") %>% 
+  inbospatial::add_wms_be_cartoweb("topo_grey") %>%
+  addPolygons(data = habmap_types_geom_invalid_wgs84, 
+              group = "before correction (red)",
+              color = "darkred") %>% 
   addPolygons(data = habmap_types_geom_corrected_wgs84,
               group = "after correction (blue)",
               popup = paste("polygon_id:", 
