@@ -75,26 +75,28 @@ validities <- st_is_valid(pol)
 sum(!validities | is.na(validities)) == 0
 ```
 
-### Let 's have a quick look at the result
+### Type x assessment year
 
-In the table below we show the number of records per type and per update year.
+In the table below we show the number of records per type and assessment year.
 
-```{r eval = FALSE}
-# run only for the official versions with a TAG with the year as polygon_id
-# polygon_id of the interim version does not contain the year 
-habmap_types %>%
-  mutate(polygon_version = str_sub(polygon_id, start = -4)) %>%
-  summarise(
-    n_records = n(),
-    .by = c(type, polygon_version)
+```{r}
+pol %>% 
+  st_drop_geometry() %>% 
+  inner_join(
+    types,
+    join_by(polygon_id),
+    relationship = "one-to-many",
+    unmatched = "error"
   ) %>%
+  count(type, year_assessment) %>% 
   pivot_wider(
-    names_from = "polygon_version",
+    names_from = year_assessment,
     names_sort = TRUE,
-    values_from = "n_records",
+    values_from = n,
     values_fill = 0
   ) %>%
   arrange(type) %>% 
   kable() %>%
-  kable_styling()
+  kable_styling() %>%
+  scroll_box(height = "600px")
 ```
