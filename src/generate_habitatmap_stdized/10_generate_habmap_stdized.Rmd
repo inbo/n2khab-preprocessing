@@ -378,32 +378,6 @@ habmap_other_type %>%
 
 `habmap_types` is the object used to write the table of type occurrences in the datasource.
 
-### Let 's have a quick look at the result
-
-In the official version, the ID of each polygon in the habitatmap contains the 
-year in which the polygon was last updated.
-In the table below we show the number of records per type and per update year.
-
-```{r eval = FALSE}
-# run only for the official versions with a TAG with the year as polygon_id
-# polygon_id of the interim version does not contain the year 
-habmap_types %>%
-  mutate(polygon_version = str_sub(polygon_id, start = -4)) %>%
-  summarise(
-    n_records = n(),
-    .by = c(type, polygon_version)
-  ) %>%
-  pivot_wider(
-    names_from = "polygon_version",
-    names_sort = TRUE,
-    values_from = "n_records",
-    values_fill = 0
-  ) %>%
-  arrange(type) %>% 
-  kable() %>%
-  kable_styling()
-```
-
 ## Transforming the spatial object
 
 ### Only select features that contain habitat or rbb types
