@@ -133,7 +133,6 @@ habmap_longHAB <- habmap_sf %>%
     st_drop_geometry() %>%
     select(
       polygon_id,
-      polygon_area = OPPERVL,
       starts_with("HAB"),
       -any_of(c("HABLEGENDE"))
     ) %>%
@@ -285,7 +284,6 @@ habmap_long_aggr <- habmap_long %>%
   summarise(
     phab = sum(phab),
     code_orig = str_c(code_orig, collapse = "; "),
-    certain = all(certain),
     .by = c(polygon_id, type, certain)
   )
 ```
