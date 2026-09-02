@@ -1,10 +1,10 @@
 # Generate standardized habitatmap
 
-Interim version of the habitatmap as of March 2025 (official name: habitatmap_2024_v99_interim)
+We start from the (unpublished) interim version of the habitatmap of April 2026 (official name: habitatmap_2025_v99_interim).
 
 The interim habitatmap has not been cleaned up as well as the official published 
 versions:
-it contains inconsistent field names, the TAG field does not contain unique 
+it contains inconsistent field names, the TAG and globalid_BWK fields do not contain unique 
 identifiers, the empty fields contain an empty string or one or more spaces, ...
 (please refer to miscellaneous > habitatmap.Rmd for a full overview of the 
 possible problems and needed corrections).
@@ -20,7 +20,7 @@ Therefore we decide to skip the `n2khab::read_habitatmap()` step for the interim
 The interim version of the BWK and Natura 2000 habitat map of 
 Flanders is not online, and will be imported manually.
 
-To be sure we will use the correct version of the data source (habitatmap_2024_v99_interim), 
+To be sure we will use the correct version of the data source (habitatmap_2025_v99_interim), 
 we will derive the md5 file checksums and compare it to the file checksums in the 
 [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
 
@@ -41,7 +41,7 @@ checksums <-
   mutate(
     filename = str_match(filepath, "(.+\\/)*(.+)")[, 3],
     md5 = unname(md5sum(filepath)),
-    md5_ref = c("0421100ccd30f09f1060524324528232"),
+    md5_ref = c("b7e88d0687bf27db723aab9845a85a80"),
     match = md5 == md5_ref
   ) %>%
   select(
@@ -62,32 +62,63 @@ if (!all.equal(checksums$md5, checksums$md5_ref)) {
 }
 ```
 
+Because it was found that sf has difficulties with correcting certain (invalid) MULTISURFACE geometries, terra is being used to read the file and the result is converted to sf: terra automatically casts all geometries to polygons on reading; after conversion to sf we get no missing reasons for invalidity and `st_make_valid()` works for all invalid geometries.
+See `src/miscellaneous/habitatmap.Rmd` for more details.
 
 ```{r read_raw_data}
-habitatmap_sf <- read_sf(
-  file.path(mypath, "habitatmap.gpkg"),
-  crs = 31370
-)
+habitatmap_sf <-
+  vect(file.path(mypath, "habitatmap.gpkg")) %>%
+  st_as_sf() %>%
+  as_tibble() %>%
+  st_as_sf(crs = 31370) %>%
+  # since we get a combination of POLYGON and MULTIPOLYGON, we entirely cast
+  # as MULTIPOLYGON
+  st_cast("MULTIPOLYGON")
 ```
 
-## Clean up of the interim version
+## Clean up the interim version
 
+We rename some column names to make the interim version as similar as possible to the regular one; this prevents unneeded differences with the regular version in later code chunks.
+Also, we clean strings and add a unique polygon ID.
+See `src/miscellaneous/habitatmap.Rmd` for the underlying exploration.
 
 ```{r clean_up_interim}
-# we want to make the interim version as similar as possible as the official one
-# to avoid too many changes in the other chunks
-habitatmap_sf <- habitatmap_sf %>% 
-  rename(PHAB1 = pHAB1, # field names
-         PHAB2 = pHAB2,
-         PHAB3 = pHAB3,
-         PHAB4 = pHAB4,
-         PHAB5 = pHAB5) %>% 
-  mutate(across(-geom, ~ifelse(grepl(pattern = "^\\s*$", .), NA, .)),
-         info = ifelse(info == '<Null>', NA, info)) %>%  # clean up empty fields
-   mutate(TAG = globalid_BWK) %>%  # add unique ID (we replace TAG by the unique globalid_BWK)
-  rename(OPPERVL = Shape_Area) %>% 
+duplic_globalid <-
+  habitatmap_sf %>%
+  st_drop_geometry() %>%
+  count(globalid_BWK) %>%
+  filter(n > 1)
+habitatmap_sf <- habitatmap_sf %>%
+  rename(
+    PHAB1 = pHAB1,
+    PHAB2 = pHAB2,
+    PHAB3 = pHAB3,
+    PHAB4 = pHAB4,
+    PHAB5 = pHAB5,
+    source = herk_bwk,
+    source_hab = HERK_HAB,
+    OPPERVL = SHAPE_Area
+  ) %>%
+  # add unique ID
+  mutate(
+    TAG = str_c(
+      globalid_BWK,
+      ifelse(
+        globalid_BWK %in% duplic_globalid$globalid_BWK,
+        str_c("_", str_pad(row_number(), 2, pad = "0")),
+        ""
+      )
+    ),
+    .by = globalid_BWK
+  ) %>% 
+  # clean up empty fields (empty strings, spaces, "<Null>" strings) and remove
+  # leading or trailing whitespaces
+  mutate(
+    across(-geometry, ~ ifelse(grepl(pattern = "^\\s*$", .), NA, .)),
+    across(where(is.character), str_trim),
+    info = ifelse(info == "<Null>", NA, info)
+  ) %>%
   filter(!is.na(HAB1)) # remove a few errors
-
 ```
 
 
@@ -399,8 +430,8 @@ validities <- st_is_valid(habmap_types_sf, reason = TRUE) %>%
             by = "id") %>% 
   select(-value)
 
-# there are invalid polygons with a reason mentioned but also with no reason given (NA)
-# those categories need to be handled separately
+# There are invalid polygons with a reason mentioned but some may have no reason
+# given (NA). Those categories need to be handled separately
 
 # invalid polygons with a clear explanation
 habmap_types_geom_invalid <- validities %>%
@@ -420,6 +451,13 @@ message(
 )
 ```
 
+```{r include=FALSE}
+# The code may not work correctly if cases exist with invalid NA (always
+# investigate; consult code history for remedies in the past); hence protecting
+# with a test
+stopifnot(nrow(habmap_types_geom_invalidna) == 0)
+```
+
 ```{r}
 habmap_types_geom_invalid  %>%
   rbind(., habmap_types_geom_invalidna) %>% 
@@ -429,65 +467,18 @@ habmap_types_geom_invalid  %>%
   scroll_box(height = "300px")
 ```
 
-We will correct the geometry using the function `st_make_valid` and check the results.
-
-The interim version (habitatmap_2024_v99_interim) contains more exotic geometries (MULTISURFACE with curved polygons) that cannot be corrected directly.
-We need an intermediate step to make it work: we convert the curved polygons into standard polygons with `gdalUtilities::ogr2ogr`.
-
-```{r convert_curve_to_line}
-# convert curved polygons into normal polygons
-# this needs to be done for the NA only
-
-st_write(habmap_types_geom_invalidna,
-         './habmap_types_invalidna.gpkg',
-         layer = "habmap_stdized_invalidna",
-         driver = "GPKG",
-         delete_dsn = TRUE)
-
-gdalUtilities::ogr2ogr('./habmap_types_invalidna.gpkg',
-                       './habmap_types_invalidnacorr.gpkg',
-                       explodecollections = T, nlt = 'CONVERT_TO_LINEAR')
-
-habmap_types_geom_invalidnacorr <- st_read("./habmap_types_invalidnacorr.gpkg")
-# note the geometry type: POLYGON
-
-file.remove('./habmap_types_invalidna.gpkg') 
-file.remove('./habmap_types_invalidnacorr.gpkg')
-
-# but there are now 181 records instead of 175
-# duplicates
-habmap_types_geom_invalidnacorr %>%
-  st_drop_geometry() %>%
-  count(polygon_id) %>%
-  filter(n > 1)
-# merge these polygons (see miscellaneous > habitatmap for the details)
-habmap_types_geom_invalidnacorr_dissolved  <- habmap_types_geom_invalidnacorr %>%
-  group_by(across(id:description_orig)) %>% 
-  summarize(geom = sf::st_union(geom),
-            .groups = "drop")
-
-```
-
-```{r}
-# merge both invalid datasets back together
-
-habmap_types_geom_invalidall <- habmap_types_sf %>% 
-  inner_join(habmap_types_geom_invalid %>% 
-               select(polygon_id, problem),
-             by = join_by(polygon_id)) %>% 
-  rbind(.,habmap_types_geom_invalidnacorr_dissolved %>% 
-          select(-id))
-```
+We will correct the geometry using the function `st_make_valid()` and check the results.
 
 Let us take a look at the invalid polygons:
 
 ```{r map_invalid_geoms}
 # show the invalid polygons on a map
-habmap_types_geom_invalid_wgs84 <- habmap_types_geom_invalidall %>%
+habmap_types_geom_invalid_wgs84 <- habmap_types_geom_invalid %>%
+  st_as_sf() %>% 
   mutate(problem = ifelse(is.na(problem), "Unknown (NA)", problem)) %>% 
   st_transform(crs = 4326) 
 
-pal <- colorFactor(palette = c("black", "darkred"), 
+pal <- colorFactor(palette = c("darkorange", "darkred"), 
                    domain = habmap_types_geom_invalid_wgs84$problem)
 
 leaflet(height = "600px", width = "700px") %>%
@@ -505,26 +496,10 @@ leaflet(height = "600px", width = "700px") %>%
             opacity = 1)
 ```
 
-
-And now we can correct the geometries
-
+We correct the geometries:
 
 ```{r fix_geom}
-# correct geometries
-
-# combine all datasets (invalid and valid geoms)
-habmap_types_geom_all <- habmap_types_sf %>% 
-  semi_join(validities %>% 
-              filter(!is.na(problem)) %>% # valid and invalid with ring
-              select(polygon_id),
-            by = join_by(polygon_id)) %>% 
-  rbind(.,habmap_types_geom_invalidnacorr_dissolved %>% 
-          select(-id, -problem)) # invalid with NA
-
-
-# correct geometries
-habmap_types_sf <- st_make_valid(habmap_types_geom_all)
-
+habmap_types_sf <- st_make_valid(habmap_types_sf)
 ```
 
 ```{r }
@@ -535,7 +510,7 @@ habmap_types_geom_corrected <- st_is_valid(habmap_types_sf, reason = TRUE) %>%
   left_join(habmap_types_sf %>% 
               mutate(id = as.character(row_number())), 
             by = "id") %>% 
-  filter(polygon_id %in% habmap_types_geom_invalidall$polygon_id)
+  filter(polygon_id %in% habmap_types_geom_invalid$polygon_id)
 
 habmap_types_geom_corrected %>% 
         select(id, polygon_id, description_orig, problem = value) %>% 
@@ -549,7 +524,7 @@ habmap_types_geom_corrected %>%
 ```{r map_corrected_geoms}
 # show the corrected polygons on a map
 habmap_types_geom_corrected_wgs84 <- habmap_types_sf %>% 
-  filter(polygon_id %in% habmap_types_geom_invalidall$polygon_id) %>% 
+  filter(polygon_id %in% habmap_types_geom_invalid$polygon_id) %>% 
   st_transform(crs = 4326) 
 
 leaflet(height = "600px", width = "700px") %>%
@@ -560,14 +535,25 @@ leaflet(height = "600px", width = "700px") %>%
   addPolygons(data = habmap_types_geom_corrected_wgs84,
               group = "after correction (blue)",
               popup = paste("polygon_id:", 
-                          habmap_types_geom_corrected_wgs84$polygon_id, "<br>",
-                           "description_orig:",
-                          habmap_types_geom_corrected_wgs84$description_orig)) %>%
-    addLayersControl(overlayGroups = c("before correction (red)", "after correction (blue)"),
-                     options = layersControlOptions(collapsed = FALSE))
+                            habmap_types_geom_corrected_wgs84$polygon_id, "<br>",
+                            "description_orig:",
+                            habmap_types_geom_corrected_wgs84$description_orig)) %>%
+  addLayersControl(overlayGroups = c("before correction (red)", "after correction (blue)"),
+                   options = layersControlOptions(collapsed = FALSE))
 ```
 
 ### Add the assessment year and method for each feature
+
+<!-- BELOW TEMPORARY STEP IS TO BE DROPPED IN LATER UPDATES (SHOULD HAVE BEEN FIXED IN DATABASE): -->
+
+Temporary fixes of unsupported values (this affects two rows):
+
+```{r}
+habmap_types_sf <-
+  habmap_types_sf %>%
+  mutate(source_hab = replace_values(source_hab, c("24m", "24hab") ~ "24mk"))
+```
+
 
 ```{r sources}
 habmap_types_sf <- 
