@@ -6,19 +6,18 @@ The interim habitatmap has not been cleaned up as well as the official published
 versions:
 it contains inconsistent field names, the TAG field does not contain unique 
 identifiers, the empty fields contain an empty string or one or more spaces, ...
-(please refer to miscellaneous > habitatmap.Rmd for an full overview of the 
+(please refer to miscellaneous > habitatmap.Rmd for a full overview of the 
 possible problems and needed corrections).
 
-Because of these problems, it does not seem a good idea to load the raw version 
-of the habitatmap with `n2khab::read_habitatmap` (there would be many corrections 
-needed in `n2khab::read_habitatmap`, and possibly different corrections for each 
+Because of these problems, it is not a good idea to load the raw version 
+of the habitatmap with `n2khab::read_habitatmap()` (there would be many corrections 
+needed in `n2khab::read_habitatmap()`, and possibly different corrections for each 
 new interim version of the habitatmap).
-Therefore we decide to skip the raw habitatmap for the interim versions and to
-start directly with the standardized version.
+Therefore we decide to skip the `n2khab::read_habitatmap()` step for the interim versions.
 
 ## Data source
 
-- The interim version of the BWK and Natura 2000 habitat map of 
+The interim version of the BWK and Natura 2000 habitat map of 
 Flanders is not online, and will be imported manually.
 
 To be sure we will use the correct version of the data source (habitatmap_2024_v99_interim), 
@@ -100,7 +99,7 @@ We also add a `description_orig` column to store original codes.
 habmap_sf <- habitatmap_sf %>%
   filter(!(HAB1 == "gh" & PHAB1 == 100)) %>%
   mutate(
-    polygon_id = TAG, # unieke id
+    polygon_id = TAG, # unique id
     description_orig = str_c(
       PHAB1, "% ", HAB1,
       ifelse(is.na(HAB2), "", str_c("; ", PHAB2, "% ", HAB2)),
@@ -112,7 +111,7 @@ habmap_sf <- habitatmap_sf %>%
 ```
 
 
-## Processing of the attribute table
+## Processing the attribute table
 
 ### Converting to long format
 
@@ -148,7 +147,7 @@ Here are the vegetation codes used in this version of the habitatmap:
 habmap_longHAB %>%
   distinct(code) %>%
   arrange(code) %>%
-  kable(caption = "List codes in habitat map", label = NA) %>%
+  kable(caption = "Codes in habitat map", label = NA) %>%
   kable_styling() %>%
   scroll_box(height = "300px")
 ```
@@ -301,7 +300,8 @@ habmap_long_aggr <- habmap_long %>%
     .by = c(polygon_id, type, certain)
   )
 ```
-See below the result of the aggregation for the first example. 
+
+See below the result of the aggregation for the first example.
 
 ```{r}
 habmap_long_aggr %>%
@@ -313,7 +313,7 @@ habmap_long_aggr %>%
 Table \@ref(tab:selectTypes) shows the records with habitat types that do not belong to the standard list of habitat and rbb types.
 
 Good news! 
-The table is empty
+The table is empty.
 
 ```{r selectTypes}
 types <- read_types() %>%
@@ -344,6 +344,8 @@ habmap_other_type %>%
   ) %>%
   kable_styling()
 ```
+
+`habmap_types` is the object used to write the table of type occurrences in the datasource.
 
 ### Let 's have a quick look at the result
 
@@ -385,14 +387,13 @@ habmap_types_sf <- habmap_sf %>%
 We want to make sure that the layer has valid geometries so that we can use it 
 in spatial analysis in GIS. 
 
-First, we search for polygons with invalid geometries. 
+First, we search for polygons with invalid geometries (see `src/miscellaneous/habitatmap.Rmd` for more details). 
 
 ```{r find_invalid_geoms}
 validities <- st_is_valid(habmap_types_sf, reason = TRUE) %>%
   as_tibble() %>%
   mutate(id = rownames(.) ) %>%
-  mutate(problem = str_extract(string = value,
-                               pattern = "[^\\[]+")) %>%
+  mutate(problem = str_extract(string = value, pattern = "[^\\[]+")) %>%
   left_join(habmap_types_sf %>% 
               mutate(id = as.character(row_number())), 
             by = "id") %>% 
