@@ -110,7 +110,7 @@ habitatmap_sf <- habitatmap_sf %>%
       )
     ),
     .by = globalid_BWK
-  ) %>% 
+  ) %>%
   # clean up empty fields (empty strings, spaces, "<Null>" strings) and remove
   # leading or trailing whitespaces
   mutate(
@@ -153,23 +153,23 @@ We will convert the attribute table to a long format, so that every row contains
 
 ```{r long_format}
 habmap_longPHAB <- habmap_sf %>%
-    st_drop_geometry() %>%
-    gather(PHAB1, PHAB2, PHAB3, PHAB4, PHAB5, key = "phabn", value = "phab") %>%
-    mutate(patch_id = str_sub(phabn, 5, 5)) %>%
-    select(polygon_id, patch_id, phab) %>%
-    filter(!is.na(phab))
+  st_drop_geometry() %>%
+  gather(PHAB1, PHAB2, PHAB3, PHAB4, PHAB5, key = "phabn", value = "phab") %>%
+  mutate(patch_id = str_sub(phabn, 5, 5)) %>%
+  select(polygon_id, patch_id, phab) %>%
+  filter(!is.na(phab))
 
 habmap_longHAB <- habmap_sf %>%
-    st_drop_geometry() %>%
-    select(
-      polygon_id,
-      starts_with("HAB"),
-      -any_of(c("HABLEGENDE"))
-    ) %>%
-    gather(HAB1, HAB2, HAB3, HAB4, HAB5, key = "hab", value = "code") %>%
-    mutate(patch_id = substr(hab, 4, 4)) %>%
-    filter(!is.na(code)) %>%
-    filter(!code %in% c("gh", "x"))
+  st_drop_geometry() %>%
+  select(
+    polygon_id,
+    starts_with("HAB"),
+    -any_of(c("HABLEGENDE"))
+  ) %>%
+  gather(HAB1, HAB2, HAB3, HAB4, HAB5, key = "hab", value = "code") %>%
+  mutate(patch_id = substr(hab, 4, 4)) %>%
+  filter(!is.na(code)) %>%
+  filter(!code %in% c("gh", "x"))
 ```
 
 Here are the vegetation codes used in this version of the habitatmap:
@@ -249,7 +249,7 @@ These are standing water bodies that contain both `rbbmr` and the habitat type.
 Therefore `certain` will be set to `TRUE` for both types included in `code`.
 
 ```{r}
-habmap_long <- 
+habmap_long <-
   habmap_longHAB %>%
   left_join(
     habmap_longPHAB,
@@ -285,7 +285,7 @@ We distinguish two cases:
 
 ```{r}
 example <- habmap_long %>%
-  add_count(polygon_id, type, certain) %>% 
+  add_count(polygon_id, type, certain) %>%
   filter(n > 1)
 
 polygon_id_example_1 <- example$polygon_id[1]
@@ -318,7 +318,7 @@ We will not aggregate the certain and uncertain record, because we will lose som
 ```{r include=FALSE, eval=FALSE}
 check_double_type <- habmap_long %>%
   add_count(polygon_id, type, name = "n_type") %>%
-  filter(n_type > 1) %>% 
+  filter(n_type > 1) %>%
   arrange(polygon_id)
 ```
 
@@ -363,7 +363,7 @@ habmap_types <- habmap_long_aggr %>%
   select(polygon_id, type, certain, code_orig, phab) %>%
   mutate(type = factor(type, levels = levels(types$type))) %>%
   arrange(polygon_id, desc(phab))
-  
+
 habmap_other_type <- habmap_long_aggr %>%
   filter(is.na(typelevel))
 
@@ -397,11 +397,13 @@ First, we search for polygons with invalid geometries (see `src/miscellaneous/ha
 ```{r find_invalid_geoms}
 validities <- st_is_valid(habmap_types_sf, reason = TRUE) %>%
   as_tibble() %>%
-  mutate(id = rownames(.) ) %>%
+  mutate(id = rownames(.)) %>%
   mutate(problem = str_extract(string = value, pattern = "[^\\[]+")) %>%
-  left_join(habmap_types_sf %>% 
-              mutate(id = as.character(row_number())), 
-            by = "id") %>% 
+  left_join(
+    habmap_types_sf %>%
+      mutate(id = as.character(row_number())),
+    by = "id"
+  ) %>%
   select(-value)
 
 # There are invalid polygons with a reason mentioned but some may have no reason
@@ -409,14 +411,14 @@ validities <- st_is_valid(habmap_types_sf, reason = TRUE) %>%
 
 # invalid polygons with a clear explanation
 habmap_types_geom_invalid <- validities %>%
-  filter(problem != "Valid Geometry") 
+  filter(problem != "Valid Geometry")
 # invalid polygons without a clear explanation: NA
-habmap_types_geom_invalidna <- validities %>% 
-  filter(is.na(problem)) 
+habmap_types_geom_invalidna <- validities %>%
+  filter(is.na(problem))
 
 message(
   "There are ",
-  rbind(habmap_types_geom_invalid,habmap_types_geom_invalidna) %>% nrow(),
+  rbind(habmap_types_geom_invalid, habmap_types_geom_invalidna) %>% nrow(),
   " polygons with invalid geometry: \n",
   habmap_types_geom_invalid %>% nrow(),
   " with a clear explanation for the problem and \n",
@@ -433,11 +435,11 @@ stopifnot(nrow(habmap_types_geom_invalidna) == 0)
 ```
 
 ```{r}
-habmap_types_geom_invalid  %>%
-  rbind(., habmap_types_geom_invalidna) %>% 
-  select(id, polygon_id, description_orig, problem) %>% 
+habmap_types_geom_invalid %>%
+  rbind(., habmap_types_geom_invalidna) %>%
+  select(id, polygon_id, description_orig, problem) %>%
   kable(caption = "Polygons with faulty geometries", label = NA) %>%
-  kable_styling() %>% 
+  kable_styling() %>%
   scroll_box(height = "300px")
 ```
 
@@ -448,26 +450,34 @@ Let us take a look at the invalid polygons:
 ```{r map_invalid_geoms}
 # show the invalid polygons on a map
 habmap_types_geom_invalid_wgs84 <- habmap_types_geom_invalid %>%
-  st_as_sf() %>% 
-  mutate(problem = ifelse(is.na(problem), "Unknown (NA)", problem)) %>% 
-  st_transform(crs = 4326) 
+  st_as_sf() %>%
+  mutate(problem = ifelse(is.na(problem), "Unknown (NA)", problem)) %>%
+  st_transform(crs = 4326)
 
-pal <- colorFactor(palette = c("darkorange", "darkred"), 
-                   domain = habmap_types_geom_invalid_wgs84$problem)
+pal <- colorFactor(
+  palette = c("darkorange", "darkred"),
+  domain = habmap_types_geom_invalid_wgs84$problem
+)
 
 leaflet(height = "600px", width = "700px") %>%
   inbospatial::add_wms_be_cartoweb("topo_grey") %>%
-  addPolygons(data = habmap_types_geom_invalid_wgs84,
-              color = pal(habmap_types_geom_invalid_wgs84$problem),
-              popup = paste("polygon_id:", 
-                          habmap_types_geom_invalid_wgs84$polygon_id, "<br>",
-                           "description_orig:",
-                          habmap_types_geom_invalid_wgs84$description_orig, 
-                          "<br>", 
-                          habmap_types_geom_invalid_wgs84$problem)) %>% 
-  addLegend(data = habmap_types_geom_invalid_wgs84,
-            pal = pal, values = ~problem,
-            opacity = 1)
+  addPolygons(
+    data = habmap_types_geom_invalid_wgs84,
+    color = pal(habmap_types_geom_invalid_wgs84$problem),
+    popup = paste(
+      "polygon_id:",
+      habmap_types_geom_invalid_wgs84$polygon_id, "<br>",
+      "description_orig:",
+      habmap_types_geom_invalid_wgs84$description_orig,
+      "<br>",
+      habmap_types_geom_invalid_wgs84$problem
+    )
+  ) %>%
+  addLegend(
+    data = habmap_types_geom_invalid_wgs84,
+    pal = pal, values = ~problem,
+    opacity = 1
+  )
 ```
 
 We correct the geometries:
@@ -478,42 +488,54 @@ habmap_types_sf <- st_make_valid(habmap_types_sf)
 
 ```{r }
 # list the corrected polygons and check the geometry again
-habmap_types_geom_corrected <- st_is_valid(habmap_types_sf, reason = TRUE) %>% 
-  as_tibble() %>% 
-  mutate(id = rownames(.)) %>% 
-  left_join(habmap_types_sf %>% 
-              mutate(id = as.character(row_number())), 
-            by = "id") %>% 
+habmap_types_geom_corrected <- st_is_valid(habmap_types_sf, reason = TRUE) %>%
+  as_tibble() %>%
+  mutate(id = rownames(.)) %>%
+  left_join(
+    habmap_types_sf %>%
+      mutate(id = as.character(row_number())),
+    by = "id"
+  ) %>%
   filter(polygon_id %in% habmap_types_geom_invalid$polygon_id)
 
-habmap_types_geom_corrected %>% 
-        select(id, polygon_id, description_orig, problem = value) %>% 
-  kable(caption = "Polygons with faulty geometries after correction", 
-        label = NA) %>% 
-  kable_styling() %>% 
+habmap_types_geom_corrected %>%
+  select(id, polygon_id, description_orig, problem = value) %>%
+  kable(
+    caption = "Polygons with faulty geometries after correction",
+    label = NA
+  ) %>%
+  kable_styling() %>%
   scroll_box(height = "300px")
 ```
 
 
 ```{r map_corrected_geoms}
 # show the corrected polygons on a map
-habmap_types_geom_corrected_wgs84 <- habmap_types_sf %>% 
-  filter(polygon_id %in% habmap_types_geom_invalid$polygon_id) %>% 
-  st_transform(crs = 4326) 
+habmap_types_geom_corrected_wgs84 <- habmap_types_sf %>%
+  filter(polygon_id %in% habmap_types_geom_invalid$polygon_id) %>%
+  st_transform(crs = 4326)
 
 leaflet(height = "600px", width = "700px") %>%
   inbospatial::add_wms_be_cartoweb("topo_grey") %>%
-  addPolygons(data = habmap_types_geom_invalid_wgs84, 
-              group = "before correction (red)",
-              color = "darkred") %>% 
-  addPolygons(data = habmap_types_geom_corrected_wgs84,
-              group = "after correction (blue)",
-              popup = paste("polygon_id:", 
-                            habmap_types_geom_corrected_wgs84$polygon_id, "<br>",
-                            "description_orig:",
-                            habmap_types_geom_corrected_wgs84$description_orig)) %>%
-  addLayersControl(overlayGroups = c("before correction (red)", "after correction (blue)"),
-                   options = layersControlOptions(collapsed = FALSE))
+  addPolygons(
+    data = habmap_types_geom_invalid_wgs84,
+    group = "before correction (red)",
+    color = "darkred"
+  ) %>%
+  addPolygons(
+    data = habmap_types_geom_corrected_wgs84,
+    group = "after correction (blue)",
+    popup = paste(
+      "polygon_id:",
+      habmap_types_geom_corrected_wgs84$polygon_id, "<br>",
+      "description_orig:",
+      habmap_types_geom_corrected_wgs84$description_orig
+    )
+  ) %>%
+  addLayersControl(
+    overlayGroups = c("before correction (red)", "after correction (blue)"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
 ```
 
 ### Add the assessment year and method for each feature
@@ -530,46 +552,46 @@ habmap_types_sf <-
 
 
 ```{r sources}
-habmap_types_sf <- 
-  habmap_types_sf %>% 
+habmap_types_sf <-
+  habmap_types_sf %>%
   mutate(
     source_for_year = case_when(
       str_detect(source_hab, "^\\d{2}") ~ "hab",
       # only turn to BWK year if the habitat type was translated automatically
       # without further alteration
-      str_detect(source, "^\\d{2}") & 
+      str_detect(source, "^\\d{2}") &
         str_detect(source_hab, "^\\d*?(a|A)") ~ "bwk",
       .default = NA_character_
-      ) %>% 
+    ) %>%
       factor(),
     year_short = recode_values(
       source_for_year,
       "hab" ~ str_sub(source_hab, 1, 2),
       "bwk" ~ str_sub(source, 1, 2),
-      ),
+    ),
     year_short = as.integer(year_short),
     year_assessment = ifelse(
       year_short < 90,
       2000L + year_short,
       1900L + year_short
     ),
-    method_abbrev = 
-      # extract the methods, not the season-letters [vznw] that may be added to
-      # fieldwork years:
+    method_abbrev =
+    # extract the methods, not the season-letters [vznw] that may be added to
+    # fieldwork years:
       str_extract(source_hab, "^\\d*?([a-mo-ux-yA-MO-UX-Y]{1,2})", group = 1),
     method_assessment = case_when(
       method_abbrev %in% c("A", "a") ~ "Automated translation from BWK",
-      method_abbrev == "mk" ~ 
+      method_abbrev == "mk" ~
         "Adjustment of BWK-translation, based on field knowledge",
-      method_abbrev == "o" ~ 
+      method_abbrev == "o" ~
         "Adjustment of BWK-translation, based on orthophoto interpretation",
       method_abbrev == "l" ~ "Assessment based on literature or extra files",
       method_abbrev == "ex" ~ "Field assessment by an external expert",
       is.na(source_for_year) ~ "Field assessment but year is missing??",
       .default = "Field assessment"
-    ) %>% 
+    ) %>%
       factor()
-  ) %>% 
+  ) %>%
   # checking that no other methods occur
   {
     fieldobs <- filter(
@@ -582,7 +604,7 @@ habmap_types_sf <-
     } else {
       .
     }
-  } %>% 
+  } %>%
   select(-source_for_year, -year_short, -method_abbrev)
 ```
 

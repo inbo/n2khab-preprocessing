@@ -80,22 +80,22 @@ sum(!validities | is.na(validities)) == 0
 In the table below we show the number of records per type and assessment year.
 
 ```{r}
-pol %>% 
-  st_drop_geometry() %>% 
+pol %>%
+  st_drop_geometry() %>%
   inner_join(
     types,
     join_by(polygon_id),
     relationship = "one-to-many",
     unmatched = "error"
   ) %>%
-  count(type, year_assessment) %>% 
+  count(type, year_assessment) %>%
   pivot_wider(
     names_from = year_assessment,
     names_sort = TRUE,
     values_from = n,
     values_fill = 0
   ) %>%
-  arrange(type) %>% 
+  arrange(type) %>%
   kable() %>%
   kable_styling() %>%
   scroll_box(height = "600px")
