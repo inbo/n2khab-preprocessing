@@ -180,7 +180,8 @@ sapply(
 ```{r}
 habitatmap %>%
   st_drop_geometry() %>%
-  filter(info == "<Null>")
+  filter(info == "<Null>") %>% 
+  rmarkdown::paged_table()
 ```
 
 ## Are there Zero (0) values?
@@ -197,7 +198,8 @@ sapply(
 ```{r}
 habitatmap %>%
   st_drop_geometry() %>%
-  filter(herkphab == "0")
+  filter(herkphab == "0") %>% 
+  rmarkdown::paged_table()
 ```
 
 ## Are there empty strings instead of NA?
@@ -229,7 +231,11 @@ habitatmap |>
     herkphab,
     globalidbwk
   ) %>%
-  filter(if_any(c(eval, eenh1, herkbwk, hab1, herkhab, herkphab), \(x) x == ""))
+  filter(if_any(
+    c(eval, eenh1, herkbwk, hab1, herkhab, herkphab),
+    \(x) x == ""
+  )) %>% 
+  rmarkdown::paged_table()
 ```
 
 <!-- As for `tag`: there are plenty of empty records in this interim versions. -->
@@ -271,7 +277,8 @@ habitatmap |>
   filter(if_any(
     c(eval, eenh1, herkbwk, hab1, herkhab, herkphab),
     \(x) grepl(pattern = "^\\s+$", x) & nchar(x) > 0
-  ))
+  )) %>% 
+  rmarkdown::paged_table()
 ```
 
 
@@ -467,7 +474,8 @@ habitatmap %>%
   filter(
     str_extract(herkhab, "^\\d*?([a-mo-ux-yA-MO-UX-Y]{1,2})", group = 1) %in%
       c("m", "ha")
-  )
+  ) %>% 
+  rmarkdown::paged_table()
 ```
 
 After consulting the authors, it was clear that the method should become "mk" in these cases.
