@@ -20,7 +20,7 @@ The consequence of this is that there will be a deliberate overlap between `wate
 More details are being discussed in subsequent chapters.
 
 
-# Read standardized habitatmap and source habitatmap
+# Read standardized habitatmap and raw habitatmap
 
 ## Data sources
 
@@ -28,115 +28,151 @@ Startingpoint for the interpretation is the interim version of the standardized 
 
 ### Standardized version
 
-To be sure we will use the correct version of the data source (habitatmap_stdized_2024_v99_interim), we will derive the md5 file hashes and compare it to the file hashes in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
+To be sure we will use the correct version of the data source (habitatmap_stdized_2025_v99_interim), we will derive the md5 file checksums and compare it to the file checksums in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
 
 ```{r}
-
-path <- fileman_up("n2khab_data")
+path <- locate_n2khab_data()
 file <- "20_processed/habitatmap_stdized"
 
 mypath <- file.path(path, file)
 
-hashes <-
-    tibble(filepath = str_c(mypath, "/",
-        list.files(path = mypath,
-            recursive = TRUE)
-      )) %>%
-    mutate(filename = str_match(filepath, "(.+\\/)*(.+)")[,3],
-           md5 = map(filepath, function(x) {
-                           file(x) %>% md5 %>% str_c(collapse = '')
-                         }) %>% as.character,
-           md5_ref = c("6cc9dc73f316fbaa353fe11ff33f3359"),
-           match = md5 == md5_ref) %>%
-    select(filename,
-           md5,
-           md5_ref,
-           match)
+checksums <-
+  tibble(filepath = str_c(
+    mypath, "/",
+    list.files(
+      path = mypath,
+      recursive = TRUE
+    )
+  )) %>%
+  mutate(
+    filename = str_match(filepath, "(.+\\/)*(.+)")[, 3],
+    md5 = unname(md5sum(filepath)),
+    md5_ref = c("46b816b8386ec1d1205dbc5fc139877d"),
+    match = md5 == md5_ref
+  ) %>%
+  select(
+    filename,
+    md5,
+    md5_ref,
+    match
+  )
 
-kable(hashes) %>%
+kable(checksums) %>%
   kable_styling()
 
 
-if (!all.equal(hashes$md5, hashes$md5_ref)) {
-    stop(cat("The standardized version is NOT up to date ! Please check the datasource. "))
+if (!all.equal(checksums$md5, checksums$md5_ref)) {
+  stop("The standardized version is NOT up to date ! Please check the datasource.")
 }
 ```
 
 
 ```{r read_processed_data}
-
-# habfile <- "20_processed/habitatmap_stdized/habitatmap_stdized.gpkg"
-
-habmap_stdized <- read_habitatmap_stdized()
-
+# this chunk requires n2khab to support the applicable version of
+# habitatmap_stdized
+habmap_stdized <- read_habitatmap_stdized(
+  version = "habitatmap_stdized_2025_v99_interim"
+)
 habmap_polygons <- habmap_stdized$habitatmap_polygons
-
-# following requires at least n2khab 0.0.3.9037 and 
-# data source version habitatmap_stdized_2020_v1 or more recent:
-habmap_types <- habmap_stdized$habitatmap_types 
-
+habmap_types <- habmap_stdized$habitatmap_types
 ```
 
-### Source version
+### Raw data source version
 
-In some cases we'll need to refer to the source-map (from [Zenodo](https://zenodo.org/records/10167695) 
-for the official versions).
-The interim version is not online though, and will be imported manually.
+In some cases we'll need to refer to the raw data source 'habitatmap'.
+Its interim version is not published and will be imported manually.
 
-Again we will check if it is the correct version (habitatmap_2024_v99_interim).
+Again we will check if it is the correct version (habitatmap_2025_v99_interim).
 
 ```{r}
-path <- fileman_up("n2khab_data")
+path <- locate_n2khab_data()
 file <- "10_raw/habitatmap"
 
 mypath <- file.path(path, file)
 
-hashes <-
-    tibble(filepath = str_c(mypath, "/",
-        list.files(path = mypath,
-            recursive = TRUE)
-      )) %>%
-    mutate(filename = str_match(filepath, "(.+\\/)*(.+)")[,3],
-           md5 = map(filepath, function(x) {
-                           file(x) %>% md5 %>% str_c(collapse = '')
-                         }) %>% as.character,
-           md5_ref = c("0421100ccd30f09f1060524324528232"),
-           match = md5 == md5_ref) %>%
-    select(filename,
-           md5,
-           md5_ref,
-           match)
+checksums <-
+  tibble(filepath = str_c(
+    mypath, "/",
+    list.files(
+      path = mypath,
+      recursive = TRUE
+    )
+  )) %>%
+  mutate(
+    filename = str_match(filepath, "(.+\\/)*(.+)")[, 3],
+    md5 = unname(md5sum(filepath)),
+    md5_ref = c("b7e88d0687bf27db723aab9845a85a80"),
+    match = md5 == md5_ref
+  ) %>%
+  select(
+    filename,
+    md5,
+    md5_ref,
+    match
+  )
 
-kable(hashes) %>%
+kable(checksums) %>%
   kable_styling()
 
-if (!all.equal(hashes$md5, hashes$md5_ref)) {
-    stop(cat("The source map is NOT up to date ! Please check the datasource. "))
+if (!all.equal(checksums$md5, checksums$md5_ref)) {
+  stop("The source map is NOT up to date ! Please check the datasource.")
 }
 ```
 
 
-```{r read_raw_data, message=FALSE, eval=FALSE}
-# official version:
-habmap_sf <- read_habitatmap()
-
-```
-
 ```{r read_raw_data_interim_cleanup}
-# interim version:
-habmap_sf <- st_read(file.path(path, file, "habitatmap.gpkg"),
-                  crs = 31370)
-# we want to make the interim version as similar as possible as the official one
-# to avoid too many changes in the other chunks
-habmap_sf <- habmap_sf %>% 
-    mutate(across(-geom, ~ifelse(grepl(pattern = "^\\s*$", .), NA, .)),
-           info = ifelse(info == '<Null>', NA, info)) %>% # replace empty fields by NA
-    mutate(polygon_id = globalid_BWK, # add unique ID (we replace TAG by the unique globalid_BWK)
-           bwk_label = gsub(pattern = "\\s\\+\\sNA", 
-                           replacement = "",
-                           paste(eenh1, eenh2, eenh3, eenh4, eenh5, eenh6, eenh7, eenh8, sep = " + ")))
-   
-
+# below code is largely borrowed from the generate_habitatmap_stdized project in
+# the interim_versions branch; the only original addition here is the definition
+# of a bwk_label column
+habmap_sf <-
+  vect(file.path(mypath, "habitatmap.gpkg")) %>%
+  st_as_sf() %>%
+  as_tibble() %>%
+  st_as_sf(crs = 31370) %>%
+  # since we get a combination of POLYGON and MULTIPOLYGON, we entirely cast
+  # as MULTIPOLYGON
+  st_cast("MULTIPOLYGON")
+duplic_globalid <-
+  habmap_sf %>%
+  st_drop_geometry() %>%
+  count(globalid_BWK) %>%
+  filter(n > 1)
+habmap_sf <- habmap_sf %>%
+  rename(
+    PHAB1 = pHAB1,
+    PHAB2 = pHAB2,
+    PHAB3 = pHAB3,
+    PHAB4 = pHAB4,
+    PHAB5 = pHAB5,
+    source = herk_bwk,
+    source_hab = HERK_HAB,
+    OPPERVL = SHAPE_Area
+  ) %>%
+  # add unique ID
+  mutate(
+    polygon_id = str_c(
+      globalid_BWK,
+      ifelse(
+        globalid_BWK %in% duplic_globalid$globalid_BWK,
+        str_c("_", str_pad(row_number(), 2, pad = "0")),
+        ""
+      )
+    ),
+    .by = globalid_BWK
+  ) %>%
+  # clean up empty fields (empty strings, spaces, "<Null>" strings) and remove
+  # leading or trailing whitespaces
+  mutate(
+    across(-geometry, ~ ifelse(grepl(pattern = "^\\s*$", .), NA, .)),
+    across(where(is.character), str_trim),
+    info = ifelse(info == "<Null>", NA, info),
+    bwk_label = gsub(
+      pattern = "\\s\\+\\sNA",
+      replacement = "",
+      paste(eenh1, eenh2, eenh3, eenh4, eenh5, eenh6, eenh7, eenh8, sep = " + ")
+    )
+  ) %>%
+  filter(!is.na(HAB1)) # remove a few errors
 ```
 
 # Interpretations
@@ -146,32 +182,65 @@ habmap_sf <- habmap_sf %>%
 Rbbhfl is a code which needs interpretation from BWK + habitatmap, in order to make it ‘appear’ (these polygons currently appear as rbbhf).
 
 ```{r detect rbbhfl}
+# filter hfl-types from bwk units
+habmap_hfl <- habmap_sf %>%
+  inner_join(
+    habmap_types,
+    join_by(polygon_id),
+    relationship = "one-to-many",
+    unmatched = c("drop", "error")
+  ) %>%
+  mutate(rbbhfl = str_detect(bwk_label, "hfl")) %>%
+  select(polygon_id, bwk_label, rbbhfl, type, code_orig) %>%
+  filter(rbbhfl & type == "rbbhf")
 
-#filter hfl-types from bwk units
-habmap_hfl <- habmap_sf  %>% 
-    inner_join(habmap_types, by = c("polygon_id")) %>% 
-    mutate(rbbhfl = str_detect(bwk_label, "hfl")) %>% 
-    select(polygon_id, bwk_label, rbbhfl, type, code_orig) %>% 
-    filter(rbbhfl == TRUE & type == "rbbhf") 
+# update habmap_polygons -> habmap_polygons_interpreted
+habmap_polygons_interpreted <- habmap_polygons %>%
+  left_join(
+    habmap_hfl %>%
+      select(polygon_id, rbbhfl) %>%
+      st_drop_geometry(),
+    join_by(polygon_id),
+    relationship = "one-to-one",
+    unmatched = "error"
+  ) %>%
+  mutate(
+    description = ifelse(
+      is.na(rbbhfl),
+      description_orig,
+      str_replace_all(description_orig, "rbbhf", "rbbhfl")
+    ),
+    source = ifelse(
+      is.na(rbbhfl),
+      "habitatmap_stdized",
+      "habitatmap_stdized + interpretation"
+    )
+  ) %>%
+  select(-rbbhfl)
 
-#update habmap_polygons -> habmap_polygons_interpreted
-habmap_polygons_interpreted <- habmap_polygons %>% 
-    left_join(habmap_hfl %>% 
-                  select(polygon_id, rbbhfl) %>% 
-                   st_drop_geometry(), by = c("polygon_id")) %>% 
-    mutate(description = ifelse(is.na(rbbhfl), description_orig, str_replace_all(description_orig, "rbbhf", "rbbhfl")),
-           source = ifelse(is.na(rbbhfl), "habitatmap_stdized", "habitatmap_stdized + interpretation")) %>% 
-    select(-rbbhfl)
-
-#update habmap_types -> habmap_types_interpreted
-habmap_types_interpreted <- habmap_types %>% 
-    left_join(habmap_hfl %>% 
-                  select(polygon_id, rbbhfl) %>% 
-                   st_drop_geometry(), by = c("polygon_id")) %>% 
-    mutate(type = ifelse(is.na(rbbhfl) | type != "rbbhf", as.character(type), str_replace_all(type, "rbbhf", "rbbhfl")),
-           source = ifelse(is.na(rbbhfl) | type != "rbbhfl", "habitatmap_stdized", "habitatmap_stdized + interpretation")) %>% 
-    select(-rbbhfl) 
-
+# update habmap_types -> habmap_types_interpreted
+habmap_types_interpreted <- habmap_types %>%
+  left_join(
+    habmap_hfl %>%
+      select(polygon_id, rbbhfl) %>%
+      st_drop_geometry(),
+    join_by(polygon_id),
+    relationship = "many-to-one",
+    unmatched = "error"
+  ) %>%
+  mutate(
+    type = ifelse(
+      is.na(rbbhfl) | type != "rbbhf",
+      as.character(type),
+      str_replace_all(type, "rbbhf", "rbbhfl")
+    ),
+    source = ifelse(
+      is.na(rbbhfl) | type != "rbbhfl",
+      "habitatmap_stdized",
+      "habitatmap_stdized + interpretation"
+    )
+  ) %>%
+  select(-rbbhfl)
 ```
 
 ## Case 2190
@@ -189,54 +258,78 @@ This geospatial processing software makes the necessary corrections to the layer
 ]
 
 Therefore we choose to rely on the BWK fields from the raw habitatmap data source in order to distinguish 2190_a.
-Note that it's possible that a watersurface is being mapped together with other biotopes. Since the first unit of a complex is most probably predominant, 2190 will be only be interpreted as 2190_a if the first unit is a watersurface. 
+Note that it's possible that a watersurface is being mapped together with other biotopes. Since the first unit of a complex is most probably predominant, 2190 will be only be interpreted as 2190_a if the first BWK type is lentic.
 In other cases, we map 2190 as 2190_overig.
 
 ```{r detect dune water}
-habmap_dunewater <- habmap_sf %>% 
-    inner_join(habmap_types_interpreted, by = c("polygon_id")) %>% 
-    mutate(dunewater = str_detect(eenh1, c("ae|kn"))) %>% 
-    select(polygon_id, bwk_label, dunewater, type, code_orig) %>% 
-    filter(dunewater == TRUE & type == "2190") 
+habmap_dunewater <- habmap_sf %>%
+  inner_join(
+    habmap_types_interpreted,
+    join_by(polygon_id),
+    relationship = "one-to-many",
+    unmatched = c("drop", "error")
+  ) %>%
+  mutate(dunewater = str_detect(eenh1, c("ae|kn"))) %>%
+  select(polygon_id, bwk_label, dunewater, type, code_orig) %>%
+  filter(dunewater == TRUE & type == "2190")
 
-#update habmap_polygons -> habmap_polygons_interpreted
-habmap_polygons_interpreted <- habmap_polygons_interpreted %>% 
-    left_join(habmap_dunewater %>% 
-                  select(polygon_id, dunewater) %>% 
-                   st_drop_geometry(), by = c("polygon_id")) %>% 
-    mutate(description = ifelse(is.na(dunewater),
-                                str_replace_all(description, "2190_","2191_"), # safeguards mappings on subtype-level from changes
-                                description_orig)) %>% 
-    mutate(description = ifelse(is.na(dunewater), 
-                                str_replace_all(description, "2190", "2190_overig"),
-                                str_replace_all(description, "2190", "2190_a")),
-           source = ifelse(str_detect(description, "2190") | source == "habitatmap_stdized + interpretation",
-                           "habitatmap_stdized + interpretation", 
-                           "habitatmap_stdized")) %>% 
-    mutate(description = str_replace_all(description, "2191", "2190")) %>% 
-    select(-dunewater)
+# update habmap_polygons_interpreted
+habmap_polygons_interpreted <- habmap_polygons_interpreted %>%
+  left_join(
+    habmap_dunewater %>%
+      select(polygon_id, dunewater) %>%
+      st_drop_geometry(),
+    join_by(polygon_id),
+    relationship = "one-to-one",
+    unmatched = "error"
+  ) %>%
+  mutate(
+    # safeguard mappings on subtype-level from changes:
+    description = ifelse(
+      is.na(dunewater),
+      str_replace_all(description, "2190_", "2191_"),
+      description_orig
+    ),
+    description = ifelse(
+      is.na(dunewater),
+      str_replace_all(description, "2190", "2190_overig"),
+      str_replace_all(description, "2190", "2190_a")
+    ),
+    source = ifelse(
+      str_detect(description, "2190") | source == "habitatmap_stdized + interpretation",
+      "habitatmap_stdized + interpretation",
+      "habitatmap_stdized"
+    ),
+    description = str_replace_all(description, "2191", "2190")
+  ) %>%
+  select(-dunewater)
 
-#update habmap_types -> habmap_types_interpreted
-habmap_types_interpreted <- habmap_types_interpreted %>% 
-    left_join(habmap_dunewater %>% 
-                  select(polygon_id, dunewater) %>% 
-                   st_drop_geometry(), by = c("polygon_id")) %>% 
-    mutate(type = str_replace_all(type, "2190_", "2191_")) %>% # safeguards mappings on subtype-level from changes
-    mutate(type = case_when(
-                    is.na(dunewater) & str_detect(type, "2190") ~ "2190_overig", 
-                    is.na(dunewater) ~ as.character(type),                    
-                    TRUE ~ "2190_a"
-                    ),
-           source = case_when(
-                    is.na(dunewater) & str_detect(type, "2190") ~ "habitatmap_stdized + interpretation", 
-                    is.na(dunewater) ~ source,                    
-                    TRUE ~ "habitatmap_stdized + interpretation"
-                    ) 
-           ) %>% 
-    mutate(type = str_replace_all(type, "2191_", "2190_")) %>% 
-    select(-dunewater) 
-
-
+# update habmap_types_interpreted
+habmap_types_interpreted <- habmap_types_interpreted %>%
+  left_join(
+    habmap_dunewater %>%
+      select(polygon_id, dunewater) %>%
+      st_drop_geometry(),
+    join_by(polygon_id),
+    relationship = "many-to-one",
+    unmatched = "error"
+  ) %>%
+  mutate(
+    # safeguard mappings on subtype-level from changes:
+    type = str_replace_all(type, "2190_", "2191_"),
+    type = case_when(
+      is.na(dunewater) & str_detect(type, "2190") ~ "2190_overig",
+      is.na(dunewater) ~ as.character(type),
+      TRUE ~ "2190_a"
+    ),
+    source = case_when(
+      is.na(dunewater) & str_detect(type, "2190") ~ "habitatmap_stdized + interpretation",
+      is.na(dunewater) ~ source,
+      TRUE ~ "habitatmap_stdized + interpretation"
+    ),
+    type = str_replace_all(type, "2191_", "2190_")
+  ) %>%
+  select(-dunewater)
 ```
 
 ## Exclude uncertain mapping that is most likely not a habitat or rbb
@@ -249,15 +342,15 @@ This applies to the following cases:
 * code_orig is 6510,gh or 9120,gh
 
 ```{r exclude some uncertain mapping units}
-habmap_types_interpreted <- 
-    habmap_types_interpreted %>%
-    filter(!str_detect(code_orig, "bos") & !(code_orig %in% c("6510,gh", "9120,gh")))
-habmap_polygons_interpreted <- 
-    habmap_polygons_interpreted %>%
-    semi_join(habmap_types_interpreted, by = "polygon_id")
+habmap_types_interpreted <-
+  habmap_types_interpreted %>%
+  filter(!str_detect(code_orig, "bos") & !(code_orig %in% c("6510,gh", "9120,gh")))
+habmap_polygons_interpreted <-
+  habmap_polygons_interpreted %>%
+  semi_join(habmap_types_interpreted, join_by(polygon_id))
 ```
 
-## Exclude water surfaces
+## Exclude polygons exclusively represented by aquatic types
 
 We want this interpreted version of the habitat map, `habitatmap_terr`, to contain only terrestrial biotopes.^[
 The interpreted water surfaces are returned by `read_watersurfaces_hab(interpreted = TRUE)`."
@@ -272,29 +365,40 @@ Note that polygons of habitatmap_stdized that seem to be only aquatic might also
 It means we will actually drop polygons which, besides water types, _contain no other habitat or rib_. And that still matches our aim, i.e. terrestrial habitats / rib
 
 ```{r exclude water surfaces}
-watertypes <- data.frame( "watertype" = c("1130", "2190_a", "3110", "3130", "3130_aom", "3130_na", "3140", "3150", "3160", "3260", "7220", "rbbah"))
+watertypes <- data.frame("watertype" = c(
+  "1130",
+  "2190_a",
+  "3110",
+  "3130",
+  "3130_aom",
+  "3130_na",
+  "3140",
+  "3150",
+  "3160",
+  "3260",
+  "7220",
+  "rbbah"
+))
 
 # polygons that are, regarding their habitat/rib content, exclusively represented by water type(s) are excluded.
 # polygons with only a very small portion of habitat/rib terrestrial and almost entirely watersurface are still included.
 # polygons with a small portion of watersurface that for the remaining part are terrestrial non(!)-habitat/rib are excluded
 
-habmap_polygons_water <- 
-    habmap_types_interpreted %>% 
-    group_by(polygon_id) %>% 
-    mutate(oppsum = sum(phab)) %>% 
-    semi_join(watertypes, by = c("type" = "watertype")) %>% 
-    group_by(polygon_id, oppsum) %>% 
-    summarise(opp = sum(phab)) %>% 
-    ungroup() %>% 
-    filter(opp == oppsum)
+habmap_polygons_water <-
+  habmap_types_interpreted %>%
+  mutate(
+    is_watertype = type %in% watertypes$watertype,
+    polhab_is_exclusive_watertypes = all(is_watertype),
+    .by = polygon_id
+  ) %>%
+  filter(polhab_is_exclusive_watertypes) %>%
+  distinct(polygon_id)
 
-habmap_polygons_interpreted <- habmap_polygons_interpreted %>% 
-    anti_join(habmap_polygons_water, by = join_by(polygon_id))
+habmap_polygons_interpreted <- habmap_polygons_interpreted %>%
+  anti_join(habmap_polygons_water, by = join_by(polygon_id))
 
-habmap_types_interpreted <- habmap_types_interpreted %>% 
-    anti_join(habmap_polygons_water, by = join_by(polygon_id))    
-
-
+habmap_types_interpreted <- habmap_types_interpreted %>%
+  anti_join(habmap_polygons_water, by = join_by(polygon_id))
 ```
 
 ## Cases with common subtypes
@@ -311,55 +415,64 @@ For the terrestrial types it's about the following types
 |7140|7140_meso|
 |9130|9130_end|
 
-```{r common subtypes}
-habmap_polygons_interpreted <- habmap_polygons_interpreted %>% 
-    mutate( description = str_replace_all(description, c("6410_" = "641µ_",
-                                                        "6430_" = "643µ_",
-                                                        "6510_" = "651µ_",
-                                                        "7140_" = "714µ_",
-                                                        "9130_" = "913µ_"))) %>% 
-    mutate(
-        description = str_replace_all(description, c("6410" = "6410_mo",
-                                                        "6430" = "6430_hf",
-                                                        "6510" = "6510_hu",
-                                                        "7140" = "7140_meso",
-                                                        "9130" = "9130_end")),
-        source = case_when(
-            str_detect(description, "6410") ~ "habitatmap_stdized + interpretation",
-            str_detect(description, "6430") ~ "habitatmap_stdized + interpretation",
-            str_detect(description, "6510") ~ "habitatmap_stdized + interpretation",
-            str_detect(description, "7140") ~ "habitatmap_stdized + interpretation",
-            str_detect(description, "9130") ~ "habitatmap_stdized + interpretation",
-            TRUE ~ source
-            )
-        ) %>% 
-    mutate( description = str_replace_all(description, "µ_", "0_")) %>% 
-    mutate( source =  as.factor(source))
+Additionally, if 6230 has been extracted from the original code "6230,6410", it is considered as subtype 6230_hmo.
 
-habmap_types_interpreted <- habmap_types_interpreted %>% 
-    mutate(type = str_replace_all(type, c("6410_" = "641µ_",
-                                                        "6430_" = "643µ_",
-                                                        "6510_" = "651µ_",
-                                                        "7140_" = "714µ_",
-                                                        "9130_" = "913µ_"))) %>% 
-    mutate(
-        type = str_replace_all(type, c("6410" = "6410_mo",
-                                                        "6430" = "6430_hf",
-                                                        "6510" = "6510_hu",
-                                                        "7140" = "7140_meso",
-                                                        "9130" = "9130_end")),
-        source = case_when(
-            str_detect(type, "6410") ~ "habitatmap_stdized + interpretation",
-            str_detect(type, "6430") ~ "habitatmap_stdized + interpretation",
-            str_detect(type, "6510") ~ "habitatmap_stdized + interpretation",
-            str_detect(type, "7140") ~ "habitatmap_stdized + interpretation",
-            str_detect(type, "9130") ~ "habitatmap_stdized + interpretation",
-            TRUE ~ source
-            )
-        ) %>% 
-    mutate( type = str_replace_all(type, "µ_", "0_")) %>% 
-    mutate( type = as.factor(type),
-            source =  as.factor(source))
+```{r common subtypes}
+habmap_polygons_interpreted <- habmap_polygons_interpreted %>%
+  mutate(
+    description = str_replace_all(description, c(
+      "6410_" = "641µ_",
+      "6430_" = "643µ_",
+      "6510_" = "651µ_",
+      "7140_" = "714µ_",
+      "9130_" = "913µ_"
+    )),
+    description = str_replace_all(description, c(
+      "6230,6410" = "6230_hmo,6410",
+      "6410,6230" = "6410,6230_hmo",
+      "6410" = "6410_mo",
+      "6430" = "6430_hf",
+      "6510" = "6510_hu",
+      "7140" = "7140_meso",
+      "9130" = "9130_end"
+    )),
+    source = case_when(
+      str_detect(description, "6410") ~ "habitatmap_stdized + interpretation",
+      str_detect(description, "6430") ~ "habitatmap_stdized + interpretation",
+      str_detect(description, "6510") ~ "habitatmap_stdized + interpretation",
+      str_detect(description, "7140") ~ "habitatmap_stdized + interpretation",
+      str_detect(description, "9130") ~ "habitatmap_stdized + interpretation",
+      TRUE ~ source
+    ),
+    description = str_replace_all(description, "µ_", "0_"),
+    source = as.factor(source)
+  ) %>%
+  relocate(geom, .after = last_col())
+
+habmap_types_interpreted <- habmap_types_interpreted %>%
+  mutate(
+    source = ifelse(
+      type %in% c("6410", "6430", "6510", "7140", "9130") |
+        (code_orig %in% c("6410,6230", "6230,6410") & type == "6230"),
+      "habitatmap_stdized + interpretation",
+      source
+    ),
+    type = replace_values(
+      type,
+      "6410" ~ "6410_mo",
+      "6430" ~ "6430_hf",
+      "6510" ~ "6510_hu",
+      "7140" ~ "7140_meso",
+      "9130" ~ "9130_end"
+    ),
+    type = ifelse(
+      code_orig %in% c("6410,6230", "6230,6410") & type == "6230",
+      "6230_hmo",
+      type
+    ),
+    type = as.factor(type),
+    source = as.factor(source)
+  )
 
 # This step can create duplicates in the primary key on {polygon_id + type + certain}
 # (primary key used since version 2020 v1)
@@ -372,26 +485,29 @@ habmap_types_interpreted <- habmap_types_interpreted %>%
     source = str_c(source, collapse = "; "),
     .by = c(polygon_id, type, certain)
   )
-
 ```
 
 ## Write results into a geopackage
 
 ```{r}
 dir.create(file.path(path, "20_processed/habitatmap_terr"), recursive = TRUE)
-filepath <- file.path(path,"20_processed/habitatmap_terr/habitatmap_terr.gpkg")
+filepath <- file.path(path, "20_processed/habitatmap_terr/habitatmap_terr.gpkg")
 ```
 
 ```{r}
-st_write(habmap_polygons_interpreted,
-         filepath, 
-         layer = "habitatmap_terr_polygons", 
-         driver = "GPKG",
-         delete_dsn = TRUE)
+st_write(
+  habmap_polygons_interpreted,
+  filepath,
+  layer = "habitatmap_terr_polygons",
+  driver = "GPKG",
+  delete_dsn = TRUE
+)
 
-st_write(habmap_types_interpreted,
-         filepath,
-         layer = "habitatmap_terr_types", 
-         driver = "GPKG",
-         append = TRUE)
+st_write(
+  habmap_types_interpreted,
+  filepath,
+  layer = "habitatmap_terr_types",
+  driver = "GPKG",
+  append = TRUE
+)
 ```
