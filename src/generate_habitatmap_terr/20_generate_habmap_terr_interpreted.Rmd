@@ -28,7 +28,7 @@ Startingpoint for the interpretation is the interim version of the standardized 
 
 ### Standardized version
 
-To be sure we will use the correct version of the data source (habitatmap_stdized_2024_v99_interim), we will derive the md5 file checksums and compare it to the file checksums in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
+To be sure we will use the correct version of the data source (habitatmap_stdized_2025_v99_interim), we will derive the md5 file checksums and compare it to the file checksums in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
 
 ```{r}
 
@@ -48,7 +48,7 @@ checksums <-
   mutate(
     filename = str_match(filepath, "(.+\\/)*(.+)")[, 3],
     md5 = unname(md5sum(filepath)),
-    md5_ref = c("6cc9dc73f316fbaa353fe11ff33f3359"),
+    md5_ref = c("46b816b8386ec1d1205dbc5fc139877d"),
     match = md5 == md5_ref
   ) %>%
   select(
@@ -83,7 +83,7 @@ habmap_types <- habmap_stdized$habitatmap_types
 In some cases we'll need to refer to the raw data source 'habitatmap'.
 Its interim version is not published and will be imported manually.
 
-Again we will check if it is the correct version (habitatmap_2024_v99_interim).
+Again we will check if it is the correct version (habitatmap_2025_v99_interim).
 
 ```{r}
 path <- locate_n2khab_data()
@@ -102,7 +102,7 @@ checksums <-
   mutate(
     filename = str_match(filepath, "(.+\\/)*(.+)")[, 3],
     md5 = unname(md5sum(filepath)),
-    md5_ref = c("0421100ccd30f09f1060524324528232"),
+    md5_ref = c("b7e88d0687bf27db723aab9845a85a80"),
     match = md5 == md5_ref
   ) %>%
   select(
@@ -122,20 +122,58 @@ if (!all.equal(checksums$md5, checksums$md5_ref)) {
 
 
 ```{r read_raw_data_interim_cleanup}
-# interim version:
-habmap_sf <- st_read(file.path(path, file, "habitatmap.gpkg"),
-                  crs = 31370)
-# we want to make the interim version as similar as possible as the official one
-# to avoid too many changes in the other chunks
-habmap_sf <- habmap_sf %>% 
-    mutate(across(-geom, ~ifelse(grepl(pattern = "^\\s*$", .), NA, .)),
-           info = ifelse(info == '<Null>', NA, info)) %>% # replace empty fields by NA
-    mutate(polygon_id = globalid_BWK, # add unique ID (we replace TAG by the unique globalid_BWK)
-           bwk_label = gsub(pattern = "\\s\\+\\sNA", 
-                           replacement = "",
-                           paste(eenh1, eenh2, eenh3, eenh4, eenh5, eenh6, eenh7, eenh8, sep = " + ")))
-   
-
+# below code is largely borrowed from the generate_habitatmap_stdized project in
+# the interim_versions branch; the only original addition here is the definition
+# of a bwk_label column
+habmap_sf <- 
+  vect(file.path(mypath, "habitatmap.gpkg")) %>%
+  st_as_sf() %>%
+  as_tibble() %>%
+  st_as_sf(crs = 31370) %>%
+  # since we get a combination of POLYGON and MULTIPOLYGON, we entirely cast
+  # as MULTIPOLYGON
+  st_cast("MULTIPOLYGON")
+duplic_globalid <-
+  habmap_sf %>%
+  st_drop_geometry() %>%
+  count(globalid_BWK) %>%
+  filter(n > 1)
+habmap_sf <- habmap_sf %>%
+  rename(
+    PHAB1 = pHAB1,
+    PHAB2 = pHAB2,
+    PHAB3 = pHAB3,
+    PHAB4 = pHAB4,
+    PHAB5 = pHAB5,
+    source = herk_bwk,
+    source_hab = HERK_HAB,
+    OPPERVL = SHAPE_Area
+  ) %>%
+  # add unique ID
+  mutate(
+    polygon_id = str_c(
+      globalid_BWK,
+      ifelse(
+        globalid_BWK %in% duplic_globalid$globalid_BWK,
+        str_c("_", str_pad(row_number(), 2, pad = "0")),
+        ""
+      )
+    ),
+    .by = globalid_BWK
+  ) %>%
+  # clean up empty fields (empty strings, spaces, "<Null>" strings) and remove
+  # leading or trailing whitespaces
+  mutate(
+    across(-geometry, ~ ifelse(grepl(pattern = "^\\s*$", .), NA, .)),
+    across(where(is.character), str_trim),
+    info = ifelse(info == "<Null>", NA, info),
+    bwk_label = gsub(
+      pattern = "\\s\\+\\sNA",
+      replacement = "",
+      paste(eenh1, eenh2, eenh3, eenh4, eenh5, eenh6, eenh7, eenh8, sep = " + ")
+    )
+  ) %>%
+  filter(!is.na(HAB1)) # remove a few errors
 ```
 
 # Interpretations
