@@ -31,7 +31,6 @@ Startingpoint for the interpretation is the interim version of the standardized 
 To be sure we will use the correct version of the data source (habitatmap_stdized_2025_v99_interim), we will derive the md5 file checksums and compare it to the file checksums in the [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
 
 ```{r}
-
 path <- locate_n2khab_data()
 file <- "20_processed/habitatmap_stdized"
 
@@ -125,7 +124,7 @@ if (!all.equal(checksums$md5, checksums$md5_ref)) {
 # below code is largely borrowed from the generate_habitatmap_stdized project in
 # the interim_versions branch; the only original addition here is the definition
 # of a bwk_label column
-habmap_sf <- 
+habmap_sf <-
   vect(file.path(mypath, "habitatmap.gpkg")) %>%
   st_as_sf() %>%
   as_tibble() %>%
@@ -317,7 +316,7 @@ habmap_types_interpreted <- habmap_types_interpreted %>%
   ) %>%
   mutate(
     # safeguard mappings on subtype-level from changes:
-    type = str_replace_all(type, "2190_", "2191_"), 
+    type = str_replace_all(type, "2190_", "2191_"),
     type = case_when(
       is.na(dunewater) & str_detect(type, "2190") ~ "2190_overig",
       is.na(dunewater) ~ as.character(type),
@@ -458,7 +457,8 @@ habmap_types_interpreted <- habmap_types_interpreted %>%
       "habitatmap_stdized + interpretation",
       source
     ),
-    type = replace_values(type,
+    type = replace_values(
+      type,
       "6410" ~ "6410_mo",
       "6430" ~ "6430_hf",
       "6510" ~ "6510_hu",
