@@ -20,7 +20,7 @@ The consequence of this is that there will be a deliberate overlap between `wate
 More details are being discussed in subsequent chapters.
 
 
-# Read standardized habitatmap and source habitatmap
+# Read standardized habitatmap and raw habitatmap
 
 ## Data sources
 
@@ -82,11 +82,10 @@ habmap_types <- habmap_stdized$habitatmap_types
 
 ```
 
-### Source version
+### Raw data source version
 
-In some cases we'll need to refer to the source-map (from [Zenodo](https://zenodo.org/records/10167695) 
-for the official versions).
-The interim version is not online though, and will be imported manually.
+In some cases we'll need to refer to the raw data source 'habitatmap'.
+Its interim version is not published and will be imported manually.
 
 Again we will check if it is the correct version (habitatmap_2024_v99_interim).
 
@@ -223,7 +222,7 @@ This geospatial processing software makes the necessary corrections to the layer
 ]
 
 Therefore we choose to rely on the BWK fields from the raw habitatmap data source in order to distinguish 2190_a.
-Note that it's possible that a watersurface is being mapped together with other biotopes. Since the first unit of a complex is most probably predominant, 2190 will be only be interpreted as 2190_a if the first unit is a watersurface. 
+Note that it's possible that a watersurface is being mapped together with other biotopes. Since the first unit of a complex is most probably predominant, 2190 will be only be interpreted as 2190_a if the first BWK type is lentic.
 In other cases, we map 2190 as 2190_overig.
 
 ```{r detect dune water}
@@ -233,7 +232,7 @@ habmap_dunewater <- habmap_sf %>%
   select(polygon_id, bwk_label, dunewater, type, code_orig) %>%
   filter(dunewater == TRUE & type == "2190")
 
-# update habmap_polygons -> habmap_polygons_interpreted
+# update habmap_polygons_interpreted
 habmap_polygons_interpreted <- habmap_polygons_interpreted %>%
   left_join(
     habmap_dunewater %>%
@@ -262,7 +261,7 @@ habmap_polygons_interpreted <- habmap_polygons_interpreted %>%
   mutate(description = str_replace_all(description, "2191", "2190")) %>%
   select(-dunewater)
 
-# update habmap_types -> habmap_types_interpreted
+# update habmap_types_interpreted
 habmap_types_interpreted <- habmap_types_interpreted %>%
   left_join(
     habmap_dunewater %>%
@@ -305,7 +304,7 @@ habmap_polygons_interpreted <-
   semi_join(habmap_types_interpreted, by = "polygon_id")
 ```
 
-## Exclude water surfaces
+## Exclude polygons exclusively represented by aquatic types
 
 We want this interpreted version of the habitat map, `habitatmap_terr`, to contain only terrestrial biotopes.^[
 The interpreted water surfaces are returned by `read_watersurfaces_hab(interpreted = TRUE)`."
