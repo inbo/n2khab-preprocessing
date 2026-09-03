@@ -121,12 +121,6 @@ if (!all.equal(checksums$md5, checksums$md5_ref)) {
 ```
 
 
-```{r read_raw_data, message=FALSE, eval=FALSE}
-# official version:
-habmap_sf <- read_habitatmap()
-
-```
-
 ```{r read_raw_data_interim_cleanup}
 # interim version:
 habmap_sf <- st_read(file.path(path, file, "habitatmap.gpkg"),
