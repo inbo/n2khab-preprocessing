@@ -289,23 +289,35 @@ levels(ws$PEILBEHEER)
 Let's inspect features with invalid or corrupt geometry:
 
 ```{r}
-validities <- st_is_valid(ws)
-validities %>% table
-invalid_geoms <- ws[!validities | is.na(validities), ]
-st_is_valid(invalid_geoms, reason = TRUE)
+ws_validity <- st_is_valid(ws)
+ws_validity %>% table
+invalid_geoms <- ws[!ws_validity | is.na(ws_validity), ]
 ```
+
+Identifying invalid geometries:
 
 ```{r}
-tm_shape(invalid_geoms) + tm_borders() + tm_facets(by = "OBJECTID")
+invalid_geoms |> 
+  select(WVLC) |> 
+  mutate(reason = st_is_valid(invalid_geoms, reason = TRUE)) |> 
+  st_drop_geometry()
 ```
 
-The geometry invalidity is the consequence of self-intersecting rings, as a consequence of digitalization errors.
+```{r, eval = nrow(invalid_geoms) > 0, echo = nrow(invalid_geoms) > 0}
+tm_shape(invalid_geoms) + tm_borders() + tm_facets(by = "WVLC")
+```
 
-Let's compare with the same geoms after fixing the self-intersecting rings:
+<!-- The geometry invalidity is the consequence of self-intersecting rings, as a consequence of digitalization errors. -->
+
+<!-- Let's compare with the same geoms after fixing the self-intersecting rings: -->
 
 ```{r}
 valid_geoms <- st_make_valid(invalid_geoms)
-tm_shape(valid_geoms) + tm_borders() + tm_facets(by = "OBJECTID")
+```
+
+
+```{r, eval = nrow(invalid_geoms) > 0, echo = nrow(invalid_geoms) > 0}
+tm_shape(valid_geoms) + tm_borders() + tm_facets(by = "WVLC")
 ```
 
 Are all geometries valid now?
@@ -314,8 +326,8 @@ Are all geometries valid now?
 all(st_is_valid(valid_geoms))
 ```
 
-So this works well; in derived data we will fix these geometries.
-We can use the optional geometry reparation step in `read_watersurfaces()`.
+<!-- So this works well; in derived data we will fix these geometries. -->
+<!-- Note that `n2khab::read_watersurfaces()` also has a `fix_geom` argument to apply this to the raw data source. -->
 
 We also check that no empty geometries are present:
 
@@ -329,40 +341,32 @@ Refer to <https://github.com/inbo/n2khab-preprocessing/issues/60> and <https://r
 ## Let's plot the watersurfaces as a map
 
 ```{r plot}
-
-# plot watersurfaces v2024
- p <- ggplot() +
-  geom_sf(data = ws, aes(), color = "blue")
-
-# Flanders
-sf_vl <- read_admin_areas()
-
-p <- p + 
-  geom_sf(data = sf_vl, fill = NA)
-
-print(p)
-
+sf_fl <- read_admin_areas()
+ggplot() +
+  geom_sf(data = ws, aes(), color = "blue") + 
+  geom_sf(data = sf_fl, fill = NA)
 ```
 
-<!-- ### Are all the watersurfaces in Flanders?  -->
+### Do all the watersurfaces intersect Flanders?
 
-<!-- ```{r streams-in-fl} -->
-<!-- in_vl <- st_contains(x = sf_vl, y = ws) -->
+```{r in-fl}
+in_fl <- st_intersects(x = sf_fl, y = ws)
 
-<!-- not_contained <- ws %>% -->
-<!--   st_drop_geometry() %>% -->
-<!--   mutate(orig_rowname = rownames(.)) %>% -->
-<!--   filter(!rownames(.) %in% in_vl[[1]]) -->
+not_in_flanders <- ws %>%
+  st_drop_geometry() %>%
+  mutate(orig_rowname = rownames(.)) %>%
+  filter(!rownames(.) %in% in_fl[[1]])
 
-<!-- # 62 watersurfaces -->
-<!-- print(not_contained %>% nrow()) -->
+nrow(not_in_flanders) == 0
+```
 
-<!-- not_contained %>% -->
-<!--   distinct(WVLC, NAAM) %>% -->
-<!--   kable() -->
-<!-- ``` -->
-
-<!-- 62 watersurfaces are not 'contained' within the polygon for Flanders (see list above) -->
+```{r in-fl2, echo = FALSE}
+if (nrow(not_in_flanders) > 0) {
+  not_in_flanders %>%
+  distinct(WVLC, NAAM) %>%
+  kable()
+}
+```
 
 # Tidyverse-styled, internationalized column names when using the data source in R
 
