@@ -9,17 +9,18 @@ output:
       collapsed: no
       smooth_scroll: no
     number_sections: yes
-    code_folding: hide
+    code_folding: show
     includes:
       in_header: ../header.html
 ---
 
 ```{r setup, message=FALSE, echo=FALSE}
-options(stringsAsFactors = FALSE)
 library(sf)
-library(tidyverse)
+library(dplyr)
+library(stringr)
 library(tmap)
 library(n2khab)
+library(ggplot2)
 library(knitr)
 opts_chunk$set(
   echo = TRUE,
@@ -74,46 +75,66 @@ This has been explored for version 1.1, and handled where needed by `n2khab::rea
 Given the factor levels explored below, it does not appear that more changes are needed.
 Hence this exploratory code has been dropped (2023-11-09).
 
-### A summary of the spatial layer for version 2024
+### A summary of the spatial layer
 
 ```{r}
 ws %>% 
-  st_drop_geometry %>% 
-  summary
+  st_drop_geometry() %>% 
+  summary()
 ```
 
-`PEILBEHEER` was a new column in version 1.2 and is still present in version 2024.
-The column HYLAC was dropped in version 2024 (since the Hyla-codes are not used anymore by Natuurpunt)
-
-Let us look for a few typical errors more systematically in version 2024
+Let us look for a few typical errors more systematically.
 
 ### Are there `NA` values?
 
-There are no `NA` values at all in version 2024 but ... see below! 
-
+There are no `NA` values at all but ... see below! 
 
 ```{r}
 sapply(ws, function(x) sum(is.na(x)))
 ```
 
-### Are there `""` values?
+### Are there `"NA"` values?
 
-Yes, plenty of them. 
-The empty fields are actually coded as an empty string ("")
-(or more accurately, since all those fields are factors: as a factor level  "") 
-
-The "" are in fields where `NA` can be expected.
+None:
 
 ```{r}
-sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == '', na.rm = TRUE))
+sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == "NA", na.rm = TRUE))
 ```
 
 ### Are there `<Null>` values?
 
-None: 
+None:
 
 ```{r}
 sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == '<Null>', na.rm = TRUE))
+```
+
+### Are there any "/" values?
+
+None:
+
+```{r}
+sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == "/", na.rm = TRUE))
+```
+
+### Are there any "-" values?
+
+Yes, in `KRWTYPEA`, but it's expected (described in the metadata):
+
+```{r}
+sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == "-", na.rm = TRUE))
+```
+
+### Are there empty (`""`) values?
+
+Yes, plenty of them. 
+The empty fields are actually coded as an empty string ("")
+(or more accurately, since all those fields are factors: as a factor level "") 
+
+The "" are in fields where `NA` can be expected.
+
+```{r}
+sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == "", na.rm = TRUE))
 ```
 
 ### Are there Zero (0) values?
@@ -124,74 +145,50 @@ None:
 sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == '0', na.rm = TRUE))
 ```
 
-### Are there any "/" values?
-
-None 
-
-```{r}
-sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == "/", na.rm = TRUE))
-```
-
-
-### Are there any "-" values?
-
-Yes there are "-" in `KRWTYPEA`, but it is expected (described in the metadata). 
-
-```{r}
-sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == "-", na.rm = TRUE))
-```
-
 ### Are WVLC codes unique?
 
-Yes. It was not the case in version 1.0, but it has been corrected since v1.1.
+Yes:
 
 ```{r}
-ws$WVLC %>% unique %>% length == nrow(ws)
+ws$WVLC %>% unique() %>% length() == nrow(ws)
 ```
-
 
 ### Levels for each factor
 
 We can compare the levels for each factor variable with the information given in 
-[Leyssen et al. (2024)](https://pureportal.inbo.be/nl/publications/watervlakken-2024-polygonenkaart-van-stilstaand-water-in-vlaander).
+[Leyssen et al. (2026)](https://pureportal.inbo.be/nl/publications/watervlakken-2026-polygonenkaart-van-stilstaand-water-in-vlaander).
 
 We do not check `NAAM` and `GEBIED` since there are many possible options.
 
-**WVLC** 
+**WVLC**:
 
-Similar problem for the `WVLC` but we can check whether the structure of the codes is correct:
+We check whether the structure of `WVLC` is correct.
 
-Does `WVLC`  start with a province code?
+- Does `WVLC`  start with a province code?
 
 ```{r}
 substr(levels(ws$WVLC),1 ,3) %>% unique()
 ```
 
-How many records with an unexpected length? (not 10 characters)?
+- How many records with an unexpected length? (not 10 characters)?
 
 ```{r}
 ws %>% filter(str_length(WVLC) != 10) %>% nrow()
 ```
 
-There is one problem: 
-
-```{r}
-ws |> filter(str_detect(WVLC, pattern = "d")) |> as.matrix() |> t()
-```
-
-**KRWTYPE**: the codes are correct but there are more codes mentioned in the metadata report.
+**KRWTYPE**: the codes in the spatial layer comply with the metadata report, except for the empty string.
 
 ```{r}
 levels(ws$KRWTYPE)
 ```
-**KRWTYPEA**: the codes are correct but there are more codes mentioned in the metadata report.
+
+**KRWTYPEA** (alternative type): the codes in the spatial layer comply with the metadata report, except for the empty string.
 
 ```{r}
 levels(ws$KRWTYPEA)
 ```
 
-
-**KRWTYPES** (status): the codes in the spatial layer are the same as in the metadata report.
+**KRWTYPES** (status): the codes in the spatial layer are the same as in the metadata report, except for the empty string.
 
 ```{r}
 levels(ws$KRWTYPES)
@@ -204,9 +201,6 @@ ws |>
   st_drop_geometry() |> 
   count(KRWTYPE, KRWTYPES) |> 
   print()
-```
-
-```{r}
 ws |> 
   st_drop_geometry() |> 
   filter(!is.na(KRWTYPEA), KRWTYPEA != "-") |> 
@@ -214,15 +208,15 @@ ws |>
   print(n = Inf)
 ```
 
-One record has `KRWTYPES` set to ‘voorlopig’:
+One record has `KRWTYPES` set to 'voorlopig':
 
 ```{r}
-ws |> filter(KRWTYPES == "voorlopig") |> as.matrix() |> t()
+ws |> filter(KRWTYPES == "voorlopig") |> as.data.frame()
 ```
 
 After discussion with the authors, this seems to be correct.
 
-**DIEPKL**: the codes in the spatial layer are the same as in the metadata report but the ordering of the levels could be more logical.
+**DIEPKL**: the codes in the spatial layer are the same as in the metadata report.
 
 ```{r}
 levels(ws$DIEPKL)
@@ -237,21 +231,21 @@ By default we just streamline column names and variable types, we make sure that
 
 Because on Windows the ≥/\u2265 character is not well displayed, we had to recode it into '=>'
 (otherwise "≥" in ws$DIEPKL was rendered as "=" in the html output). 
-Note that this is not needed anymore for version 2024 that does not contain the character ≥ anymore 
-but we will keep this in the read fucntion for the previous versions
+Note that this is not needed anymore since version 2024, which does not contain the character ≥ anymore, 
+but we will keep this in the read function for the previous versions.
 
 ```{r}
 levels(ws$DIEPKL) <- gsub(pattern = "\u2265", ">=", levels(ws$DIEPKL))
 levels(ws$DIEPKL)
 ```
 
-**CONNECT**: the codes in the spatial layer are the same as in the metadata report.
+**CONNECT**: the codes in the spatial layer are the same as in the metadata report, except for the empty string.
 
 ```{r}
 levels(ws$CONNECT)
 ```
 
-**FUNCTIE**: there are many more codes in the report than in the dataset
+**FUNCTIE**: the codes in the spatial layer comply with the metadata report, except for the empty string.
 
 ```{r}
 levels(ws$FUNCTIE)
@@ -262,7 +256,7 @@ Here are the categories in the metadata report for `FUNCTIE`:
 functie                       toewijzing
 ----------------------        ---------------------
 natuur                        doelstelling natuurbehoud
-hengelintensief               intensief hengelen (met infrastructuur, bepoting of gebruikt voor wedstrijdhengelen)
+hengelIntensief               intensief hengelen (met infrastructuur, bepoting of gebruikt voor wedstrijdhengelen)
 hengelextensief               extensief hengelen (geen infrastructuur, bepoting of wedstrijdhengelen)
 jacht                         jagen
 tuin_park                     esthetisch (verblijfsrecreatie, tuin- en parkvijvers)
@@ -280,7 +274,7 @@ bezinking                     bezinking van proceswater
 veedrenk                      watervoorziening voor vee
 geen                          geen specifieke functie
 
-**PEILBEHEER**: one code less than in the report.
+**PEILBEHEER**: the codes in the spatial layer comply with the metadata report, except for the empty string.
 
 ```{r}
 levels(ws$PEILBEHEER)
@@ -400,14 +394,14 @@ data source variable          data frame variable
 
 - not uptaking `OPPWVL`, `OMTWVL`, `SHAPE_Length`, `SHAPE_Area` (area & perimeter are easily calculated etc) -- OK
 - sort by `polygon_id` -- OK
-- add translations to long text for `wfd_type `, `wfd_type_alternative `, `connectivity`  -- OK but not by default
+- add translations to long text for `wfd_type `, `wfd_type_alternative ` and `connectivity`  -- OK but not by default
 - add translations to long text for  `usage`? -- for a later version (as more 
 codes will be used)
 - converting null / 0 / "" values to `NA` -- OK
-- support variable water_level_management (since 1.2) – OK
-- support variable wfd_type_alternative (since v2024) – OK
-- make variable hyla_code optional (dropped in v2024) – OK
-- there is one wrong WVLC code ("d" should be "WVLKNO0072") in de Kleiputten van Heist (Palingpot) - should we stay true to source?  see <https://github.com/inbo/n2khab/pull/192>
+- support variable `water_level_management` (since 1.2) – OK
+- support variable `wfd_type_alternative` (since v2024) – OK
+- make variable `hyla_code` optional (dropped in v2024) – OK
+- apply a natural order to the `depth_class` levels
 
 # Used environment
 
@@ -416,8 +410,15 @@ si <- sessioninfo::session_info()
 p <- si$platform %>%
   do.call(what = "c")
 if ("sf" %in% si$packages$package) {
-  p <- c(p, sf_extSoftVersion())
-  names(p)[names(p) == "proj.4"] <- "PROJ"
+  p2 <- sf::sf_extSoftVersion()
+  p2 <- p2[names(p2) != "proj.4"]
+  names(p2) <- paste("sf", names(p2))
+  p <- c(p, p2)
+}
+if ("terra" %in% si$packages$package) {
+  p2 <- terra::gdal(lib = "all")
+  names(p2) <- paste("terra", names(p2) %>% toupper())
+  p <- c(p, p2)
 }
 if ("rgrass" %in% si$packages$package) {
   p <- c(p, GRASS = link2GI::findGRASS()[1, "version"])
@@ -428,12 +429,8 @@ sprintf("- **%s**: %s\n", names(p), p) %>%
 
 ```{r results = "asis", echo=FALSE}
 si$packages %>%
-    as_tibble %>%
-    select(package, loadedversion, date, source) %>%
-pander::pandoc.table(caption = "Loaded R packages",
+  as_tibble %>%
+  select(package, loadedversion, date, source) %>%
+  pander::pandoc.table(caption = "Loaded R packages",
                      split.table = Inf)
 ```
-
-
-
-
