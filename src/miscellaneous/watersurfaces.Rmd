@@ -39,14 +39,14 @@ filepath <- file.path(locate_n2khab_data(), "10_raw/watersurfaces/watersurfaces.
 Checksums:
 
 ```{r}
-filepath %>% 
-  n2khab::md5sum() %>% 
+filepath %>%
+  n2khab::md5sum() %>%
   `names<-`("md5sum")
-filepath %>% 
-  n2khab::sha256sum() %>% 
+filepath %>%
+  n2khab::sha256sum() %>%
   `names<-`("sha256sum")
-filepath %>% 
-  n2khab::xxh64sum() %>% 
+filepath %>%
+  n2khab::xxh64sum() %>%
   `names<-`("xxh64sum")
 ```
 
@@ -77,8 +77,8 @@ Hence this exploratory code has been dropped (2023-11-09).
 ### A summary of the spatial layer
 
 ```{r}
-ws %>% 
-  st_drop_geometry() %>% 
+ws %>%
+  st_drop_geometry() %>%
   summary()
 ```
 
@@ -105,7 +105,7 @@ sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == "NA", na.rm 
 None:
 
 ```{r}
-sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == '<Null>', na.rm = TRUE))
+sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == "<Null>", na.rm = TRUE))
 ```
 
 ### Are there any "/" values?
@@ -141,7 +141,7 @@ sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == "", na.rm = 
 None:
 
 ```{r}
-sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == '0', na.rm = TRUE))
+sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == "0", na.rm = TRUE))
 ```
 
 ### Are WVLC codes unique?
@@ -149,7 +149,9 @@ sapply(ws |> st_drop_geometry(), function(x) sum(as.character(x) == '0', na.rm =
 Yes:
 
 ```{r}
-ws$WVLC %>% unique() %>% length() == nrow(ws)
+ws$WVLC %>%
+  unique() %>%
+  length() == nrow(ws)
 ```
 
 ### Levels for each factor
@@ -166,13 +168,15 @@ We check whether the structure of `WVLC` is correct.
 - Does `WVLC`  start with a province code?
 
 ```{r}
-substr(levels(ws$WVLC),1 ,3) %>% unique()
+substr(levels(ws$WVLC), 1, 3) %>% unique()
 ```
 
 - How many records with an unexpected length? (not 10 characters)?
 
 ```{r}
-ws %>% filter(str_length(WVLC) != 10) %>% nrow()
+ws %>%
+  filter(str_length(WVLC) != 10) %>%
+  nrow()
 ```
 
 **KRWTYPE**: the codes in the spatial layer comply with the metadata report, except for the empty string.
@@ -196,21 +200,23 @@ levels(ws$KRWTYPES)
 `KRWTYPE` / `KRWTYPEA` / `KRWTYPES` consistency:
 
 ```{r}
-ws |> 
-  st_drop_geometry() |> 
-  count(KRWTYPE, KRWTYPES) |> 
+ws |>
+  st_drop_geometry() |>
+  count(KRWTYPE, KRWTYPES) |>
   print()
-ws |> 
-  st_drop_geometry() |> 
-  filter(!is.na(KRWTYPEA), KRWTYPEA != "-") |> 
-  count(KRWTYPE, KRWTYPEA) |> 
+ws |>
+  st_drop_geometry() |>
+  filter(!is.na(KRWTYPEA), KRWTYPEA != "-") |>
+  count(KRWTYPE, KRWTYPEA) |>
   print(n = Inf)
 ```
 
 One record has `KRWTYPES` set to 'voorlopig':
 
 ```{r}
-ws |> filter(KRWTYPES == "voorlopig") |> as.data.frame()
+ws |>
+  filter(KRWTYPES == "voorlopig") |>
+  as.data.frame()
 ```
 
 After discussion with the authors, this seems to be correct.
@@ -290,16 +296,16 @@ Let's inspect features with invalid or corrupt geometry:
 
 ```{r}
 ws_validity <- st_is_valid(ws)
-ws_validity %>% table
+ws_validity %>% table()
 invalid_geoms <- ws[!ws_validity | is.na(ws_validity), ]
 ```
 
 Identifying invalid geometries:
 
 ```{r}
-invalid_geoms |> 
-  select(WVLC) |> 
-  mutate(reason = st_is_valid(invalid_geoms, reason = TRUE)) |> 
+invalid_geoms |>
+  select(WVLC) |>
+  mutate(reason = st_is_valid(invalid_geoms, reason = TRUE)) |>
   st_drop_geometry()
 ```
 
@@ -343,7 +349,7 @@ Refer to <https://github.com/inbo/n2khab-preprocessing/issues/60> and <https://r
 ```{r plot}
 sf_fl <- read_admin_areas()
 ggplot() +
-  geom_sf(data = ws, aes(), color = "blue") + 
+  geom_sf(data = ws, aes(), color = "blue") +
   geom_sf(data = sf_fl, fill = NA)
 ```
 
@@ -363,15 +369,17 @@ nrow(not_in_flanders) == 0
 ```{r in-fl2, echo = FALSE}
 if (nrow(not_in_flanders) > 0) {
   not_in_flanders %>%
-  distinct(WVLC, NAAM) %>%
-  kable()
+    distinct(WVLC, NAAM) %>%
+    kable()
 }
 ```
 
 # Tidyverse-styled, internationalized column names when using the data source in R
 
 ```{r eval = FALSE}
-ws %>% colnames %>% cat(sep = "\n")
+ws %>%
+  colnames() %>%
+  cat(sep = "\n")
 ```
 
 data source variable          data frame variable
@@ -427,8 +435,10 @@ sprintf("- **%s**: %s\n", names(p), p) %>%
 
 ```{r results = "asis", echo=FALSE}
 si$packages %>%
-  as_tibble %>%
+  as_tibble() %>%
   select(package, loadedversion, date, source) %>%
-  pander::pandoc.table(caption = "Loaded R packages",
-                     split.table = Inf)
+  pander::pandoc.table(
+    caption = "Loaded R packages",
+    split.table = Inf
+  )
 ```
