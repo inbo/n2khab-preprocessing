@@ -30,13 +30,10 @@ opts_chunk$set(
 
 # Exploring the watersurfaces data source
 
-The previous versions were 1.0 (10.5281/zenodo.3386859), 1.1 (10.5281/zenodo.4117543)
-and 1.2 (10.5281/zenodo.7440931)
+We want to explore the changes in the most recent version: watersurfaces_2026 (DOI 10.5281/zenodo.22671253).
 
-We want to explore the changes in the most recent version: 2024 (10.5281/zenodo.14203168)
-
-```{r v2024}
-filepath <- file.path(fileman_up("n2khab_data"), "10_raw/watersurfaces/watersurfaces.gpkg")
+```{r}
+filepath <- file.path(locate_n2khab_data(), "10_raw/watersurfaces/watersurfaces.gpkg")
 ```
 
 Checksums:
@@ -53,19 +50,21 @@ filepath %>%
   `names<-`("xxh64sum")
 ```
 
-Import the spatial layer:
+Layers:
 
-```{r}
+```{r, paged.print = FALSE}
 st_layers(filepath)
 ```
 
-```{r spatial-layer-v2024}
+Read the spatial layer:
+
+```{r spatial-layer, paged.print = FALSE}
 (ws <- read_sf(filepath, stringsAsFactors = TRUE, layer = "Watervlakken"))
 ```
 
 The number of rows is `r nrow(ws)`.
 
-Other (aspatial) layers were only available in version 1.1.
+Other (aspatial) layers were available in version 1.1, and again in this version.
 
 ## Step-by-step exploration
 
@@ -283,12 +282,7 @@ levels(ws$PEILBEHEER)
 
 ## Potential issues
 
-- there is a new field: `KRWTYPEA` and one field was dropped `HYLAC`
-- `KRWTYPE`, `KRWTYPEA`, `FUNCTIE`, `PEILBEHEER`: more levels in the metadata report than in the dataset.
-This is not necessarily a problem.
-- All the missing values for the factors are coded as level empty string ""  
-- One wrong WVLC code ("d") in de Kleiputten van Heist (Palingpot)
-
+- All the missing values for the factors are coded as level empty string "".
 
 ## Validity of the geometries
 
