@@ -4,21 +4,31 @@ Checksums:
 
 
 ```{r}
-c("xxh64", "md5", "sha256") %>% 
-  map_dfr(~tibble(algorithm = ., 
-                  checksum = checksum(filepath, .))) %>% 
-  kable
+c("xxh64", "md5", "sha256") %>%
+  map_dfr(~ tibble(
+    algorithm = .,
+    checksum = checksum(filepath, .)
+  )) %>%
+  kable()
 ```
 
 
 ```{r paged.print=FALSE, warning=FALSE}
-(pol <- read_sf(filepath, 
-                layer = "habitatmap_terr_polygons"))
+(
+  pol <- read_sf(
+    filepath,
+    layer = "habitatmap_terr_polygons"
+  )
+)
 ```
 
 ```{r paged.print=FALSE, warning=FALSE}
-(types <- read_sf(filepath, 
-                layer = "habitatmap_terr_types"))
+(
+  types <- read_sf(
+    filepath,
+    layer = "habitatmap_terr_types"
+  )
+)
 ```
 
 
@@ -44,15 +54,15 @@ nrow(check_polygon_id_polygons) == 0
 - Is the number of unique IDs in the dataframe the same as the number of polygons in the sf object? 
   
 ```{r} 
- types %>%  
-   distinct(polygon_id) %>%  
-   nrow == nrow(pol) 
+types %>%
+  distinct(polygon_id) %>%
+  nrow() == nrow(pol)
 ``` 
 
 - Is the CRS conform EPSG:31370?
 
 ```{r} 
- st_crs(pol) == st_crs(31370) 
+st_crs(pol) == st_crs(31370)
 ```
 
 - Is phab always between 0 and 100?
@@ -64,9 +74,9 @@ all(between(types$phab, 0, 100))
 - Is the primary key unique?
 
 ```{r}
-types %>% 
-  select(polygon_id, type, certain) %>% 
-  duplicated() %>% 
+types %>%
+  select(polygon_id, type, certain) %>%
+  duplicated() %>%
   negate(any)(.)
 ```
 

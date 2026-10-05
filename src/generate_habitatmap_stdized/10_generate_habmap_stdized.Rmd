@@ -1,144 +1,189 @@
 # Generate standardized habitatmap
 
-Interim version of the habitatmap as of March 2025 (official name: habitatmap_2024_v99_interim)
+We start from the (unpublished) interim version of the habitatmap of April 2026 (official name: habitatmap_2025_v99_interim).
 
 The interim habitatmap has not been cleaned up as well as the official published 
 versions:
-it contains inconsistent field names, the TAG field does not contain unique 
+it contains inconsistent field names, the TAG and globalid_BWK fields do not contain unique 
 identifiers, the empty fields contain an empty string or one or more spaces, ...
-(please refer to miscellaneous > habitatmap.Rmd for an full overview of the 
+(please refer to miscellaneous > habitatmap.Rmd for a full overview of the 
 possible problems and needed corrections).
 
-Because of these problems, it does not seem a good idea to load the raw version 
-of the habitatmap with `n2khab::read_habitatmap` (there would be many corrections 
-needed in `n2khab::read_habitatmap`, and possibly different corrections for each 
+Because of these problems, it is not a good idea to load the raw version 
+of the habitatmap with `n2khab::read_habitatmap()` (there would be many corrections 
+needed in `n2khab::read_habitatmap()`, and possibly different corrections for each 
 new interim version of the habitatmap).
-Therefore we decide to skip the raw habitatmap for the interim versions and to
-start directly with the standardized version.
+Therefore we decide to skip the `n2khab::read_habitatmap()` step for the interim versions.
 
 ## Data source
 
-- The interim version of the BWK and Natura 2000 habitat map of 
+The interim version of the BWK and Natura 2000 habitat map of 
 Flanders is not online, and will be imported manually.
 
-To be sure we will use the correct version of the data source (habitatmap_2024_v99_interim), 
-we will derive the md5 file hashes and compare it to the file hashes in the 
+To be sure we will use the correct version of the data source (habitatmap_2025_v99_interim), 
+we will derive the md5 file checksums and compare it to the file checksums in the 
 [data source version overview table](https://docs.google.com/spreadsheets/d/1E8ERlfYwP3OjluL8d7_4rR1W34ka4LRCE35JTxf3WMI/edit#gid=2100595853).
 
 ```{r}
-
-path <- fileman_up("n2khab_data")
+path <- locate_n2khab_data()
 file <- "10_raw/habitatmap"
 
 mypath <- file.path(path, file)
 
-hashes <-
-    tibble(filepath = str_c(mypath, "/",
-        list.files(path = mypath,
-            recursive = TRUE)
-      )) %>%
-    mutate(filename = str_match(filepath, "(.+\\/)*(.+)")[,3],
-           md5 = map(filepath, function(x) {
-                           file(x) %>% md5 %>% str_c(collapse = '')
-                         }) %>% as.character,
-           md5_ref = c("0421100ccd30f09f1060524324528232"),
-           match = md5 == md5_ref) %>%
-    select(filename,
-           md5,
-           md5_ref,
-           match)
+checksums <-
+  tibble(filepath = str_c(
+    mypath, "/",
+    list.files(
+      path = mypath,
+      recursive = TRUE
+    )
+  )) %>%
+  mutate(
+    filename = str_match(filepath, "(.+\\/)*(.+)")[, 3],
+    md5 = unname(md5sum(filepath)),
+    md5_ref = c("b7e88d0687bf27db723aab9845a85a80"),
+    match = md5 == md5_ref
+  ) %>%
+  select(
+    filename,
+    md5,
+    md5_ref,
+    match
+  )
 
-kable(hashes) %>%
+kable(checksums) %>%
   kable_styling()
 
-if (!all.equal(hashes$md5, hashes$md5_ref)) {
-    stop(cat("The source map is NOT up to date ! Please check  the datasource. "))
+if (!all.equal(checksums$md5, checksums$md5_ref)) {
+  stop(
+    "The data source is not at the right version! ",
+    "Please check the data source."
+  )
 }
 ```
 
+Because it was found that sf has difficulties with correcting certain (invalid) MULTISURFACE geometries, terra is being used to read the file and the result is converted to sf: terra automatically casts all geometries to polygons on reading; after conversion to sf we get no missing reasons for invalidity and `st_make_valid()` works for all invalid geometries.
+See `src/miscellaneous/habitatmap.Rmd` for more details.
 
 ```{r read_raw_data}
-
-habitatmap_sf <- st_read(file.path(path, file, "habitatmap.gpkg"),
-                  #layer = "habitatmap", 
-                  crs = 31370)
-
+habitatmap_sf <-
+  vect(file.path(mypath, "habitatmap.gpkg")) %>%
+  st_as_sf() %>%
+  as_tibble() %>%
+  st_as_sf(crs = 31370) %>%
+  # since we get a combination of POLYGON and MULTIPOLYGON, we entirely cast
+  # as MULTIPOLYGON
+  st_cast("MULTIPOLYGON")
 ```
 
-## Clean up of the interim version
+## Clean up the interim version
 
+We rename some column names to make the interim version as similar as possible to the regular one; this prevents unneeded differences with the regular version in later code chunks.
+Also, we clean strings and add a unique polygon ID.
+See `src/miscellaneous/habitatmap.Rmd` for the underlying exploration.
 
 ```{r clean_up_interim}
-# we want to make the interim version as similar as possible as the official one
-# to avoid too many changes in the other chunks
-habitatmap_sf <- habitatmap_sf %>% 
-  rename(PHAB1 = pHAB1, # field names
-         PHAB2 = pHAB2,
-         PHAB3 = pHAB3,
-         PHAB4 = pHAB4,
-         PHAB5 = pHAB5) %>% 
-  mutate(across(-geom, ~ifelse(grepl(pattern = "^\\s*$", .), NA, .)),
-         info = ifelse(info == '<Null>', NA, info)) %>%  # clean up empty fields
-   mutate(TAG = globalid_BWK) %>%  # add unique ID (we replace TAG by the unique globalid_BWK)
-  rename(OPPERVL = Shape_Area) %>% 
+duplic_globalid <-
+  habitatmap_sf %>%
+  st_drop_geometry() %>%
+  count(globalid_BWK) %>%
+  filter(n > 1)
+habitatmap_sf <- habitatmap_sf %>%
+  rename(
+    PHAB1 = pHAB1,
+    PHAB2 = pHAB2,
+    PHAB3 = pHAB3,
+    PHAB4 = pHAB4,
+    PHAB5 = pHAB5,
+    source = herk_bwk,
+    source_hab = HERK_HAB,
+    OPPERVL = SHAPE_Area
+  ) %>%
+  # add unique ID
+  mutate(
+    TAG = str_c(
+      globalid_BWK,
+      ifelse(
+        globalid_BWK %in% duplic_globalid$globalid_BWK,
+        str_c("_", str_pad(row_number(), 2, pad = "0")),
+        ""
+      )
+    ),
+    .by = globalid_BWK
+  ) %>%
+  # clean up empty fields (empty strings, spaces, "<Null>" strings) and remove
+  # leading or trailing whitespaces
+  mutate(
+    across(-geometry, ~ ifelse(grepl(pattern = "^\\s*$", .), NA, .)),
+    across(where(is.character), str_trim),
+    info = ifelse(info == "<Null>", NA, info)
+  ) %>%
   filter(!is.na(HAB1)) # remove a few errors
-
 ```
 
 
-## Processing of the attribute table
+## Filter the data source according to habitat or rib types
+
+We also add a `description_orig` column to store original codes.
+
+```{r select_polygons}
+habmap_sf <- habitatmap_sf %>%
+  filter(!(HAB1 == "gh" & PHAB1 == 100)) %>%
+  mutate(
+    polygon_id = TAG, # unique id
+    description_orig = str_c(
+      PHAB1, "% ", HAB1,
+      ifelse(is.na(HAB2), "", str_c("; ", PHAB2, "% ", HAB2)),
+      ifelse(is.na(HAB3), "", str_c("; ", PHAB3, "% ", HAB3)),
+      ifelse(is.na(HAB4), "", str_c("; ", PHAB4, "% ", HAB4)),
+      ifelse(is.na(HAB5), "", str_c("; ", PHAB5, "% ", HAB5))
+    )
+  )
+```
+
+
+## Processing the attribute table
+
+### Converting to long format
 
 Every polygon in the habitat map can consist of maximum 5 different vegetation types. This information is stored in the columns 'HAB1', 'HAB2',..., 'HAB5' of the attribute table. The estimated fraction of each vegetation type within the polygons is stored in the columns 'PHAB1', 'PHAB2', ..., 'PHAB5'.
 
 We will convert the attribute table to a long format, so that every row contains one vegetation type.
 
 
-```{r select_polygons}
-
-habmap_sf <- habitatmap_sf %>%
-            filter(!(HAB1 == "gh" & PHAB1 == 100)) %>%
-            mutate(polygon_id = TAG, # unieke id
-                   description_orig = str_c(PHAB1, "% ", HAB1,
-                                      ifelse(is.na(HAB2), "", str_c("; ", PHAB2, "% ", HAB2)),
-                                      ifelse(is.na(HAB3), "", str_c("; ", PHAB3, "% ", HAB3)),
-                                      ifelse(is.na(HAB4), "", str_c("; ", PHAB4, "% ", HAB4)),
-                                      ifelse(is.na(HAB5), "", str_c("; ", PHAB5, "% ", HAB5)))) 
-
-```
-
-
 ```{r long_format}
-
 habmap_longPHAB <- habmap_sf %>%
-    st_drop_geometry() %>%
-    gather(PHAB1, PHAB2, PHAB3, PHAB4, PHAB5, key = "phabn", value = "phab") %>%
-    mutate(patch_id = str_sub(phabn, 5, 5)) %>%
-    select(polygon_id, patch_id, phab) %>%
-    filter(!is.na(phab))
+  st_drop_geometry() %>%
+  gather(PHAB1, PHAB2, PHAB3, PHAB4, PHAB5, key = "phabn", value = "phab") %>%
+  mutate(patch_id = str_sub(phabn, 5, 5)) %>%
+  select(polygon_id, patch_id, phab) %>%
+  filter(!is.na(phab))
 
 habmap_longHAB <- habmap_sf %>%
-    st_drop_geometry() %>%
-    select(polygon_id, polygon_area = OPPERVL, 
-           starts_with("HAB"), -any_of(c("HABLEGENDE"))) %>%
-    gather(HAB1, HAB2, HAB3, HAB4, HAB5, key = "hab", value = "code") %>%
-    mutate(patch_id = substr(hab, 4, 4)) %>%
-    filter(!is.na(code)) %>%
-    filter(!code %in% c("gh", "x"))
-
+  st_drop_geometry() %>%
+  select(
+    polygon_id,
+    starts_with("HAB"),
+    -any_of(c("HABLEGENDE"))
+  ) %>%
+  gather(HAB1, HAB2, HAB3, HAB4, HAB5, key = "hab", value = "code") %>%
+  mutate(patch_id = substr(hab, 4, 4)) %>%
+  filter(!is.na(code)) %>%
+  filter(!code %in% c("gh", "x"))
 ```
 
 Here are the vegetation codes used in this version of the habitatmap:
 
 ```{r showListHabitats}
 habmap_longHAB %>%
-  distinct(code) %>% 
-  arrange(code) %>% 
-  kable(caption = "List codes in habitat map", label = NA) %>%
-  kable_styling() %>% 
+  distinct(code) %>%
+  arrange(code) %>%
+  kable(caption = "Codes in habitat map", label = NA) %>%
+  kable_styling() %>%
   scroll_box(height = "300px")
 ```
 
-## Correction of some of the codes in the Habitat map
+### Correction of some of the codes in the Habitat map
 
 Some polygons in the habitat map contain codes that do not correspond with the standardized list of habitat types. 
 We correct these codes to make processing of the habitat map more straightforward.
@@ -146,15 +191,20 @@ Table \@ref(tab:codeCorrected) shows the corrected codes and the number of polyg
 
 
 ```{r }
-
 habmap_correction <- read_vc("habmap_correction/habmap_correction")
 
 overview_habmap_correction <- habmap_longHAB %>%
-  inner_join(habmap_correction, by = "code") %>%
-  group_by(code, code_corrected) %>%
-  summarise(n_polygons = n()) %>%
-  ungroup()
-
+  inner_join(
+    habmap_correction,
+    join_by(code),
+    relationship = "many-to-one",
+    unmatched = "drop"
+  ) %>%
+  summarise(
+    n_polygons = n(),
+    .by = c(code, code_corrected)
+  ) %>%
+  arrange(code_corrected)
 ```
 
 
@@ -165,52 +215,67 @@ overview_habmap_correction %>%
 ```
 
 ```{r}
-if(sum(habmap_correction$code %in% habmap_longHAB$code) > 0){
-
-    habmap_longHAB <- habmap_longHAB %>%
-        left_join(habmap_correction, by = "code") %>%
-        mutate(code_orig = code,
-            code = ifelse(is.na(code_corrected),
-                             code,
-                             code_corrected)) %>%
-        select(-code_corrected)
-    
-    } else {
-      
-      habmap_longHAB <- habmap_longHAB %>%
-        mutate(code_orig = code)
+if (sum(habmap_correction$code %in% habmap_longHAB$code) > 0) {
+  habmap_longHAB <- habmap_longHAB %>%
+    left_join(
+      habmap_correction,
+      join_by(code),
+      relationship = "many-to-one",
+      unmatched = "drop"
+    ) %>%
+    mutate(
+      code_orig = code,
+      code = ifelse(is.na(code_corrected),
+        code,
+        code_corrected
+      )
+    ) %>%
+    select(-code_corrected)
+} else {
+  habmap_longHAB <- habmap_longHAB %>%
+    mutate(code_orig = code)
 }
 ```
 
 
-## Splitting codes that contain different types
+### Splitting codes that contain different types
 
 In several cases the code contains 2 or 3 possible vegetation types which are separated with a ','. 
 We will split the different possible vegetation types and create one row for each of them. 
-An additional variable 'certain' will be FALSE if the orginal habitatmap code consists of 2 or 3 possible vegetation types, and TRUE if only one vegetation type is provided.
+An additional variable 'certain' will be FALSE if the original habitatmap code consists of 2 or 3 possible vegetation types, and TRUE if only one vegetation type is provided.
 
 An exception to this rule are following codes: `3130_rbbmr`, `3140_rbbmr`, `3150_rbbmr` and `3160_rbbmr` (converted in the previous step into `31x0,rbbmr`).
 These are standing water bodies that contain both `rbbmr` and the habitat type.
 Therefore `certain` will be set to `TRUE` for both types included in `code`.
 
 ```{r}
-
-habmap_long <- habmap_longHAB %>%
-    left_join(habmap_longPHAB, by = c("polygon_id", "patch_id")) %>%
-    mutate(certain = !str_detect(code, ","),
-           certain = ifelse(code_orig %in% 
-                              c("3130_rbbmr", "3140_rbbmr", "3150_rbbmr", "3160_rbbmr"), 
-                            TRUE, 
-                            certain)) %>%
-    separate(code,
-             into = c("type1", "type2", "type3"),
-             sep = ",",
-             remove = FALSE) %>%
-    gather(type1, type2, type3, key = "ntype", value = "type") %>%
-    filter(!is.na(type)) %>%
-    filter(!(type %in% c("gh", "bos"))) %>%
-    select(-patch_id)
-
+habmap_long <-
+  habmap_longHAB %>%
+  left_join(
+    habmap_longPHAB,
+    join_by(polygon_id, patch_id),
+    relationship = "one-to-one",
+    unmatched = "drop"
+  ) %>%
+  mutate(
+    certain = !str_detect(code, ","),
+    certain = ifelse(code_orig %in%
+      c("3130_rbbmr", "3140_rbbmr", "3150_rbbmr", "3160_rbbmr"),
+    TRUE,
+    certain
+    )
+  ) %>%
+  separate(
+    code,
+    into = c("type1", "type2", "type3"),
+    sep = ",",
+    fill = "right",
+    remove = FALSE
+  ) %>%
+  gather(type1, type2, type3, key = "ntype", value = "type") %>%
+  filter(!is.na(type)) %>%
+  filter(!(type %in% c("gh", "bos"))) %>%
+  select(-patch_id)
 ```
 
 Sometimes you get two records for the same type within the same habitatmap polygon.
@@ -220,13 +285,10 @@ We distinguish two cases:
 
 ```{r}
 example <- habmap_long %>%
-  group_by(polygon_id, type, certain) %>%
-  add_count() %>% 
-  filter(n > 1) %>%
-  ungroup()
+  add_count(polygon_id, type, certain) %>%
+  filter(n > 1)
 
-polygon_id_example_1 <- (example %>%
-  slice_head(n = 1))$polygon_id
+polygon_id_example_1 <- example$polygon_id[1]
 
 habmap_long %>%
   filter(polygon_id == polygon_id_example_1)
@@ -237,15 +299,15 @@ In this case we will sum the phab-values and create one record for each type.
 + a certain and an uncertain record of the same type, for example:
 
 ```{r}
-
 example <- habmap_long %>%
-  group_by(polygon_id, type) %>%
-  filter(n() > 1) %>%
-  filter(any(certain) & any(!certain)) %>%
-  ungroup()
+  filter(
+    n() > 1,
+    any(certain),
+    any(!certain),
+    .by = c(polygon_id, type)
+  )
 
-polygon_id_example_2 <- (example %>%
-  slice_head(n = 1))$polygon_id
+polygon_id_example_2 <- example$polygon_id[1]
 
 habmap_long %>%
   filter(polygon_id == polygon_id_example_2)
@@ -253,303 +315,328 @@ habmap_long %>%
 
 We will not aggregate the certain and uncertain record, because we will lose some information used to create `habitatmap_terr`. It is some of the uncertain records (such as `9120, gh`) are eliminated when processing `habitatmap_terr`. 
 
-```{r}
+```{r include=FALSE, eval=FALSE}
 check_double_type <- habmap_long %>%
-  group_by(polygon_id, type) %>%
-  mutate(n_type = n()) %>%
-  ungroup() %>%
-  filter(n_type > 1) %>% 
+  add_count(polygon_id, type, name = "n_type") %>%
+  filter(n_type > 1) %>%
   arrange(polygon_id)
-  
 ```
 
 
 ```{r}
 habmap_long_aggr <- habmap_long %>%
-  # group_by(polygon_id, code) %>%
-  #     mutate(n = n()) %>%
-  #   ungroup() %>%
-    group_by(polygon_id, type, certain) %>%
-     summarise(phab = sum(phab),
-              code_orig = str_c(code_orig, collapse = "; "),
-              certain = all(certain)) %>%
-    ungroup() 
+  summarise(
+    phab = sum(phab),
+    code_orig = str_c(code_orig, collapse = "; "),
+    .by = c(polygon_id, type, certain)
+  )
 ```
-See below the result of the aggregation for the first example. 
+
+See below the result of the aggregation for the first example.
 
 ```{r}
 habmap_long_aggr %>%
   filter(polygon_id == polygon_id_example_1)
 ```
 
-## Select vegetation types that belong to the standard list of habitat and rbb types  
+### Select vegetation types that belong to the standard list of habitat and rbb types  
 
 Table \@ref(tab:selectTypes) shows the records with habitat types that do not belong to the standard list of habitat and rbb types.
 
 Good news! 
-The table is empty
+The table is empty.
 
 ```{r selectTypes}
-
 types <- read_types() %>%
   select(type, typelevel, main_type, typeclass)
 
 habmap_long_aggr <- habmap_long_aggr %>%
-  left_join(types, by = "type")
+  left_join(
+    types,
+    join_by(type),
+    relationship = "many-to-one",
+    unmatched = "drop"
+  )
 
 habmap_types <- habmap_long_aggr %>%
   filter(!is.na(typelevel)) %>%
   select(polygon_id, type, certain, code_orig, phab) %>%
-  mutate(type = factor(type,
-                       levels = levels(types$type)
-                       )
-         ) %>%
+  mutate(type = factor(type, levels = levels(types$type))) %>%
   arrange(polygon_id, desc(phab))
-  
+
 habmap_other_type <- habmap_long_aggr %>%
   filter(is.na(typelevel))
 
 habmap_other_type %>%
   select(polygon_id, type, certain, code_orig, phab) %>%
-  kable(caption = "Polygons with types that do not correspond with the standard list of types and rbb",
-        label = NA) %>%
+  kable(
+    caption = "Polygons with types that do not correspond with the standard list of types and rbb",
+    label = NA
+  ) %>%
   kable_styling()
-
 ```
 
+`habmap_types` is the object used to write the table of type occurrences in the datasource.
 
-## Select features that contain habitat or rbb types
+## Transforming the spatial object
+
+### Only select features that contain habitat or rbb types
 
 ```{r}
-
 habmap_types_sf <- habmap_sf %>%
-  select(polygon_id, description_orig) %>%
   filter(polygon_id %in% habmap_types$polygon_id)
-
 ```
 
-## Let 's have a quick look at the result
-
-In the official version, the ID of each polygon in the habitatmap contains the 
-year in which the polygon was last updated.
-In the table below we show the number of records per type and per update year.
-
-```{r eval = FALSE}
-# run only for the official versions with a TAG with the year as polygon_id
-# polygon_id of the interim version does not contain the year 
-habmap_types %>%
-  mutate(polygon_version = str_sub(polygon_id, start = -4)) %>%
-  group_by(type, polygon_version) %>%
-  summarise(n_records = n()) %>%
-  ungroup() %>%
-  pivot_wider(names_from = "polygon_version", values_from = "n_records", values_fill = 0) %>%
-  kable() %>%
-  kable_styling()
-```
-
-## Control and fix geometries
+### Control and fix geometries
 
 We want to make sure that the layer has valid geometries so that we can use it 
 in spatial analysis in GIS. 
 
-First, we search for polygons with invalid geometries. 
+First, we search for polygons with invalid geometries (see `src/miscellaneous/habitatmap.Rmd` for more details). 
 
 ```{r find_invalid_geoms}
 validities <- st_is_valid(habmap_types_sf, reason = TRUE) %>%
   as_tibble() %>%
-  mutate(id = rownames(.) ) %>%
-  mutate(problem = str_extract(string = value,
-                               pattern = "[^\\[]+")) %>%
-  left_join(habmap_types_sf %>% 
-              mutate(id = as.character(row_number())), 
-            by = "id") %>% 
+  mutate(id = rownames(.)) %>%
+  mutate(problem = str_extract(string = value, pattern = "[^\\[]+")) %>%
+  left_join(
+    habmap_types_sf %>%
+      mutate(id = as.character(row_number())),
+    by = "id"
+  ) %>%
   select(-value)
 
-# there are invalid polygons with a reason mentioned but also with no reason given (NA)
-# those categories need to be handled separately
+# There are invalid polygons with a reason mentioned but some may have no reason
+# given (NA). Those categories need to be handled separately
 
 # invalid polygons with a clear explanation
 habmap_types_geom_invalid <- validities %>%
-  filter(problem != "Valid Geometry") 
+  filter(problem != "Valid Geometry")
 # invalid polygons without a clear explanation: NA
-habmap_types_geom_invalidna <- validities %>% 
-  filter(is.na(problem)) 
+habmap_types_geom_invalidna <- validities %>%
+  filter(is.na(problem))
 
-cat(paste0("There are ", 
-           rbind(habmap_types_geom_invalid,habmap_types_geom_invalidna) %>% nrow(), 
-           " polygons with invalid geometry: \n", 
-           habmap_types_geom_invalid %>% nrow() , 
-           " with a clear explanation for the problem and \n",
-           habmap_types_geom_invalidna %>% nrow(), 
-           " without any clear explanation (NA)."))
+message(
+  "There are ",
+  rbind(habmap_types_geom_invalid, habmap_types_geom_invalidna) %>% nrow(),
+  " polygons with invalid geometry: \n",
+  habmap_types_geom_invalid %>% nrow(),
+  " with a clear explanation for the problem and \n",
+  habmap_types_geom_invalidna %>% nrow(),
+  " without any clear explanation (NA)."
+)
+```
+
+```{r include=FALSE}
+# The code may not work correctly if cases exist with invalid NA (always
+# investigate; consult code history for remedies in the past); hence protecting
+# with a test
+stopifnot(nrow(habmap_types_geom_invalidna) == 0)
 ```
 
 ```{r}
-habmap_types_geom_invalid  %>%
-  rbind(., habmap_types_geom_invalidna) %>% 
-  select(id, polygon_id, description_orig, problem) %>% 
+habmap_types_geom_invalid %>%
+  rbind(., habmap_types_geom_invalidna) %>%
+  select(id, polygon_id, description_orig, problem) %>%
   kable(caption = "Polygons with faulty geometries", label = NA) %>%
-  kable_styling() %>% 
+  kable_styling() %>%
   scroll_box(height = "300px")
 ```
 
-We will correct the geometry using the function `st_make_valid` and check the results.
-
-The interim version (habitatmap_2024_v99_interim) contains more exotic geometries (MULTISURFACE with curved polygons) that cannot be corrected directly.
-We need an intermediate step to make it work: we convert the curved polygons into standard polygons with `gdalUtilities::ogr2ogr`.
-
-```{r convert_curve_to_line}
-# convert curved polygons into normal polygons
-# this needs to be done for the NA only
-
-st_write(habmap_types_geom_invalidna,
-         './habmap_types_invalidna.gpkg',
-         layer = "habmap_stdized_invalidna",
-         driver = "GPKG",
-         delete_dsn = TRUE)
-
-gdalUtilities::ogr2ogr('./habmap_types_invalidna.gpkg',
-                       './habmap_types_invalidnacorr.gpkg',
-                       explodecollections = T, nlt = 'CONVERT_TO_LINEAR')
-
-habmap_types_geom_invalidnacorr <- st_read("./habmap_types_invalidnacorr.gpkg")
-# note the geometry type: POLYGON
-
-file.remove('./habmap_types_invalidna.gpkg') 
-file.remove('./habmap_types_invalidnacorr.gpkg')
-
-# but there are now 181 records instead of 175
-# duplicates
-habmap_types_geom_invalidnacorr %>%
-  st_drop_geometry() %>%
-  count(polygon_id) %>%
-  filter(n > 1)
-# merge these polygons (see miscellaneous > habitatmap for the details)
-habmap_types_geom_invalidnacorr_dissolved  <- habmap_types_geom_invalidnacorr %>%
-  group_by(across(id:description_orig)) %>% 
-  summarize(geom = sf::st_union(geom),
-            .groups = "drop")
-
-```
-
-```{r}
-# merge both invalid datasets back together
-
-habmap_types_geom_invalidall <- habmap_types_sf %>% 
-  inner_join(habmap_types_geom_invalid %>% 
-               select(polygon_id, problem),
-             by = join_by(polygon_id)) %>% 
-  rbind(.,habmap_types_geom_invalidnacorr_dissolved %>% 
-          select(-id))
-```
+We will correct the geometry using the function `st_make_valid()` and check the results.
 
 Let us take a look at the invalid polygons:
 
 ```{r map_invalid_geoms}
 # show the invalid polygons on a map
-habmap_types_geom_invalid_wgs84 <- habmap_types_geom_invalidall %>%
-  mutate(problem = ifelse(is.na(problem), "Unknown (NA)", problem)) %>% 
-  st_transform(crs = 4326) 
+habmap_types_geom_invalid_wgs84 <- habmap_types_geom_invalid %>%
+  st_as_sf() %>%
+  mutate(problem = ifelse(is.na(problem), "Unknown (NA)", problem)) %>%
+  st_transform(crs = 4326)
 
-pal <- colorFactor(palette = c("black", "darkred"), 
-                   domain = habmap_types_geom_invalid_wgs84$problem)
+pal <- colorFactor(
+  palette = c("darkorange", "darkred"),
+  domain = habmap_types_geom_invalid_wgs84$problem
+)
 
 leaflet(height = "600px", width = "700px") %>%
-  addTiles(group = "OSM (default)") %>%
-  addPolygons(data = habmap_types_geom_invalid_wgs84,
-              color = pal(habmap_types_geom_invalid_wgs84$problem),
-              popup = paste("polygon_id:", 
-                          habmap_types_geom_invalid_wgs84$polygon_id, "<br>",
-                           "description_orig:",
-                          habmap_types_geom_invalid_wgs84$description_orig, 
-                          "<br>", 
-                          habmap_types_geom_invalid_wgs84$problem)) %>% 
-  addLegend(data = habmap_types_geom_invalid_wgs84,
-            pal = pal, values = ~problem,
-            opacity = 1)
+  inbospatial::add_wms_be_cartoweb("topo_grey") %>%
+  addPolygons(
+    data = habmap_types_geom_invalid_wgs84,
+    color = pal(habmap_types_geom_invalid_wgs84$problem),
+    popup = paste(
+      "polygon_id:",
+      habmap_types_geom_invalid_wgs84$polygon_id, "<br>",
+      "description_orig:",
+      habmap_types_geom_invalid_wgs84$description_orig,
+      "<br>",
+      habmap_types_geom_invalid_wgs84$problem
+    )
+  ) %>%
+  addLegend(
+    data = habmap_types_geom_invalid_wgs84,
+    pal = pal, values = ~problem,
+    opacity = 1
+  )
 ```
 
-
-And now we can correct the geometries
-
+We correct the geometries:
 
 ```{r fix_geom}
-# correct geometries
-
-# combine all datasets (invalid and valid geoms)
-habmap_types_geom_all <- habmap_types_sf %>% 
-  semi_join(validities %>% 
-              filter(!is.na(problem)) %>% # valid and invalid with ring
-              select(polygon_id),
-            by = join_by(polygon_id)) %>% 
-  rbind(.,habmap_types_geom_invalidnacorr_dissolved %>% 
-          select(-id, -problem)) # invalid with NA
-
-
-# correct geometries
-habmap_types_sf <- st_make_valid(habmap_types_geom_all)
-
+habmap_types_sf <- st_make_valid(habmap_types_sf)
 ```
 
 ```{r }
 # list the corrected polygons and check the geometry again
-habmap_types_geom_corrected <- st_is_valid(habmap_types_sf, reason = TRUE) %>% 
-  as_tibble() %>% 
-  mutate(id = rownames(.)) %>% 
-  left_join(habmap_types_sf %>% 
-              mutate(id = as.character(row_number())), 
-            by = "id") %>% 
-  filter(polygon_id %in% habmap_types_geom_invalidall$polygon_id)
+habmap_types_geom_corrected <- st_is_valid(habmap_types_sf, reason = TRUE) %>%
+  as_tibble() %>%
+  mutate(id = rownames(.)) %>%
+  left_join(
+    habmap_types_sf %>%
+      mutate(id = as.character(row_number())),
+    by = "id"
+  ) %>%
+  filter(polygon_id %in% habmap_types_geom_invalid$polygon_id)
 
-habmap_types_geom_corrected %>% 
-        select(id, polygon_id, description_orig, problem = value) %>% 
-  kable(caption = "Polygons with faulty geometries after correction", 
-        label = NA) %>% 
-  kable_styling() %>% 
+habmap_types_geom_corrected %>%
+  select(id, polygon_id, description_orig, problem = value) %>%
+  kable(
+    caption = "Polygons with faulty geometries after correction",
+    label = NA
+  ) %>%
+  kable_styling() %>%
   scroll_box(height = "300px")
 ```
 
 
 ```{r map_corrected_geoms}
 # show the corrected polygons on a map
-habmap_types_geom_corrected_wgs84 <- habmap_types_sf %>% 
-  filter(polygon_id %in% habmap_types_geom_invalidall$polygon_id) %>% 
-  st_transform(crs = 4326) 
+habmap_types_geom_corrected_wgs84 <- habmap_types_sf %>%
+  filter(polygon_id %in% habmap_types_geom_invalid$polygon_id) %>%
+  st_transform(crs = 4326)
 
 leaflet(height = "600px", width = "700px") %>%
-  addTiles(group = "OSM (default)") %>%
-    addPolygons(data = habmap_types_geom_invalid_wgs84, 
-                group = "before correction (red)",
-                color = "darkred") %>% 
-  addPolygons(data = habmap_types_geom_corrected_wgs84,
-              group = "after correction (blue)",
-              popup = paste("polygon_id:", 
-                          habmap_types_geom_corrected_wgs84$polygon_id, "<br>",
-                           "description_orig:",
-                          habmap_types_geom_corrected_wgs84$description_orig)) %>%
-    addLayersControl(overlayGroups = c("before correction (red)", "after correction (blue)"),
-                     options = layersControlOptions(collapsed = FALSE))
+  inbospatial::add_wms_be_cartoweb("topo_grey") %>%
+  addPolygons(
+    data = habmap_types_geom_invalid_wgs84,
+    group = "before correction (red)",
+    color = "darkred"
+  ) %>%
+  addPolygons(
+    data = habmap_types_geom_corrected_wgs84,
+    group = "after correction (blue)",
+    popup = paste(
+      "polygon_id:",
+      habmap_types_geom_corrected_wgs84$polygon_id, "<br>",
+      "description_orig:",
+      habmap_types_geom_corrected_wgs84$description_orig
+    )
+  ) %>%
+  addLayersControl(
+    overlayGroups = c("before correction (red)", "after correction (blue)"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
+```
+
+### Add the assessment year and method for each feature
+
+<!-- BELOW TEMPORARY STEP IS TO BE DROPPED IN LATER UPDATES (SHOULD HAVE BEEN FIXED IN DATABASE): -->
+
+Temporary fixes of unsupported values (this affects two rows):
+
+```{r}
+habmap_types_sf <-
+  habmap_types_sf %>%
+  mutate(source_hab = replace_values(source_hab, c("24m", "24hab") ~ "24mk"))
 ```
 
 
-## Write results into a geopackage
+```{r sources}
+habmap_types_sf <-
+  habmap_types_sf %>%
+  mutate(
+    source_for_year = case_when(
+      str_detect(source_hab, "^\\d{2}") ~ "hab",
+      # only turn to BWK year if the habitat type was translated automatically
+      # without further alteration
+      str_detect(source, "^\\d{2}") &
+        str_detect(source_hab, "^\\d*?(a|A)") ~ "bwk",
+      .default = NA_character_
+    ) %>%
+      factor(),
+    year_short = recode_values(
+      source_for_year,
+      "hab" ~ str_sub(source_hab, 1, 2),
+      "bwk" ~ str_sub(source, 1, 2),
+    ),
+    year_short = as.integer(year_short),
+    year_assessment = ifelse(
+      year_short < 90,
+      2000L + year_short,
+      1900L + year_short
+    ),
+    method_abbrev =
+    # extract the methods, not the season-letters [vznw] that may be added to
+    # fieldwork years:
+      str_extract(source_hab, "^\\d*?([a-mo-ux-yA-MO-UX-Y]{1,2})", group = 1),
+    method_assessment = case_when(
+      method_abbrev %in% c("A", "a") ~ "Automated translation from BWK",
+      method_abbrev == "mk" ~
+        "Adjustment of BWK-translation, based on field knowledge",
+      method_abbrev == "o" ~
+        "Adjustment of BWK-translation, based on orthophoto interpretation",
+      method_abbrev == "l" ~ "Assessment based on literature or extra files",
+      method_abbrev == "ex" ~ "Field assessment by an external expert",
+      is.na(source_for_year) ~ "Field assessment but year is missing??",
+      .default = "Field assessment"
+    ) %>%
+      factor()
+  ) %>%
+  # checking that no other methods occur
+  {
+    fieldobs <- filter(
+      .,
+      str_detect(method_assessment, "Field"),
+      !str_detect(method_assessment, "external")
+    )
+    if (any(!is.na(fieldobs$method_abbrev))) {
+      stop("Unsupported method abbreviation detected in source_hab")
+    } else {
+      .
+    }
+  } %>%
+  select(-source_for_year, -year_short, -method_abbrev)
+```
+
+### Select specific columns
+
+```{r}
+habmap_types_sf <- habmap_types_sf %>%
+  select(polygon_id, description_orig, year_assessment, method_assessment)
+```
+
+
+## Write results to a geopackage
 
 ```{r}
 dir.create(file.path(path, "20_processed/habitatmap_stdized"), recursive = TRUE)
-filepath <- file.path(path,"20_processed/habitatmap_stdized/habitatmap_stdized.gpkg")
+filepath <- file.path(path, "20_processed/habitatmap_stdized/habitatmap_stdized.gpkg")
 ```
 
 ```{r write_gpkg}
+st_write(
+  habmap_types_sf,
+  filepath,
+  layer = "habitatmap_polygons",
+  driver = "GPKG",
+  delete_dsn = TRUE
+)
 
-st_write(habmap_types_sf, 
-         filepath, 
-         layer = "habitatmap_polygons", 
-         driver = "GPKG", 
-         delete_dsn = TRUE)
-
-st_write(habmap_types, 
-         filepath, 
-         layer = "habitatmap_types", 
-         driver = "GPKG", 
-         append = TRUE)
+st_write(
+  habmap_types,
+  filepath,
+  layer = "habitatmap_types",
+  driver = "GPKG",
+  append = TRUE
+)
 ```

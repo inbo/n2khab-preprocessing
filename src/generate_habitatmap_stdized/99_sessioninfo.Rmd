@@ -17,10 +17,12 @@ sprintf("- **%s**:\n %s\n", names(p), p) %>%
 
 ```{r results = "asis", echo=FALSE}
 si$packages %>%
-    as_tibble %>%
-    select(package, loadedversion, date, source) %>%
-pander::pandoc.table(caption = "(\\#tab:sessioninfo)Loaded R packages",
-                     split.table = Inf)
+  as_tibble() %>%
+  select(package, loadedversion, date, source) %>%
+  pander::pandoc.table(
+    caption = "(\\#tab:sessioninfo)Loaded R packages",
+    split.table = Inf
+  )
 ```
 
 
